@@ -349,7 +349,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
                 'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
         }
     } catch (Throwable $e) { /* optional relationships may not exist on older installs */ }
-    $parser = new SnapSmack($pdo);
+    $parser = new SnapSmack($pdo, adminPreview: $previewPost !== null);
     require_once __DIR__ . '/trusted-html.php';
     $rendered = snap_wrap_bare_paragraphs($parser->parseContent((string)($post['content'] ?? '')));
     $colophon = trim(html_entity_decode(strip_tags((string)($post['colophon'] ?? '')), ENT_QUOTES | ENT_HTML5));

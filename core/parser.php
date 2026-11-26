@@ -67,7 +67,7 @@ class SnapSmack {
     private $pdo;
     private $config = [];
 
-    public function __construct($pdo) {
+    public function __construct($pdo, private bool $adminPreview = false) {
         $this->pdo = $pdo;
         $this->loadConfig();
     }
@@ -260,7 +260,7 @@ class SnapSmack {
                 return '';
             }
             $use = $uses[0];
-            return pocket_album_html($this->pdo, $use['src'], $use['album'], $use['limit']);
+            return pocket_album_html($this->pdo, $use['src'], $use['album'], $use['limit'], $this->adminPreview);
         }, $content);
     }
 

@@ -466,19 +466,21 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
  * data attribute, because both are stripped on this path and a stripped
  * attribute fails silently.
  */
-function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0): string
+function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0, bool $adminPreview = false): string
 {
     if (!function_exists('snap_escape_html')) {
         require_once __DIR__ . '/skin-render-helpers.php';
     }
     $data = pocket_album_photographs($pdo, $src, $album, $limit);
     if ($data['photographs'] === []) {
-        // SAY WHICH ALBUM IS EMPTY. "Nothing here yet" on a page Sean expected
-        // photographs on is how /images spent weeks looking like a layout fault
-        // instead of a missing feature.
+        if ($src !== '') {
+            if (!$adminPreview) return '';
+            $host = snap_escape_html((string)parse_url($src, PHP_URL_HOST));
+            return '<p class="snap-pocket-album-empty">Album ' . $album
+                . ' has no photographs cached from ' . $host . ' yet.</p>';
+        }
         return '<p class="snap-pocket-album-empty">No photographs are in album '
-            . (int)$album . ($src !== '' ? ' on ' . snap_escape_html((string)parse_url($src, PHP_URL_HOST)) : '')
-            . ' yet.</p>';
+            . $album . ' yet.</p>';
     }
 
     $html = '<div class="snap-pocket-album">';
