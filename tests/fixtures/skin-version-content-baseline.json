@@ -88,8 +88,8 @@
             "manifest_css_sha256": "d037815ba4381789c20187682fe43e93838442fe07473aba7a5e04f8929c51ed"
         },
         "photogram": {
-            "version": "2.0.33",
-            "files_sha256": "e43f2924aa276c428a942819dba9480c60724f72c8292a01a4534649df871c75",
+            "version": "2.0.34",
+            "files_sha256": "319c154c03cb076f83c75bab2007e6393af0b5015df2e7053411d3649afed0b7",
             "manifest_css_sha256": "f8fea9262d24dccf3a5b735dedc37af868114c1187e754f34abd9a5dc0cb701c"
         },
         "rational-geo": {
