@@ -5,7 +5,7 @@
 # Last non-empty line of this file MUST match the line above.
 """
 
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 import json
 import os
 from pathlib import Path
@@ -23,6 +23,21 @@ def _replace_for_fixture(owner, name, replacement):
     finally:
         setattr(owner, name, original)
 
+
+
+@contextmanager
+def isolated_settings(directory):
+    from PySide6.QtCore import QSettings
+
+    from coldsnap_qt import block_tray, body_editor, mode_take
+
+    def fixture_settings(org, app):
+        return QSettings(str(directory / org / f"{app}.ini"), QSettings.IniFormat)
+
+    with ExitStack() as stack:
+        for module in (block_tray, body_editor, mode_take):
+            stack.enter_context(_replace_for_fixture(module, "QSettings", fixture_settings))
+        yield
 
 def take_composer_checks(mode, files):
     """Exercise the real composer controls against a disposable queued post."""
@@ -209,7 +224,7 @@ def run(output_dir: str) -> int:
 
     original_init = MosaicBrowser.__init__
     try:
-        with _replace_for_fixture(MosaicBrowser, "__init__", guarded_init):
+        with isolated_settings(home), _replace_for_fixture(MosaicBrowser, "__init__", guarded_init):
             return _run_capture(out, app, retire_views, overlap)
     finally:
         for window in app.topLevelWidgets():
@@ -275,12 +290,6 @@ def _run_capture(out, app, retire_views, overlap):
     mode.title_edit.setText("COLD SNAP parity gate")
     app.processEvents()
     mode.grab().save(str(out / "01-editor-parity.png"), "PNG")
-    mode.hide()
-    mode.body.canvas.setUpdatesEnabled(False)
-    retire_views()
-    mode.body.canvas._inline_browser = None
-    mode.body.canvas._inline_browser_active = None
-    mode.body.canvas._inline_browser_jobs.clear()
 
     tiles = mode.findChildren(PhotoThumbTile)
     tile_badges = [
@@ -297,6 +306,13 @@ def _run_capture(out, app, retire_views, overlap):
         "pixel_mirror_controls_absent": "⇆ Flip H" not in buttons and "⇅ Flip V" not in buttons,
         "block_count": len(mode.body.authoring_blocks()) == 4,
     }
+
+    mode.hide()
+    mode.body.canvas.setUpdatesEnabled(False)
+    retire_views()
+    mode.body.canvas._inline_browser = None
+    mode.body.canvas._inline_browser_active = None
+    mode.body.canvas._inline_browser_jobs.clear()
 
     captured = {}
 
