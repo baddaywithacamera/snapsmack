@@ -50,7 +50,10 @@ WRITER_ACCOUNT = "proxvox-root-rw"
 MAX_WRITE_BYTES = 8 * 1024 * 1024
 
 SSH_TIMEOUT_SECONDS = 150
-SESSION_OPERATIONS = {"authorize-write-session", "check-write-session", "revoke-write-session"}
+SESSION_OPERATIONS = {
+    "authorize-write-session", "check-write-session", "revoke-write-session",
+    "preview-maintenance", "issue-maintenance-nonce", "run-maintenance",
+}
 
 
 def _ssh_runner(host, account, identity, command, stdin_bytes, timeout):
@@ -106,6 +109,22 @@ class ScopedFileWriter:
 
     def _session_request(self, op, user, **body):
         return self._send(op, [user], json.dumps(body).encode("utf-8"))
+
+    def preview_maintenance(self, user, ticket, target, action, subject, value=None):
+        return self._session_request(
+            "preview-maintenance", user, ticket=ticket, target=target,
+            action=action, subject=subject, value=value,
+        )
+
+    def run_maintenance(self, user, ticket, target, action, subject, expected, value=None):
+        plan = dict(ticket=ticket, target=target, action=action,
+                    subject=subject, value=value, expected=expected)
+        issued = self._session_request("issue-maintenance-nonce", user, **plan)
+        nonce = issued.get("write_nonce") if isinstance(issued, dict) else None
+        if (not isinstance(nonce, str) or len(nonce) != 64
+                or any(digit not in "0123456789abcdef" for digit in nonce)):
+            raise Refused("the host did not issue a valid maintenance nonce")
+        return self._session_request("run-maintenance", user, nonce=nonce, **plan)
 
     def put_file_dry(self, target, path, content, expected_live=None):
         """Rehearse. Changes nothing, and deliberately needs no grant.

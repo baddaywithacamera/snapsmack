@@ -29,11 +29,13 @@ read-only account stays read-only; this is not added to it.
 """
 
 import base64
+from contextlib import contextmanager
 import fnmatch
 import hashlib
 import json
 import os
 import posixpath
+import re
 import secrets
 import shlex
 import shutil
@@ -770,6 +772,8 @@ WRITE_NONCES = "/run/proxvox/write-nonces"
 WRITE_NONCE_SECONDS = 60
 WRITE_SESSIONS = "/run/proxvox/write-sessions"
 WRITE_SESSION_SECONDS = 3600
+MAINTENANCE_LOCKS = "/run/proxvox/maintenance"
+ATTESTED_MAINTENANCE = {"preview-maintenance", "issue-maintenance-nonce", "run-maintenance"}
 
 
 def _write_nonce_name(nonce):
@@ -1060,6 +1064,96 @@ _AUDIT_RESULT_FIELDS = (
 )
 
 
+@contextmanager
+def _maintenance_lock(target):
+    """Serialize state checks and dispatch for a single writer target."""
+    import fcntl
+
+    os.makedirs(MAINTENANCE_LOCKS, mode=0o700, exist_ok=True)
+    _assert_private_state_directory(MAINTENANCE_LOCKS)
+    path = os.path.join(MAINTENANCE_LOCKS, target + ".lock")
+    fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
+
+
+def _maintenance_plan(request):
+    where = request.get("target")
+    target = "host" if where == "host" else _vmid(where)
+    prefix = [] if target == "host" else _ct(target)
+    action = request.get("action")
+    if not isinstance(action, str):
+        raise Refused("invalid maintenance action")
+    subject = request.get("subject")
+    value = request.get("value")
+    if not isinstance(subject, str) or any(c in subject for c in "\r\n\0"):
+        raise Refused("invalid maintenance subject")
+    if action in {"chown", "chmod"}:
+        subject = _absolute(subject)
+        check = prefix + ["/usr/bin/stat", "--format=%d:%i:%u:%g:%a:%f", "--", subject]
+        if action == "chown" and isinstance(value, str) and re.fullmatch(
+            r"[0-9]{1,10}:[0-9]{1,10}", value
+        ):
+            return target, prefix + ["/usr/bin/chown", "--no-dereference", "--", value, subject], check
+        if action == "chmod" and isinstance(value, str) and re.fullmatch(r"[0-7]{3,4}", value):
+            return target, prefix + ["/usr/bin/chmod", "--", value, subject], check
+    if action in {"restart", "reload", "status"} and value is None and re.fullmatch(
+        r"[A-Za-z0-9_][A-Za-z0-9_.@:-]{0,253}", subject
+    ):
+        check = prefix + ["/usr/bin/systemctl", "show", "--no-pager",
+                          "--property=LoadState,ActiveState,SubState,InvocationID", "--", subject]
+        command = check if action == "status" else prefix + ["/usr/bin/systemctl", action, "--", subject]
+        return target, command, check
+    raise Refused("expected chown with numeric UID:GID, chmod with an octal mode, or a systemd unit action")
+
+
+def _attested_maintenance(op, user, request):
+    ticket = request.get("ticket")
+    _check_write_session(user, ticket)
+    target, command, check = _maintenance_plan(request)
+    action = request["action"]
+    with _maintenance_lock(target):
+        if action in {"chown", "chmod"}:
+            path = command[-1]
+            if target == "host":
+                _refuse_symlinks(path)
+            else:
+                _refuse_container_symlinks(target, path)
+        before = _run(check).decode("utf-8").strip()
+        expected = hashlib.sha256(before.encode("utf-8")).hexdigest()
+        if op == "preview-maintenance":
+            return {"argv": command, "before": before, "expected": expected}
+        if request.get("expected") != expected:
+            raise Refused("maintenance target changed since preview")
+        operation = hashlib.sha256(json.dumps(
+            [user, _write_session_path(ticket), target, action, command, expected],
+            separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+        expires = _check_write_session(user, ticket)
+        if op == "issue-maintenance-nonce":
+            return {"write_nonce": _issue_write_nonce(operation, expires)}
+
+        _consume_write_nonce(request.get("nonce"), operation)
+        detail = {"target": target, "argv": command, "before": before}
+        if not _audit("maintenance-intent", detail, durable=True):
+            raise Refused("could not persist the maintenance audit; command was not run")
+        _check_write_session(user, ticket)
+        try:
+            if action != "status":
+                _run(command)
+            after = _run(check).decode("utf-8").strip() if action != "status" else before
+        except (Refused, OSError, subprocess.SubprocessError, UnicodeError) as err:
+            _audit("maintenance-result", dict(detail, result="failed"), durable=True)
+            raise Refused("maintenance failed; inspect target state before retrying") from err
+        result = dict(detail, after=after, result="success")
+        if not _audit("maintenance-result", result, durable=True):
+            raise Refused("command ran but its result could not be audited; check target state")
+        return result
+
+
 def _audit_command(command):
     """The command line with any grant blob removed.
 
@@ -1072,7 +1166,9 @@ def _audit_command(command):
         args = shlex.split(str(command or ""), posix=True)
     except ValueError:
         return "(unparsable command)"
-    if args and args[0] in {"authorize-write-session", "check-write-session", "revoke-write-session"}:
+    if args and (args[0] in ATTESTED_MAINTENANCE or args[0] in {
+        "authorize-write-session", "check-write-session", "revoke-write-session"
+    }):
         return args[0]
     if args and args[0] in {"put-file", "put-file-dry", "issue-file-nonce"} and len(args) >= 6:
         # REPLACE the grant, do not truncate at it. The protocol's longest
@@ -1093,8 +1189,8 @@ def _audit_result(data):
     return {key: data[key] for key in _AUDIT_RESULT_FIELDS if key in data}
 
 
-def _audit(event, detail):
-    """Append one record. A log that cannot be written never blocks a refusal.
+def _audit(event, detail, *, durable=False):
+    """Append one record, optionally requiring it to reach disk before returning.
 
     An audit failure must not become a way to stop the wrapper answering --
     that would turn a full disk into a denial of service on Sean's own
@@ -1119,11 +1215,23 @@ def _audit(event, detail):
         os.makedirs(os.path.dirname(AUDIT_LOG) or ".", mode=0o700, exist_ok=True)
         handle = os.open(
             AUDIT_LOG,
-            os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_BINARY", 0),
+            (os.O_WRONLY | os.O_CREAT | os.O_APPEND
+             | getattr(os, "O_BINARY", 0) | getattr(os, "O_NOFOLLOW", 0)),
             0o600,
         )
         try:
-            os.write(handle, (json.dumps(record, separators=(",", ":")) + "\n").encode("utf-8"))
+            metadata = os.fstat(handle)
+            if not stat.S_ISREG(metadata.st_mode) or (
+                os.name == "posix" and (
+                    metadata.st_uid != os.geteuid() or metadata.st_mode & 0o077
+                )
+            ):
+                raise OSError("the host writer audit file is not private")
+            line = (json.dumps(record, separators=(",", ":")) + "\n").encode("utf-8")
+            if os.write(handle, line) != len(line):
+                raise OSError("the audit record was only partially written")
+            if durable:
+                os.fsync(handle)
         finally:
             os.close(handle)
         return True
@@ -1159,16 +1267,23 @@ def dispatch(command):
             return {"expires_at": _check_write_session(user, request.get("ticket"))}
         return _revoke_write_session(user, request.get("ticket"))
 
+    if op in ATTESTED_MAINTENANCE and len(args) == 2:
+        if args[1] not in OWNER_USERS:
+            raise Refused("the account cannot authorize a host writer session")
+        return _attested_maintenance(op, args[1], _read_session_request())
+
     # ── what may I write? The allowlist, readable so Sean can check it. ──
     if op == "scope" and len(args) == 1:
         return {
             "allowed": [{"target": t, "pattern": p} for t, p in ALLOWED],
             "never_write": list(NEVER_WRITE),
             "maintenance": sorted(MAINTENANCE),
+            "attested_maintenance": ["chmod", "chown", "reload", "restart", "status"],
             "max_write_bytes": MAX_WRITE_BYTES,
             "note": "Without a live owner session, only listed paths can be rehearsed. "
                     "With host-witnessed TOTP and an operation nonce, the file writer supports "
-                    "regular files on the host and its containers.",
+                    "regular files on the host and its containers. Attested maintenance "
+                    "also requires a nonce bound to the requested command and preview state.",
         }
 
     # ── put-file[-dry] host|<vmid> <path> <sha256>, content base64 on stdin ──

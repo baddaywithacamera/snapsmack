@@ -70,7 +70,8 @@ def w(tmp_path):
                        ("SPENT_GRANTS", "spent-grants"),
                        ("WRITE_NONCES", "nonce-store/write-nonces"),
                        ("WRITE_SESSIONS", "session-store/write-sessions"),
-                       ("AUDIT_LOG", "audit/writer.jsonl")):
+                       ("AUDIT_LOG", "audit/writer.jsonl"),
+                       ("MAINTENANCE_LOCKS", "run/maintenance")):
         setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
     module._check_write_session = lambda user, ticket: time.time() + 3600
     return module
@@ -1024,6 +1025,78 @@ def test_host_writer_session_expires_even_if_wall_clock_moves_back(tmp_path, mon
     monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 3601)
     with pytest.raises(writer.Refused, match="authorization expired"):
         writer._check_write_session("root@pam", ticket)
+
+
+def test_attested_maintenance_binds_command_and_audits_before_mutation(w, monkeypatch):
+    from contextlib import nullcontext
+
+    user = "root@pam"
+    ticket = "PVE:root@pam:test-maintenance-ticket"
+    commands = []
+    state = "LoadState=loaded\nActiveState=active\nInvocationID=old"
+    audit = []
+    active = True
+    audit_available = True
+
+    def session(account, supplied):
+        if not active or (account, supplied) != (user, ticket):
+            raise w.Refused("no active host write session")
+        return time.time() + 120
+
+    def run(argv):
+        nonlocal state
+        if "show" in argv:
+            return state.encode()
+        assert audit[-1][0] == "maintenance-intent"
+        assert audit[-1][1] == {"target": "101", "argv": argv, "before": state}
+        commands.append(argv)
+        state = state.replace("=old", "=new")
+        return b""
+
+    def record(event, detail, *, durable=False):
+        if event != "attempt":
+            assert durable
+        audit.append((event, detail))
+        return audit_available
+
+    monkeypatch.setattr(w, "_check_write_session", session)
+    monkeypatch.setattr(w, "_maintenance_lock", lambda target: nullcontext())
+    monkeypatch.setattr(w, "_run", run)
+    monkeypatch.setattr(w, "_audit", record)
+    plan = {"ticket": ticket, "target": "101", "action": "restart", "subject": "test.service"}
+
+    def call(op, **values):
+        monkeypatch.setattr(w, "_read_session_request", lambda: dict(plan, **values))
+        return w.dispatch(f"{op} {user}")
+
+    preview = call("preview-maintenance")
+    assert preview["argv"] == [
+        "/usr/sbin/pct", "exec", "101", "--", "/usr/bin/systemctl", "restart",
+        "--", "test.service",
+    ]
+    expected = preview["expected"]
+    nonce = call("issue-maintenance-nonce", expected=expected)["write_nonce"]
+    with pytest.raises(w.Refused, match="different operation"):
+        call("run-maintenance", expected=expected, nonce=nonce, subject="another.service")
+    active = False
+    with pytest.raises(w.Refused, match="no active"):
+        call("run-maintenance", expected=expected, nonce=nonce)
+    active = True
+    audit_available = False
+    with pytest.raises(w.Refused, match="could not persist"):
+        call("run-maintenance", expected=expected, nonce=nonce)
+    assert not commands
+    audit_available = True
+    nonce = call("issue-maintenance-nonce", expected=expected)["write_nonce"]
+    before = state
+    result = call("run-maintenance", expected=expected, nonce=nonce)
+    assert result["after"].endswith("=new")
+    assert audit[-1] == ("maintenance-result", result)
+    assert commands == [preview["argv"]]
+    state = before
+    with pytest.raises(w.Refused, match="already used"):
+        call("run-maintenance", expected=expected, nonce=nonce)
+    assert ticket not in repr(audit) and nonce not in repr(audit)
 
 
 # ===== SNAPSMACK EOF =====
