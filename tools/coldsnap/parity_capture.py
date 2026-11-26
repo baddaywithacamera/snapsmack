@@ -465,7 +465,7 @@ def run(output_dir: str) -> int:
     post_canvas = BiggieCanvas()
     post_canvas.setStyleSheet(theme.stylesheet())
     post_canvas.set_preview_width(800)
-    post_canvas.resize(825, 800)
+    post_canvas.resize(825, 2100)
     post_canvas.set_bucket([str(fixture_dir / "quilt-mirror-01.jpg"),
                             *(str(fixture_dir / f"quilt-{index:02}.jpg") for index in range(2, 15))])
     post_canvas.insert_mosaic(list(range(1, 15)), "asymmetric", weights={1: 1, 5: 1})
@@ -476,10 +476,33 @@ def run(output_dir: str) -> int:
                      if len(tiles) == 14), (None, {}))
 
     post_proof = {}
+
+    def save_painted_post(filename):
+        def painted():
+            tiles = post_mosaic()[1]
+            if len(tiles) != 14:
+                return False
+            capture = post_canvas.viewport().grab()
+            frame = capture.toImage()
+            ratio = capture.devicePixelRatio()
+            for photo, (_identity, rect) in tiles.items():
+                x = round((rect.left() + rect.width() * .72) * ratio)
+                y = round((rect.top() + rect.height() * .72) * ratio)
+                if not frame.valid(x, y):
+                    return False
+                pixel = frame.pixelColor(x, y)
+                index = int(photo) - 1
+                expected = ((42 + index * 51) % 256, (67 + index * 27) % 256, (88 + index * 19) % 256)
+                if any(abs(a - b) > 12 for a, b in zip(pixel.getRgb()[:3], expected)):
+                    return False
+            return capture.save(str(out / filename), "PNG")
+
+        return wait_for(painted)
+
     if wait_for(lambda: bool(post_mosaic()[1])):
         position, tiles = post_mosaic()
         point = tiles[1][1].center()
-        post_proof["before_capture"] = post_canvas.grab().save(str(out / "16-post-quilt-before.png"), "PNG")
+        post_proof["before_capture"] = save_painted_post("16-post-quilt-before.png")
 
         menu = QMenu(post_canvas)
         if post_canvas._add_inline_photo_actions(menu, post_canvas._object_at(position), point):
@@ -492,7 +515,7 @@ def run(output_dir: str) -> int:
         mirrored = post_canvas._object_at(position)[1]
         post_proof["stored"] = mirrored.get("mirrors") == ["0:4"]
         if wait_for(lambda: bool(post_mosaic()[1]) and post_mosaic()[1][1][1].left() > point.x()):
-            post_proof["after_capture"] = post_canvas.grab().save(str(out / "18-post-quilt-mirrored.png"), "PNG")
+            post_proof["after_capture"] = save_painted_post("18-post-quilt-mirrored.png")
         post_canvas.undo()
         post_proof["undo"] = not post_canvas._object_at(position)[1].get("mirrors")
         post_canvas.redo()
