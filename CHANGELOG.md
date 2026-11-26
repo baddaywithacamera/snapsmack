@@ -25,6 +25,9 @@
   other scheduled jobs, with RUN NOW, REGISTER and UNREGISTER. On a site that
   shows no album from another site it says there is nothing to do, rather
   than reporting a job that is not running.
+- **Report the POCKET ALBUM refresh honestly in CRON & JOBS.** On a site
+  that shows an album from another site, the job ran every hour while the
+  page said it had never run.
 - **CRON & JOBS is now administrator-only.** It writes the server's scheduled
   tasks, and any logged-in editor could open it and change them.
 

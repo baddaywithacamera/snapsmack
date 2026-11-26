@@ -159,9 +159,15 @@ $check('a subset links to the rest of the album',
 
 // The local album needs no cron and no sharing switch: it is this site's own
 // data, read at render time. Proven by rendering with sharing absent entirely.
-$check('the local album rendered with no sharing setting stored at all',
-    ($pdo->query("SELECT COUNT(*) FROM snap_settings WHERE setting_key = 'pocket_album_share'")
-        ->fetchColumn() === 0 || true) && count($imgs[0]) === 5);
+// The `|| true` that used to sit here made the first half of this check
+// vacuous: it asserted the photograph count and nothing about the setting.
+// Muse caught it in review of 2382b8fd. fetchColumn() returns a string from
+// SQLite, so the comparison has to allow for that rather than be weakened.
+$share_rows = (int)$pdo->query(
+    "SELECT COUNT(*) FROM snap_settings WHERE setting_key = 'pocket_album_share'")->fetchColumn();
+$check('NO sharing setting is stored at all in this fixture', $share_rows === 0);
+$check('the local album still rendered all five photographs without one',
+    count($imgs[0]) === 5);
 
 // An album that does not exist says which album is empty rather than nothing.
 $missing = (string)$parser->parseContent('[pocket_album album="99"]');

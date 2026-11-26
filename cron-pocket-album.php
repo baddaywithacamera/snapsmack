@@ -28,18 +28,27 @@ if (PHP_SAPI !== 'cli') { http_response_code(403); exit("CLI only.\n"); }
 
 define('SNAPSMACK_CRON', true);
 require_once __DIR__ . '/core/db.php';
+// REQUIRED, not assumed. This script called cron_stamp_scheduler_fire() behind
+// a function_exists() guard, and nothing in its require chain defined it:
+// core/db.php pulls in constants.php, core/pocket-album-display.php pulls in
+// safe-remote-fetch.php, and neither reaches cron-register.php. So the guard
+// was always false and pocket_album_sched_last_fire never moved: on a site
+// that does display a remote album, CRON & JOBS would show the Scheduler row
+// red, NEVER FIRED, while the job ran every hour. That is exactly the silent
+// failure this job's own ticket exists to kill. Found by Muse in review of
+// 2382b8fd. The three sibling cron scripts require this file and call the
+// stamp unguarded; so does this one now.
+require_once __DIR__ . '/core/cron-register.php';
 require_once __DIR__ . '/core/pocket-album-display.php';
 
 $say = static function (string $line): void { echo $line . "\n"; };
 
 // The scheduler heartbeat, stamped FIRST and only for a real scheduler fire,
 // exactly as the other three cron scripts do -- a crontab line is not proof
-// that a job runs; a moving stamp is. RUN NOW sets SNAPSMACK_LAUNCH=manual and
-// must not move it.
-if (($_SERVER['SNAPSMACK_LAUNCH'] ?? getenv('SNAPSMACK_LAUNCH') ?: '') !== 'manual'
-    && function_exists('cron_stamp_scheduler_fire')) {
-    cron_stamp_scheduler_fire($pdo, 'pocket_album');
-}
+// that a job runs; a moving stamp is. cron_stamp_scheduler_fire() itself
+// refuses a RUN NOW (SNAPSMACK_LAUNCH=manual) and a non-CLI launch, so the
+// decision lives in one place rather than being re-made here.
+cron_stamp_scheduler_fire($pdo, 'pocket_album');
 
 $reports = pocket_album_refresh($pdo, $say);
 
