@@ -11,6 +11,13 @@
 # SnapSmack Changelog
 ## Unreleased
 
+- **Switch POCKET ALBUM sharing on from the Albums page.** The 0.7.1004D note
+  said the source site must opt in before a second site can read its albums.
+  There was no way to opt in: the setting existed only as a check the sharing
+  request failed, so it failed on every site. The Albums page now carries the
+  switch. It stays off until you turn it on, and your own albums show on your
+  own site either way.
+
 ## 0.7.1005D — opened
 
 - **Find the Pixelfed Client from the admin sidebar.** The site and Photo
