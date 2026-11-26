@@ -53,6 +53,7 @@ import hashlib
 import json
 import os
 import posixpath
+import secrets
 import shlex
 import shutil
 import stat
@@ -777,7 +778,8 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
             "the grant authorises different content. The hash Sean approved is "
             "not the hash of what arrived, so nothing is written.")
     return {"user": user, "expires": expires,
-            "identity": _grant_identity(user, target, path, sha256, expires)}
+            "identity": _grant_identity(user, target, path, sha256, expires),
+            "ticket_fingerprint": hashlib.sha256(grant["ticket"].encode("utf-8")).hexdigest()}
 
 
 def _grant_identity(user, target, path, sha256, expires):
@@ -813,6 +815,76 @@ def _grant_identity(user, target, path, sha256, expires):
 
 #: Where spent grants are remembered, so one cannot be presented twice.
 SPENT_GRANTS = "/var/lib/proxvox/spent-grants"
+WRITE_NONCES = "/run/proxvox/write-nonces"
+WRITE_NONCE_SECONDS = 60
+
+
+def _write_nonce_name(nonce):
+    if not isinstance(nonce, str) or nonce != nonce.lower() or not _is_sha256(nonce):
+        raise Refused("the host write nonce is invalid; request a fresh one")
+    return os.path.join(WRITE_NONCES, nonce + ".json")
+
+
+def _assert_private_nonce_directory():
+    for path in (os.path.dirname(WRITE_NONCES), WRITE_NONCES):
+        directory = os.lstat(path)
+        forbidden = 0o077 if path == WRITE_NONCES else 0o022
+        if not stat.S_ISDIR(directory.st_mode) or (
+            os.name == "posix" and (directory.st_uid != os.geteuid() or directory.st_mode & forbidden)
+        ):
+            raise Refused("the host write nonce directory is not secured")
+
+
+def _issue_write_nonce(operation, expires, now=None):
+    """Bind a host-generated nonce to a validated operation with a short lifetime."""
+    moment = time.time() if now is None else now
+    deadline = min(float(expires), moment + WRITE_NONCE_SECONDS)
+    if deadline <= moment:
+        raise Refused("write authorization expired; authorize and retry")
+    try:
+        os.makedirs(WRITE_NONCES, mode=0o700, exist_ok=True)
+        _assert_private_nonce_directory()
+        # Cleanup is best effort. Validation checks expiry regardless of whether the file survives.
+        with os.scandir(WRITE_NONCES) as entries:
+            for entry in entries:
+                try:
+                    if entry.name.endswith((".json", ".used")) and entry.stat(follow_symlinks=False).st_mtime < moment - WRITE_NONCE_SECONDS:
+                        os.unlink(entry.path)
+                except FileNotFoundError:
+                    pass
+        nonce = secrets.token_hex(32)
+        fd = os.open(_write_nonce_name(nonce), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as record:
+            json.dump({"operation": operation, "expires": deadline}, record, separators=(",", ":"))
+    except OSError as err:
+        raise Refused("the host could not issue a write nonce") from err
+    return nonce
+
+
+def _consume_write_nonce(nonce, operation, now=None):
+    """Only one competing caller can exclusively claim a matching nonce."""
+    name = _write_nonce_name(nonce)
+    moment = time.time() if now is None else now
+    try:
+        _assert_private_nonce_directory()
+        with open(name, encoding="utf-8") as record:
+            authorization = json.load(record)
+        if authorization["operation"] != operation:
+            raise Refused("the host write nonce belongs to a different operation")
+        if authorization["expires"] <= moment:
+            raise Refused("the host write nonce expired; request a fresh one")
+        # Keep an exclusive spent marker through the expiry window. Windows
+        # can report successful unlink twice while a competing read is open.
+        claim = os.open(name + ".used", os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(claim)
+        if authorization["expires"] <= (time.time() if now is None else now):
+            raise Refused("the host write nonce expired; request a fresh one")
+    except FileExistsError as err:
+        raise Refused("the host write nonce was already used") from err
+    except FileNotFoundError as err:
+        raise Refused("the host write nonce was already used or does not exist") from err
+    except (OSError, ValueError, KeyError, TypeError) as err:
+        raise Refused("the host could not verify the write nonce") from err
 
 
 def _spend_grant(identity, expires, now=None):
@@ -931,13 +1003,15 @@ def _audit_command(command):
         args = shlex.split(str(command or ""), posix=True)
     except ValueError:
         return "(unparsable command)"
-    if args and args[0] in {"put-file", "put-file-dry"} and len(args) >= 6:
+    if args and args[0] in {"put-file", "put-file-dry", "issue-file-nonce"} and len(args) >= 6:
         # REPLACE the grant, do not truncate at it. The protocol's longest
         # put-file is six arguments, so for every valid command these are the
         # same thing -- but a malformed longer one should still be logged in
         # full apart from the grant, because a command the wrapper is about to
         # refuse as malformed is exactly the one worth seeing whole.
         args = args[:5] + ["(grant presented, not logged)"] + args[6:]
+        if len(args) >= 7:
+            args[6] = "(nonce presented, not logged)"
     line = " ".join(args)
     return line[:400]
 
@@ -1016,7 +1090,7 @@ def dispatch(command):
     # ── put-file[-dry] host|<vmid> <path> <sha256>, content base64 on stdin ──
     # Two op NAMES rather than a --dry-run flag, so a mistyped flag can never
     # turn a rehearsal into a write.
-    if op in {"put-file", "put-file-dry"} and len(args) in (4, 5, 6):
+    if op in {"put-file", "put-file-dry", "issue-file-nonce"} and len(args) in (4, 5, 6, 7):
         dry_run = op == "put-file-dry"
         where = args[1]
         path = _absolute(args[2])
@@ -1030,6 +1104,9 @@ def dispatch(command):
         # the caller expects the file not to exist yet.
         expected_live = args[4] if len(args) >= 5 else None
         grant_json = args[5] if len(args) >= 6 else None
+        nonce = args[6] if len(args) == 7 else None
+        if (op == "issue-file-nonce" and len(args) != 6) or (dry_run and len(args) > 5):
+            raise Refused("invalid arguments for the host write operation")
 
         # A LIVE WRITE NEEDS A GRANT. The dry run deliberately does not, so a
         # rehearsal can be done without spending an authorisation -- and a dry
@@ -1086,6 +1163,15 @@ def dispatch(command):
                     "for a file that should not exist yet.")
             expected_live = expectation
             checked = _check_grant(grant_json, target=target, path=path, sha256=declared)
+            if not _is_sha256(declared):
+                raise Refused("the content hash must be a 64-character sha256")
+            operation = hashlib.sha256(json.dumps(
+                ["put-file", checked["identity"], checked["ticket_fingerprint"], expected_live.lower()],
+                separators=(",", ":"),
+            ).encode("utf-8")).hexdigest()
+            if op == "issue-file-nonce":
+                return {"write_nonce": _issue_write_nonce(operation, checked["expires"])}
+            _consume_write_nonce(nonce, operation)
             # SPENT ONLY ONCE THE GRANT IS OTHERWISE GOOD, and before the
             # write. Marking it earlier would burn a grant on a command the
             # host was going to refuse anyway; marking it after the write

@@ -68,6 +68,7 @@ def w(tmp_path):
     module = _load()
     for name, leaf in (("BACKUP_DIR", "backups"),
                        ("SPENT_GRANTS", "spent-grants"),
+                       ("WRITE_NONCES", "nonce-store/write-nonces"),
                        ("AUDIT_LOG", "audit/writer.jsonl")):
         setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
     return module
@@ -286,7 +287,12 @@ def _cmd(path, content, *, w=None, monkeypatch=None, expected_live=None,
         live = expected_live
     if grant is None:
         grant = _grant(w, monkeypatch, target="host", path=posix, sha256=sha)
-    return "%s %s %s" % (base, live, shlex.quote(grant))
+    return _with_nonce(w, "%s %s %s" % (base, live, shlex.quote(grant)))
+
+
+def _with_nonce(w, command):
+    nonce = w.dispatch(command.replace("put-file ", "issue-file-nonce ", 1))["write_nonce"]
+    return command + " " + nonce
 
 
 def test_a_write_backs_up_the_old_file_and_verifies_the_new_one(w, target, monkeypatch):
@@ -678,8 +684,8 @@ def _attempt(w, monkeypatch, path, content, **grant_kwargs):
     grant = _grant(w, monkeypatch, **fields)
     _stdin(monkeypatch, content)
     live = hashlib.sha256(open(str(path), "rb").read()).hexdigest()
-    return w.dispatch("put-file host %s %s %s %s"
-                      % (posix, sha, live, shlex.quote(grant)))
+    return w.dispatch(_with_nonce(w, "put-file host %s %s %s %s"
+                                 % (posix, sha, live, shlex.quote(grant))))
 
 
 def test_a_live_write_with_a_good_grant_succeeds(w, granted_target, monkeypatch):
@@ -784,7 +790,8 @@ def test_a_file_changed_since_the_caller_read_it_is_not_overwritten(
 
     stale = hashlib.sha256(b"what the caller thought was there\n").hexdigest()
     with pytest.raises(Exception) as caught:
-        w.dispatch("put-file host %s %s %s %s" % (posix, sha, stale, shlex.quote(grant)))
+        command = "put-file host %s %s %s %s" % (posix, sha, stale, shlex.quote(grant))
+        w.dispatch(_with_nonce(w, command))
 
     assert "not what the caller last read" in str(caught.value)
     assert granted_target.read_bytes() == b"original\n"
@@ -797,7 +804,8 @@ def test_expecting_absence_refuses_when_the_file_is_there(w, granted_target, mon
     grant = _grant(w, monkeypatch, target="host", path=posix, sha256=sha)
     _stdin(monkeypatch, content)
     with pytest.raises(Exception) as caught:
-        w.dispatch("put-file host %s %s - %s" % (posix, sha, shlex.quote(grant)))
+        command = "put-file host %s %s - %s" % (posix, sha, shlex.quote(grant))
+        w.dispatch(_with_nonce(w, command))
     assert "not what the caller last read" in str(caught.value)
     assert granted_target.read_bytes() == b"original\n"
 
@@ -849,8 +857,8 @@ def _container_attempt(w, monkeypatch, fake, content=b"payload\n"):
     sha = hashlib.sha256(content).hexdigest()
     grant = _grant(w, monkeypatch, target="102", path=path, sha256=sha)
     _stdin(monkeypatch, content)
-    return w.dispatch("put-file 102 %s %s %s %s"
-                      % (path, sha, "a" * 64, shlex.quote(grant))), path
+    command = "put-file 102 %s %s %s %s" % (path, sha, "a" * 64, shlex.quote(grant))
+    return w.dispatch(_with_nonce(w, command)), path
 
 
 def test_a_symlink_anywhere_in_a_container_path_is_refused(w, monkeypatch):

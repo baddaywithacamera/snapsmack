@@ -159,23 +159,25 @@ class ScopedFileWriter:
 
         digest = hashlib.sha256(content).hexdigest()
         args = [str(target), str(path), digest]
-        # The positional protocol is: op target path sha256 [expected] [grant].
-        # The grant is read from position six, so the expectation cannot be
-        # omitted when a grant is present or the grant would slide into the
-        # slot the host reads a hash from. put_file() therefore demands an
-        # expectation; only a dry run may leave it out.
+        # The host issues a single-use nonce for the exact compare-and-set tuple.
+        details = {"bytes": len(content), "sha256": digest, "target": str(target),
+                   "path": str(path), "dry_run": bool(dry_run)}
         if expected_live is not None:
             args.append(str(expected_live))
         if grant is not None:
             args.append(grant)
+            issued = self._send("issue-file-nonce", args, None, log_extra=details)
+            nonce = issued.get("write_nonce") if isinstance(issued, dict) else None
+            if (not isinstance(nonce, str) or len(nonce) != 64
+                    or any(value not in "0123456789abcdef" for value in nonce)):
+                raise Refused("the host did not issue a valid write nonce")
+            args.append(nonce)
 
         return self._send(
             "put-file-dry" if dry_run else "put-file",
             args,
             base64.b64encode(content),
-            log_extra={"bytes": len(content), "sha256": digest,
-                       "target": str(target), "path": str(path),
-                       "dry_run": bool(dry_run)},
+            log_extra=details,
         )
 
     def _send(self, op, args, stdin_bytes, log_extra=None):
@@ -227,8 +229,10 @@ class ScopedFileWriter:
             # and the person reading this needs that sentence, not mine.
             raise Refused(why)
 
-        self.audit.record("file_write_done", dict(
-            detail, result=answer.get("data") if isinstance(answer.get("data"), dict) else {}))
-        return answer.get("data")
+        data = answer.get("data")
+        self.audit.record("file_write_done", dict(detail, result={
+            key: value for key, value in data.items() if key != "write_nonce"
+        } if isinstance(data, dict) else {}))
+        return data
 
 # ===== SNAPSMACK EOF =====

@@ -83,6 +83,7 @@ def w(monkeypatch, tmp_path):
     # fails when a new absolute path is added and not listed.
     for name, leaf in (("BACKUP_DIR", "backups"),
                        ("SPENT_GRANTS", "spent-grants"),
+                       ("WRITE_NONCES", "nonce-store/write-nonces"),
                        ("AUDIT_LOG", "audit/writer.jsonl")):
         monkeypatch.setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
     # Same documented platform relaxation the writer's own suite uses: the
@@ -120,6 +121,11 @@ def host_file(tmp_path, w, monkeypatch):
 
 def _posix(path):
     return str(path).replace(os.sep, "/")
+
+
+def _with_nonce(w, command):
+    nonce = w.dispatch(command.replace("put-file ", "issue-file-nonce ", 1))["write_nonce"]
+    return command + " " + nonce
 
 
 def _real_runner(w, monkeypatch, *, ticket_ok=True):
@@ -212,7 +218,7 @@ def test_a_live_write_with_a_grant_actually_writes_the_file(w, monkeypatch, host
     # asserted answer["after"], which the host never returns.
     assert answer["sha256_after"] == hashlib.sha256(content).hexdigest()
     assert answer["verified"] is True
-    assert audit.actions() == ["file_write_attempt", "file_write_done"]
+    assert audit.actions() == ["file_write_attempt", "file_write_done"] * 2
 
 
 def test_the_grant_rides_in_the_slot_the_host_reads_it_from(w, monkeypatch, host_file):
@@ -230,8 +236,10 @@ def test_the_grant_rides_in_the_slot_the_host_reads_it_from(w, monkeypatch, host
 
     client.put_file("host", _posix(host_file), content, grant, expected_live=before)
 
-    args = sent[0]["command"].split(" ")
-    assert args[0] == "put-file"
+    assert [shlex.split(call["command"])[0] for call in sent] == ["issue-file-nonce", "put-file"]
+    args = shlex.split(sent[1]["command"])
+    assert args[5] == grant
+    assert len(args[6]) == 64
     assert args[4] == before, "the expectation must sit in position five"
     assert host_file.read_bytes() == content
 
@@ -433,9 +441,45 @@ def test_the_legitimate_write_still_goes_through(w, monkeypatch, host_file):
     grant = _grant(target="host", path=host_file, content=content)
     command = _blind_argv(w, monkeypatch, host_file, content,
                           [hashlib.sha256(host_file.read_bytes()).hexdigest(), grant])
-    answer = w.dispatch(command)
+    answer = w.dispatch(_with_nonce(w, command))
     assert answer["verified"] is True
     assert host_file.read_bytes() == content
+
+
+def test_host_nonce_rejects_missing_replayed_and_changed_operations(w, monkeypatch, host_file):
+    original = host_file.read_bytes()
+    content = b"fresh bytes"
+    live = hashlib.sha256(original).hexdigest()
+    grant = _grant(target="host", path=host_file, content=content)
+    command = _blind_argv(w, monkeypatch, host_file, content, [live, grant])
+    with pytest.raises(w.Refused, match="nonce is invalid"):
+        w.dispatch(command)
+    authorized = _with_nonce(w, command)
+    with pytest.raises(w.Refused, match="different operation"):
+        w.dispatch(authorized.replace(live, "f" * 64))
+    assert host_file.read_bytes() == original
+    assert w.dispatch(authorized)["verified"] is True
+    with pytest.raises(w.Refused, match="already used"):
+        w.dispatch(authorized)
+
+
+def test_host_nonce_expires_and_has_one_atomic_consumer(w):
+    from concurrent.futures import ThreadPoolExecutor
+
+    expired = w._issue_write_nonce("operation", expires=102, now=100)
+    with pytest.raises(w.Refused, match="expired"):
+        w._consume_write_nonce(expired, "operation", now=102)
+    nonce = w._issue_write_nonce("operation", expires=200, now=100)
+
+    def consume():
+        try:
+            w._consume_write_nonce(nonce, "operation", now=101)
+            return True
+        except w.Refused:
+            return False
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        assert sum(executor.map(lambda _index: consume(), range(4))) == 1
 
 
 def test_reaching_dispatch_directly_still_leaves_a_host_record(w, monkeypatch, tmp_path):
@@ -654,7 +698,7 @@ def test_a_change_after_the_early_check_is_still_caught(w, monkeypatch, host_fil
             hashlib.sha256(content).hexdigest(), expected, grant]
 
     with pytest.raises(Exception, match="not what the caller last read"):
-        w.dispatch(" ".join(shlex.quote(a) for a in argv))
+        w.dispatch(_with_nonce(w, " ".join(shlex.quote(a) for a in argv)))
 
     # The other writer's bytes survive; mine are not there.
     assert host_file.read_bytes() == b"somebody else got here first\n"
@@ -685,7 +729,7 @@ def test_the_refused_write_leaves_no_temp_file_behind(w, monkeypatch, host_file,
     argv = ["put-file", "host", _posix(host_file),
             hashlib.sha256(content).hexdigest(), expected, grant]
     with pytest.raises(Exception):
-        w.dispatch(" ".join(shlex.quote(a) for a in argv))
+        w.dispatch(_with_nonce(w, " ".join(shlex.quote(a) for a in argv)))
 
     leftovers = [p.name for p in tmp_path.iterdir() if "proxvox-tmp" in p.name]
     assert leftovers == [], leftovers
@@ -746,13 +790,15 @@ def test_the_hosts_own_log_records_the_attempt_and_never_the_ticket(w, monkeypat
         buffer = io.BytesIO(base64.b64encode(content))
 
     monkeypatch.setattr("sys.stdin", _In())
+    command = _with_nonce(w, command)
     monkeypatch.setenv("SSH_ORIGINAL_COMMAND", command)
     assert w.main() == 0
 
     log = (tmp_path / "audit" / "writer.jsonl").read_text(encoding="utf-8")
     lines = [json.loads(line) for line in log.strip().splitlines()]
-    assert [entry["event"] for entry in lines] == ["attempt", "done"]
+    assert [entry["event"] for entry in lines] == ["attempt", "attempt", "done"]
     assert "SUPER-SECRET" not in log and "PVE:" not in log
+    assert shlex.split(command)[-1] not in log
     assert "(grant presented, not logged)" in lines[0]["detail"]["command"]
     # One JSON object per line, so the log stays readable after many writes.
     assert all(line.strip().startswith("{") for line in log.strip().splitlines())
