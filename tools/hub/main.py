@@ -25,7 +25,9 @@ from datetime import datetime
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 
-BUILD_VERSION = "0.7.54"
+from pending_builds import PendingBuilds
+
+BUILD_VERSION = "0.7.55"
 
 # Ã¢â€â‚¬Ã¢â€â‚¬ shared plumbing (C:\snapsmack\_shared at runtime, ../_shared in source) Ã¢â€â‚¬Ã¢â€â‚¬
 def _add_shared_to_path():
@@ -117,6 +119,38 @@ ROSTER = [
     ("KEYS PLEASE",         "API key manager & audit", [os.path.join(_R, "keysplease", "keysplease.exe")]),
     ("DRIVE BY",            "backup inventory & pruning", [os.path.join(_R, "driveby", "driveby.exe")]),
 ]
+
+MIGRATION_ROSTER = [
+    ("SMACKPRESS", "WordPress → SMACKTALK", [os.path.join(_R, "smackpress", "SmackPress.exe")]),
+    ("BLOGGER FLOGGER", "Blogger → SMACKTALK", [os.path.join(_R, "blogger-flogger", "blogger-flogger.exe")]),
+    ("GHOSTED", "Ghost → SMACKTALK", [os.path.join(_R, "ghosted", "ghosted.exe")]),
+    ("UNZUCKER", "Instagram → GRAMOFSMACK", [os.path.join(_R, "unzucker", "unzucker.exe")]),
+    ("FLKR FCKR", "Flickr → SMACKONEOUT", [os.path.join(_R, "flkr-fckr", "flkr-fckr.exe")]),
+    ("FED UP", "Fediverse → SNAPSMACK", [os.path.join(_R, "fed-up", "fed-up.exe")]),
+]
+
+
+def _tool_launch_paths():
+    return {os.path.basename(os.path.dirname(paths[0])): paths[0]
+            for _, _, paths in ROSTER + MIGRATION_ROSTER if paths}
+
+
+def _pending_builds():
+    state = os.path.join(os.path.dirname(_exe_ledger_path()), 'tool-builds')
+    state = os.path.realpath(state)
+    root = os.path.realpath(_R)
+    if os.path.normcase(state) == os.path.normcase(root) or os.path.normcase(state).startswith(os.path.normcase(root + os.sep)):
+        raise ValueError('SNAP HQ build records must live outside the shared tool folder.')
+    return PendingBuilds(state, _tool_launch_paths())
+
+
+def _tool_slot(path):
+    if path is None:
+        return None
+    paths = _tool_launch_paths()
+    return next((slot for slot, target in paths.items()
+                 if os.path.normcase(target) == os.path.normcase(os.path.abspath(path))), None)
+
 
 TOOL_ICON_FILES = {
     "SNAP HQ": "snap-hq.ico",
@@ -240,6 +274,11 @@ def _exe_pin_store(path, digest):
 
 def _launch(path, parent=None):
     try:
+        slot = _tool_slot(path)
+        if slot:
+            installed = _pending_builds().apply(slot)
+            if installed:
+                _exe_pin_store(path, installed['sha256'])
         status, _pinned, current = _exe_pin_verify(path)
         if status == "changed":
             # A different exe than the one this Hub has been launching. That is

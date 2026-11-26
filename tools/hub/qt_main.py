@@ -64,14 +64,7 @@ QCheckBox { background:transparent; spacing:9px; }
 """
 
 
-MIGRATION_ROSTER = [
-    ("SMACKPRESS", "WordPress → SMACKTALK", [os.path.join(core._R, "smackpress", "SmackPress.exe")]),
-    ("BLOGGER FLOGGER", "Blogger → SMACKTALK", [os.path.join(core._R, "blogger-flogger", "blogger-flogger.exe")]),
-    ("GHOSTED", "Ghost → SMACKTALK", [os.path.join(core._R, "ghosted", "ghosted.exe")]),
-    ("UNZUCKER", "Instagram → GRAMOFSMACK", [os.path.join(core._R, "unzucker", "unzucker.exe")]),
-    ("FLKR FCKR", "Flickr → SMACKONEOUT", [os.path.join(core._R, "flkr-fckr", "flkr-fckr.exe")]),
-    ("FED UP", "Fediverse → SNAPSMACK", [os.path.join(core._R, "fed-up", "fed-up.exe")]),
-]
+MIGRATION_ROSTER = core.MIGRATION_ROSTER
 
 
 def _icon_path(name: str) -> str:
@@ -146,7 +139,10 @@ class ToolCard(QFrame):
     def __init__(self, name, description, paths, parent=None):
         super().__init__(parent); self.setObjectName("tool"); self.setFixedHeight(82); self.setMinimumWidth(0)
         self.inert = not paths
-        self.exe = None if self.inert else core._find_exe(paths); self.name = name
+        self.exe = None if self.inert else core._find_exe(paths)
+        self.name = name
+        self.target = paths[0] if paths else None
+        self.description = description
         self.row = QHBoxLayout(self); self.row.setContentsMargins(16, 13, 13, 13); self.row.setSpacing(13)
         self.icon = QLabel(); self.icon.setFixedSize(42, 42); self.icon.setAlignment(Qt.AlignCenter)
         self.icon_path = _icon_path(name)
@@ -157,10 +153,38 @@ class ToolCard(QFrame):
         self.row.addWidget(self.icon)
         self.words = QVBoxLayout(); self.words.setSpacing(3)
         self.title = QLabel(name); self.title.setObjectName("toolTitle"); self.title.setWordWrap(True); self.words.addWidget(self.title)
-        self.sub = QLabel(description if (self.exe or self.inert) else description + " · not installed"); self.sub.setObjectName("muted"); self.sub.setWordWrap(True); self.words.addWidget(self.sub)
+        self.sub = QLabel()
+        self.sub.setObjectName("muted")
+        self.sub.setWordWrap(True)
+        self.words.addWidget(self.sub)
         self.row.addLayout(self.words, 1)
-        self.launch = QPushButton("OPEN" if (self.exe or self.inert) else "MISSING"); self.launch.setEnabled(bool(self.exe or self.inert))
-        self.launch.clicked.connect(self._launch); self.row.addWidget(self.launch)
+        self.launch = QPushButton()
+        self.launch.clicked.connect(self._launch)
+        self.row.addWidget(self.launch)
+        self._refresh_build()
+
+    def _refresh_build(self):
+        slot = core._tool_slot(self.target)
+        detail = self.description
+        pending = None
+        if slot:
+            try:
+                builds = core._pending_builds()
+                pending = builds.pending(slot)
+                installed = builds.installed(slot)
+                if installed:
+                    detail += f" · {installed['version']} · {installed['commit'][:8]}"
+                elif self.exe:
+                    detail += " · build unrecorded"
+                else:
+                    detail += " · not installed"
+                if pending:
+                    detail += f" · {pending['version']} ready"
+            except (OSError, ValueError):
+                detail += " · build record unavailable"
+        self.sub.setText(detail)
+        self.launch.setText("OPEN" if (self.exe or pending or self.inert) else "MISSING")
+        self.launch.setEnabled(bool(self.exe or pending or self.inert))
 
     def apply_scale(self, scale):
         px = lambda value: max(1, round(value * scale))
@@ -175,8 +199,12 @@ class ToolCard(QFrame):
     def _launch(self):
         if self.inert:
             return
-        ok, error = core._launch(self.exe, parent=None)
-        if not ok: QMessageBox.critical(self, "Could not open " + self.name, error)
+        ok, error = core._launch(self.exe or self.target, parent=None)
+        if ok:
+            self.exe = self.target
+            self._refresh_build()
+        else:
+            QMessageBox.critical(self, "Could not open " + self.name, error)
 
 
 class ToolSection(QFrame):
