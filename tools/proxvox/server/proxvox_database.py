@@ -1,0 +1,200 @@
+"""Transactional MariaDB row-update core for an attested PROX VOX action.
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the canonical SNAPSMACK EOF marker.
+"""
+
+from dataclasses import dataclass
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import stat
+
+
+class UnsafeDatabaseUpdate(ValueError):
+    """The target cannot be limited to an inspectable, restorable row."""
+
+
+def _identifier(name):
+    if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]{0,63}", name):
+        raise UnsafeDatabaseUpdate("Invalid database identifier.")
+    return f"`{name}`"
+
+
+@dataclass(frozen=True)
+class RowUpdate:
+    database: str
+    table: str
+    key_column: str
+    key: int
+    column: str
+    value: str
+
+    def __post_init__(self):
+        for name in (self.database, self.table, self.key_column, self.column):
+            _identifier(name)
+        if self.database.lower() in {"mysql", "sys", "information_schema", "performance_schema"}:
+            raise UnsafeDatabaseUpdate("System catalogs cannot use the row writer.")
+        if self.column.lower() == self.key_column.lower():
+            raise UnsafeDatabaseUpdate("A row update cannot change its primary key.")
+        if re.search(r"password|passwd|secret|token|credential|private_key|api_key", self.column, re.I):
+            raise UnsafeDatabaseUpdate("Credential columns cannot use the row writer.")
+        if type(self.key) is not int or not isinstance(self.value, str):
+            raise UnsafeDatabaseUpdate("A row update needs an integer key and a text value.")
+
+    @property
+    def subject(self):
+        return f"{_identifier(self.database)}.{_identifier(self.table)}"
+
+    @property
+    def statement(self):
+        return (f"UPDATE {self.subject} SET {_identifier(self.column)}=%s "
+                f"WHERE {_identifier(self.key_column)}=%s")
+
+    @property
+    def parameters(self):
+        return self.value, self.key
+
+    def audit_record(self):
+        encoded = json.dumps(self.parameters, ensure_ascii=True, separators=(",", ":"))
+        return {"sql_template": self.statement,
+                "parameters_sha256": hashlib.sha256(encoded.encode("ascii")).hexdigest()}
+
+
+def _validate_table(cursor, change):
+    target = change.database, change.table
+    cursor.execute(
+        "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s",
+        target,
+    )
+    if cursor.fetchone() != ("InnoDB",):
+        raise UnsafeDatabaseUpdate("Expected an InnoDB base table.")
+    cursor.execute(
+        "SELECT COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE "
+        "WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s AND CONSTRAINT_NAME='PRIMARY' "
+        "ORDER BY ORDINAL_POSITION", target,
+    )
+    if cursor.fetchall() != ((change.key_column,),):
+        raise UnsafeDatabaseUpdate("Expected the specified column to be the sole primary key.")
+    cursor.execute(
+        "SELECT COLUMN_NAME, EXTRA FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s", target,
+    )
+    columns = dict(cursor.fetchall())
+    if change.column not in columns or any(
+        "on update" in extra.lower() or "generated" in extra.lower()
+        for extra in columns.values()
+    ):
+        raise UnsafeDatabaseUpdate("Automatic or ambiguous column changes require a wider backup.")
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.TRIGGERS "
+        "WHERE EVENT_OBJECT_SCHEMA=%s AND EVENT_OBJECT_TABLE=%s", target,
+    )
+    if cursor.fetchone()[0]:
+        raise UnsafeDatabaseUpdate("Tables with triggers require a wider backup.")
+    cursor.execute(
+        "SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE "
+        "WHERE REFERENCED_TABLE_SCHEMA=%s AND REFERENCED_TABLE_NAME=%s AND REFERENCED_COLUMN_NAME=%s",
+        (*target, change.column),
+    )
+    if cursor.fetchone()[0]:
+        raise UnsafeDatabaseUpdate("Referenced foreign-key columns require a wider backup.")
+
+
+def _locked_row(cursor, change):
+    cursor.execute(
+        f"SELECT * FROM {change.subject} WHERE {_identifier(change.key_column)}=%s FOR UPDATE",
+        (change.key,),
+    )
+    rows = cursor.fetchall()
+    if len(rows) != 1:
+        raise UnsafeDatabaseUpdate("Expected exactly one row at that primary key.")
+    columns = tuple(field[0] for field in cursor.description)
+    return columns, rows[0]
+
+
+def _snapshot(cursor, change, columns, values):
+    names = ", ".join(_identifier(name) for name in columns)
+    marks = ", ".join(["%s"] * len(columns))
+    statement = cursor.mogrify(f"INSERT INTO {change.subject} ({names}) VALUES ({marks});", values)
+    digest = hashlib.sha256(statement.encode("utf-8", "surrogatepass")).hexdigest()
+    return statement, digest
+
+
+def _backup(directory, snapshot, restore):
+    directory = Path(directory)
+    metadata = directory.lstat()
+    if not stat.S_ISDIR(metadata.st_mode) or (
+        os.name == "posix" and (metadata.st_uid != os.geteuid() or metadata.st_mode & 0o077)
+    ):
+        raise UnsafeDatabaseUpdate("The backup directory must be private.")
+    name = f"row-{secrets.token_hex(16)}.json"
+    fd = os.open(directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    payload = json.dumps({"snapshot_insert": snapshot, "restore_update": restore},
+                         ensure_ascii=True).encode("ascii")
+    with os.fdopen(fd, "wb") as out:
+        out.write(payload)
+        out.flush()
+        os.fsync(out.fileno())
+    if os.name == "posix":
+        directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    return str(directory / name), hashlib.sha256(payload).hexdigest()
+
+
+def read_row_fingerprint(connection, change):
+    """Preview a row without an open transaction or persistent mutation."""
+    connection.begin()
+    try:
+        with connection.cursor() as cursor:
+            _validate_table(cursor, change)
+            columns, row = _locked_row(cursor, change)
+            _validate_table(cursor, change)
+            return _snapshot(cursor, change, columns, row)[1]
+    finally:
+        connection.rollback()
+
+
+def apply_row_update(connection, change, expected, backup_directory, *, attest, record_intent):
+    """Write one locked row after a durable backup and the caller's audit gate.
+
+    The connector must have complete metadata visibility for the target schema.
+    In particular, it must be able to see triggers on the table.
+    """
+    connection.begin()
+    try:
+        with connection.cursor() as cursor:
+            _validate_table(cursor, change)
+            columns, row = _locked_row(cursor, change)
+            _validate_table(cursor, change)
+            snapshot, before = _snapshot(cursor, change, columns, row)
+            if expected != before:
+                raise UnsafeDatabaseUpdate("Database row changed since preview.")
+            position = columns.index(change.column)
+            restore = cursor.mogrify(change.statement + ";", (row[position], change.key))
+            path, digest = _backup(backup_directory, snapshot, restore)
+            detail = dict(change.audit_record(), before_sha256=before,
+                          backup_path=path, backup_sha256=digest)
+            record_intent(detail)
+            attest()
+            cursor.execute(change.statement, change.parameters)
+            after_columns, after_row = _locked_row(cursor, change)
+            expected_values = list(row)
+            expected_values[position] = change.value
+            if after_columns != columns or after_row != tuple(expected_values):
+                raise UnsafeDatabaseUpdate("The resulting row did not match the authorized update.")
+            _, after = _snapshot(cursor, change, after_columns, after_row)
+        connection.commit()
+        return dict(detail, after_sha256=after)
+    except BaseException:
+        connection.rollback()
+        raise
+
+
+# ===== SNAPSMACK EOF =====
