@@ -12,9 +12,9 @@ WHAT IT DOES NOT DO, and none of these are oversights:
     says. A client-side copy of the allowlist would be a list the client could
     be talked into widening.
 
-  - It does not hold, store or ask for a password, a TOTP code or a ticket.
-    The grant comes from WriteClient.mint_file_grant(), sealed, bound to one
-    operation; this module never sees the ticket inside it.
+  - It sends the owner's TOTP response and session ticket only over SSH stdin
+    and keeps neither in its audit log or on disk. File grants come from
+    WriteClient.mint_file_grant() and are bound to a single operation.
 
   - It does not install, deploy, sign or publish anything, and it does not
     write to a live SnapSmack site. Sean authorises a host write in his own
@@ -50,6 +50,7 @@ WRITER_ACCOUNT = "proxvox-root-rw"
 MAX_WRITE_BYTES = 8 * 1024 * 1024
 
 SSH_TIMEOUT_SECONDS = 150
+SESSION_OPERATIONS = {"authorize-write-session", "check-write-session", "revoke-write-session"}
 
 
 def _ssh_runner(host, account, identity, command, stdin_bytes, timeout):
@@ -93,6 +94,18 @@ class ScopedFileWriter:
     def scope(self):
         """What the HOST says may be written. Not a local opinion."""
         return self._send("scope", [], None)
+
+    def authorize_session(self, user, challenge, code):
+        return self._session_request("authorize-write-session", user, challenge=challenge, code=code)
+
+    def check_session(self, user, ticket):
+        return self._session_request("check-write-session", user, ticket=ticket)
+
+    def revoke_session(self, user, ticket):
+        return self._session_request("revoke-write-session", user, ticket=ticket)
+
+    def _session_request(self, op, user, **body):
+        return self._send(op, [user], json.dumps(body).encode("utf-8"))
 
     def put_file_dry(self, target, path, content, expected_live=None):
         """Rehearse. Changes nothing, and deliberately needs no grant.
@@ -184,6 +197,7 @@ class ScopedFileWriter:
         command = " ".join([op] + [shlex.quote(a) for a in args])
         detail = {"host": self.host, "account": self.account, "op": op}
         detail.update(log_extra or {})
+        sensitive = op in SESSION_OPERATIONS
         # THE ATTEMPT IS RECORDED FIRST. A grant is never in this record: the
         # fields logged are chosen above, and the command line is not one of
         # them precisely because the grant travels inside it.
@@ -200,8 +214,9 @@ class ScopedFileWriter:
                 "whether it wrote; read the file before trying again."
                 % self.timeout)
         except OSError as err:
-            self.audit.record("file_write_failed", dict(detail, why=str(err)[:200]))
-            raise Refused("could not reach the host: %s" % err)
+            reason = type(err).__name__ if sensitive else str(err)[:200]
+            self.audit.record("file_write_failed", dict(detail, why=reason))
+            raise Refused("could not reach the host: %s" % reason) from err
 
         text = (out or b"").decode("utf-8", "replace").strip()
         try:
@@ -212,7 +227,9 @@ class ScopedFileWriter:
             # is how a permission failure reads as a completed write.
             self.audit.record("file_write_failed", dict(
                 detail, why="the host did not answer in the write protocol",
-                exit_code=code, stderr=(err or b"").decode("utf-8", "replace")[:200]))
+                exit_code=code, stderr="" if sensitive else (err or b"").decode("utf-8", "replace")[:200]))
+            if sensitive:
+                raise Refused("the host did not answer in the write session protocol (exit %s)" % code)
             raise Refused(
                 "the host did not answer in the write protocol (exit %s): %s"
                 % (code, (text or (err or b"").decode("utf-8", "replace"))[:200]))
@@ -224,13 +241,15 @@ class ScopedFileWriter:
 
         if not answer.get("ok"):
             why = str(answer.get("error", "refused"))
-            self.audit.record("file_write_refused", dict(detail, why=why[:300]))
+            self.audit.record("file_write_refused", dict(
+                detail, why="host refused write session request" if sensitive else why[:300]
+            ))
             # The host's own words, not a paraphrase. It knows why it refused
             # and the person reading this needs that sentence, not mine.
             raise Refused(why)
 
         data = answer.get("data")
-        self.audit.record("file_write_done", dict(detail, result={
+        self.audit.record("file_write_done", dict(detail, result={} if sensitive else {
             key: value for key, value in data.items() if key != "write_nonce"
         } if isinstance(data, dict) else {}))
         return data

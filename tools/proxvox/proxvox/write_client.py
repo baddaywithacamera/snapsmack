@@ -38,7 +38,8 @@ class WriteClient:
     def __init__(self, base_url: str, audit, pinned_guid: str,
                  actual_guid: str = None, opener=None, verify_host: bool = True,
                  clock=None, ticket_ttl: int = PROXMOX_TICKET_TTL_SECONDS,
-                 certificate_sha256: str = "", expiry_timer_factory=None):
+                 certificate_sha256: str = "", expiry_timer_factory=None,
+                 host_writer=None):
         if verify_host:
             host_guard.require_host(pinned_guid, actual_guid)
         self.base_url = base_url.rstrip("/")
@@ -66,6 +67,7 @@ class WriteClient:
         self._ticket_ttl = max(1, int(ticket_ttl))
         self._expiry_timer_factory = expiry_timer_factory or threading.Timer
         self._certificate_sha256 = certificate_sha256
+        self._host_writer = host_writer
         self._session_lock = threading.RLock()
 
         self._username: str = ""
@@ -189,6 +191,8 @@ class WriteClient:
                 raise Refused("Proxmox /access/ticket returned non-JSON response.")
             return payload, status
 
+        if self._host_writer is not None and self.is_authorized():
+            self.revoke("reauthorize")
         stage_one, stage_one_status = request_stage(1, {
             "username": user,
             "password": pw,
@@ -209,15 +213,25 @@ class WriteClient:
                 "Proxmox /access/ticket did not return the required TFA challenge."
             )
 
-        stage_two, status = request_stage(2, {
-            "username": user,
-            "tfa-challenge": challenge,
-            "password": "totp:" + code,
-        })
-        data = stage_two.get("data") if isinstance(stage_two, dict) else None
-        ticket = (data or {}).get("ticket") if isinstance(data, dict) else None
-        csrf = ((data or {}).get("CSRFPreventionToken")
-                if isinstance(data, dict) else None)
+        host_expiration = None
+        if self._host_writer is not None:
+            data = self._host_writer.authorize_session(user, challenge, code)
+            ticket = data.get("ticket") if isinstance(data, dict) else None
+            csrf = data.get("csrf") if isinstance(data, dict) else None
+            host_expiration = data.get("expires_at") if isinstance(data, dict) else None
+            if (not isinstance(host_expiration, (int, float))
+                    or not float(self._clock()) < host_expiration < float("inf")):
+                raise Refused("the host did not return an active writer expiry")
+            status = 200
+        else:
+            stage_two, status = request_stage(2, {
+                "username": user,
+                "tfa-challenge": challenge,
+                "password": "totp:" + code,
+            })
+            data = stage_two.get("data") if isinstance(stage_two, dict) else None
+            ticket = data.get("ticket") if isinstance(data, dict) else None
+            csrf = data.get("CSRFPreventionToken") if isinstance(data, dict) else None
 
         if (not isinstance(ticket, str) or not ticket.strip()
                 or ticket.startswith("PVE:!tfa!")
@@ -240,6 +254,8 @@ class WriteClient:
             self._ticket = ticket.strip()
             self._csrf_token = csrf.strip()
             self._expires_at = now + self._ticket_ttl
+            if host_expiration is not None:
+                self._expires_at = min(self._expires_at, host_expiration)
             self._schedule_expiry()
 
         self.audit.record("write_auth_result", {
@@ -253,9 +269,17 @@ class WriteClient:
     # ── P5: manual revoke ────────────────────────────────────────────────
     def revoke(self, reason: str = "manual") -> None:
         """Immediately invalidate the in-memory write session."""
-        was_active = bool(self._ticket or self._csrf_token)
-        user = self._username
-        self._clear_session()
+        with self._session_lock:
+            ticket = self._ticket
+            was_active = bool(ticket or self._csrf_token)
+            user = self._username
+            self._clear_session()
+        if self._host_writer is not None and ticket:
+            try:
+                self._host_writer.revoke_session(user, ticket)
+            except Refused:
+                self.audit.record("write_host_revoke_failed", {"username": user})
+                raise
         self.audit.record("write_revoked", {
             "username": user,
             "was_active": was_active,

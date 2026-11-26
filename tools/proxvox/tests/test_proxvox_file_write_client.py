@@ -84,8 +84,10 @@ def w(monkeypatch, tmp_path):
     for name, leaf in (("BACKUP_DIR", "backups"),
                        ("SPENT_GRANTS", "spent-grants"),
                        ("WRITE_NONCES", "nonce-store/write-nonces"),
+                       ("WRITE_SESSIONS", "session-store/write-sessions"),
                        ("AUDIT_LOG", "audit/writer.jsonl")):
         monkeypatch.setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
+    monkeypatch.setattr(module, "_check_write_session", lambda user, ticket: time.time() + 3600)
     # Same documented platform relaxation the writer's own suite uses: the
     # leading-slash rule is swapped for the platform's notion of absolute so
     # the write MECHANICS can run on a Windows checkout. Every other check --
@@ -875,5 +877,27 @@ def test_the_real_transport_forbids_agent_forwarding_and_password_auth():
     # NOT CHECKED by execution: this one test reads source, because running
     # real ssh needs the provisioned host. It is the only check here that
     # does, and it is marked so nobody mistakes it for an executed one.
+
+def test_session_transport_keeps_secrets_out_of_commands_and_client_audit():
+    challenge, code, ticket, csrf = ("PVE:!tfa!fixture", "012345", "fixture-ticket", "fixture-csrf")
+    calls = []
+    audit = FakeAudit()
+
+    def runner(host, account, identity, command, stdin, timeout):
+        calls.append((command, json.loads(stdin)))
+        data = {"ticket": ticket, "csrf": csrf, "expires_at": 10000}
+        if command.startswith("revoke-write-session"):
+            data = {"revoked": True}
+        return 0, json.dumps({"ok": True, "data": data}).encode(), b""
+
+    writer = ScopedFileWriter("fixture", audit, "fixture-key", runner=runner)
+    assert writer.authorize_session("root@pam", challenge, code)["ticket"] == ticket
+    assert writer.revoke_session("root@pam", ticket) == {"revoked": True}
+    assert calls == [
+        ("authorize-write-session root@pam", {"challenge": challenge, "code": code}),
+        ("revoke-write-session root@pam", {"ticket": ticket}),
+    ]
+    assert all(secret not in str(audit.entries) for secret in (challenge, code, ticket, csrf))
+
 
 # ===== SNAPSMACK EOF =====

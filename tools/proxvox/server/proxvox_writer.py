@@ -731,7 +731,8 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
         raise Refused("the grant must be an object")
 
     user = str(grant.get("user", ""))
-    _verify_ticket(grant.get("ticket"), user, verifier=verifier)
+    ticket = grant.get("ticket")
+    _verify_ticket(ticket, user, verifier=verifier)
 
     moment = time.time() if now is None else now
     try:
@@ -777,6 +778,7 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
         raise Refused(
             "the grant authorises different content. The hash Sean approved is "
             "not the hash of what arrived, so nothing is written.")
+    expires = min(expires, _check_write_session(user, ticket))
     return {"user": user, "expires": expires,
             "identity": _grant_identity(user, target, path, sha256, expires),
             "ticket_fingerprint": hashlib.sha256(grant["ticket"].encode("utf-8")).hexdigest()}
@@ -817,6 +819,8 @@ def _grant_identity(user, target, path, sha256, expires):
 SPENT_GRANTS = "/var/lib/proxvox/spent-grants"
 WRITE_NONCES = "/run/proxvox/write-nonces"
 WRITE_NONCE_SECONDS = 60
+WRITE_SESSIONS = "/run/proxvox/write-sessions"
+WRITE_SESSION_SECONDS = 3600
 
 
 def _write_nonce_name(nonce):
@@ -826,13 +830,129 @@ def _write_nonce_name(nonce):
 
 
 def _assert_private_nonce_directory():
-    for path in (os.path.dirname(WRITE_NONCES), WRITE_NONCES):
+    _assert_private_state_directory(WRITE_NONCES)
+
+
+def _assert_private_state_directory(state_directory):
+    for path in (os.path.dirname(state_directory), state_directory):
         directory = os.lstat(path)
-        forbidden = 0o077 if path == WRITE_NONCES else 0o022
+        forbidden = 0o077 if path == state_directory else 0o022
         if not stat.S_ISDIR(directory.st_mode) or (
             os.name == "posix" and (directory.st_uid != os.geteuid() or directory.st_mode & forbidden)
         ):
-            raise Refused("the host write nonce directory is not secured")
+            raise Refused("the host writer state directory is not secured")
+
+
+def _read_session_request():
+    raw = sys.stdin.buffer.read(8193)
+    if len(raw) > 8192:
+        raise Refused("write session request is too large")
+    try:
+        payload = json.loads(raw)
+    except ValueError as err:
+        raise Refused("invalid write session request") from err
+    if not isinstance(payload, dict):
+        raise Refused("invalid write session request")
+    return payload
+
+
+def _exchange_totp(user, challenge, code):
+    import re
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    if user not in OWNER_USERS:
+        raise Refused("the account cannot authorize a host writer session")
+    if (not isinstance(challenge, str) or not challenge.startswith("PVE:!tfa!")
+            or not isinstance(code, str) or not re.fullmatch(r"[0-9]{6}", code)):
+        raise Refused("a fresh Proxmox TOTP challenge and code are required")
+    context = _pve_ssl_context()
+    if context is None:
+        raise Refused("the host cannot verify local Proxmox TLS")
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
+
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=context), NoRedirect()
+    )
+    request = urllib.request.Request(
+        "https://127.0.0.1:8006/api2/json/access/ticket",
+        data=urllib.parse.urlencode({
+            "username": user, "tfa-challenge": challenge, "password": "totp:" + code,
+        }).encode("ascii"),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    try:
+        with opener.open(request, timeout=15) as response:
+            answer = json.loads(response.read(65536)) if response.status == 200 else {}
+    except urllib.error.HTTPError as err:
+        raise Refused("Proxmox rejected the TOTP challenge") from err
+    except (OSError, ValueError) as err:
+        raise Refused("the host could not complete Proxmox TOTP verification") from err
+    data = answer.get("data") if isinstance(answer, dict) else None
+    ticket = data.get("ticket") if isinstance(data, dict) else None
+    csrf = data.get("CSRFPreventionToken") if isinstance(data, dict) else None
+    if (not isinstance(ticket, str) or not ticket.startswith("PVE:" + user + ":")
+            or not isinstance(csrf, str) or not csrf or data.get("username") != user):
+        raise Refused("Proxmox did not return a full ticket for the authorized account")
+    return ticket, csrf
+
+
+def _write_session_path(ticket):
+    if not isinstance(ticket, str) or not ticket.startswith("PVE:") or len(ticket) > 4096:
+        raise Refused("a host-authorized write ticket is required")
+    fingerprint = hashlib.sha256(ticket.encode("utf-8")).hexdigest()
+    return os.path.join(WRITE_SESSIONS, fingerprint + ".json")
+
+
+def _start_write_session(user, request):
+    ticket, csrf = _exchange_totp(user, request.get("challenge"), request.get("code"))
+    expires = time.time() + WRITE_SESSION_SECONDS
+    until = time.monotonic() + WRITE_SESSION_SECONDS
+    try:
+        os.makedirs(WRITE_SESSIONS, mode=0o700, exist_ok=True)
+        _assert_private_state_directory(WRITE_SESSIONS)
+        with os.scandir(WRITE_SESSIONS) as entries:
+            for entry in entries:
+                try:
+                    if entry.name.endswith(".json") and entry.stat(follow_symlinks=False).st_mtime < expires - 2 * WRITE_SESSION_SECONDS:
+                        os.unlink(entry.path)
+                except FileNotFoundError:
+                    pass
+        created = os.open(_write_session_path(ticket), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(created, "w", encoding="utf-8") as record:
+            json.dump({"user": user, "expires": expires, "until": until}, record)
+    except OSError as err:
+        raise Refused("the host could not start a writer session") from err
+    return {"ticket": ticket, "csrf": csrf, "expires_at": expires}
+
+
+def _check_write_session(user, ticket):
+    path = _write_session_path(ticket)
+    try:
+        _assert_private_state_directory(WRITE_SESSIONS)
+        with open(path, encoding="utf-8") as record:
+            session = json.load(record)
+        if (session["user"] != user or time.time() >= session["expires"]
+                or time.monotonic() >= session["until"]):
+            raise Refused("host write authorization expired or belongs to another account")
+    except (OSError, ValueError, TypeError, KeyError) as err:
+        raise Refused("no active host write session; authorize again") from err
+    return session["expires"]
+
+
+def _revoke_write_session(user, ticket):
+    _check_write_session(user, ticket)
+    try:
+        os.unlink(_write_session_path(ticket))
+    except FileNotFoundError:
+        pass
+    except OSError as err:
+        raise Refused("the host could not revoke the writer session") from err
+    return {"revoked": True}
 
 
 def _issue_write_nonce(operation, expires, now=None):
@@ -1003,6 +1123,8 @@ def _audit_command(command):
         args = shlex.split(str(command or ""), posix=True)
     except ValueError:
         return "(unparsable command)"
+    if args and args[0] in {"authorize-write-session", "check-write-session", "revoke-write-session"}:
+        return args[0]
     if args and args[0] in {"put-file", "put-file-dry", "issue-file-nonce"} and len(args) >= 6:
         # REPLACE the grant, do not truncate at it. The protocol's longest
         # put-file is six arguments, so for every valid command these are the
@@ -1076,6 +1198,17 @@ def dispatch(command):
         raise Refused("no operation given")
 
     op = args[0]
+
+    if op in {"authorize-write-session", "check-write-session", "revoke-write-session"} and len(args) == 2:
+        user = args[1]
+        if user not in OWNER_USERS:
+            raise Refused("the account cannot authorize a host writer session")
+        request = _read_session_request()
+        if op == "authorize-write-session":
+            return _start_write_session(user, request)
+        if op == "check-write-session":
+            return {"expires_at": _check_write_session(user, request.get("ticket"))}
+        return _revoke_write_session(user, request.get("ticket"))
 
     # ── what may I write? The allowlist, readable so Sean can check it. ──
     if op == "scope" and len(args) == 1:

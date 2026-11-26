@@ -184,7 +184,7 @@ class ProxVoxP3Tests(unittest.TestCase):
         if os.path.isdir(self.tmp_dir):
             os.rmdir(self.tmp_dir)
 
-    def _client(self, ticket_ttl=7200, expiry_timer_factory=None) -> WriteClient:
+    def _client(self, ticket_ttl=7200, expiry_timer_factory=None, host_writer=None) -> WriteClient:
         return WriteClient(
             base_url=self.server.base_url,
             audit=self.audit,
@@ -194,6 +194,30 @@ class ProxVoxP3Tests(unittest.TestCase):
             clock=self.clock,
             ticket_ttl=ticket_ttl,
             expiry_timer_factory=expiry_timer_factory,
+            host_writer=host_writer,
+        )
+
+    def test_host_writer_receives_the_real_second_stage_and_explicit_revoke(self):
+        from unittest.mock import Mock
+
+        host = Mock()
+        host.authorize_session.return_value = {
+            "ticket": "PVE:proxvox@pve:fixture-host-ticket",
+            "csrf": "fixture-host-csrf",
+            "expires_at": 4600.0,
+        }
+        wc = self._client(host_writer=host)
+        auth = wc.authorize("proxvox@pve", "good-pass", "123456")
+        self.assertEqual(len(self.server.requests), 1)
+        self.assertEqual(auth["expires_at"], 4600.0)
+        host.authorize_session.assert_called_once_with(
+            "proxvox@pve", self.server.challenge_value, "123456",
+        )
+        self.assertTrue(wc.is_authorized())
+        wc.revoke()
+        self.assertFalse(wc.is_authorized())
+        host.revoke_session.assert_called_once_with(
+            "proxvox@pve", "PVE:proxvox@pve:fixture-host-ticket",
         )
 
     def test_host_guard_and_separation_from_p1(self):

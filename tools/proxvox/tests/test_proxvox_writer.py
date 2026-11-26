@@ -69,8 +69,10 @@ def w(tmp_path):
     for name, leaf in (("BACKUP_DIR", "backups"),
                        ("SPENT_GRANTS", "spent-grants"),
                        ("WRITE_NONCES", "nonce-store/write-nonces"),
+                       ("WRITE_SESSIONS", "session-store/write-sessions"),
                        ("AUDIT_LOG", "audit/writer.jsonl")):
         setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
+    module._check_write_session = lambda user, ticket: time.time() + 3600
     return module
 
 
@@ -927,5 +929,93 @@ def test_the_container_path_never_uses_a_shell(w, monkeypatch):
         assert "exec" in argv and "--" in argv
         for arg in argv:
             assert ";" not in arg and "&&" not in arg and "|" not in arg, arg
+
+def test_host_writer_session_requires_real_challenge_and_supports_revoke(
+    tmp_path, monkeypatch,
+):
+    from contextlib import closing
+    from urllib.parse import parse_qs
+    import urllib.request
+
+    writer = _load()
+    monkeypatch.setattr(writer, "WRITE_SESSIONS", str(tmp_path / "sessions"))
+    monkeypatch.setattr(writer, "AUDIT_LOG", str(tmp_path / "audit.log"))
+    monkeypatch.setattr(writer, "_pve_ssl_context", lambda: object())
+    ticket = "PVE:root@pam:fixture-ticket"
+    challenge = "PVE:!tfa!fixture-challenge"
+    fields = []
+
+    class Response(io.BytesIO):
+        status = 200
+
+    class LocalPve:
+        def open(self, request, timeout):
+            assert request.full_url == "https://127.0.0.1:8006/api2/json/access/ticket"
+            assert timeout == 15
+            fields.append(parse_qs(request.data.decode("ascii")))
+            return closing(Response(json.dumps({"data": {
+                "username": "root@pam",
+                "ticket": ticket,
+                "CSRFPreventionToken": "fixture-csrf",
+            }}).encode()))
+
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *handlers: LocalPve())
+    monkeypatch.setattr(urllib.request, "HTTPSHandler", lambda **kwargs: object())
+
+    def dispatch(op, user="root@pam", **body):
+        monkeypatch.setattr(writer.sys, "stdin", io.TextIOWrapper(
+            io.BytesIO(json.dumps(body).encode())
+        ))
+        return writer.dispatch(f"{op} {user}")
+
+    path = (tmp_path / "index.php").as_posix()
+    content_hash = hashlib.sha256(b"fixture content").hexdigest()
+    monkeypatch.setattr(writer, "ALLOWED", (("host", path),))
+    monkeypatch.setattr(writer, "_absolute", lambda value: value)
+    monkeypatch.setattr(writer, "WRITE_NONCES", str(tmp_path / "nonces"))
+    monkeypatch.setattr(writer, "_verify_ticket_against_local_api", lambda ticket, user: True)
+    grant = json.dumps({"user": "root@pam", "target": "host", "path": path,
+                        "sha256": content_hash, "ticket": ticket, "expires": time.time() + 120})
+    issue = f"issue-file-nonce host {shlex.quote(path)} {content_hash} - {shlex.quote(grant)}"
+
+    with pytest.raises(writer.Refused, match="no active host write session"):
+        dispatch("check-write-session", ticket=ticket)
+    with pytest.raises(writer.Refused, match="no active host write session"):
+        writer.dispatch(issue)
+    with pytest.raises(writer.Refused, match="fresh Proxmox"):
+        dispatch("authorize-write-session", challenge=ticket, code="012345")
+    with pytest.raises(writer.Refused, match="cannot authorize"):
+        dispatch("authorize-write-session", "somebody@pve", challenge=challenge, code="012345")
+    assert fields == []
+    session = dispatch("authorize-write-session", challenge=challenge, code="012345")
+    assert fields == [{
+        "username": ["root@pam"], "tfa-challenge": [challenge], "password": ["totp:012345"],
+    }]
+    assert session["ticket"] == ticket
+    assert dispatch("check-write-session", ticket=ticket)["expires_at"] == session["expires_at"]
+    nonce = writer.dispatch(issue)["write_nonce"]
+    with pytest.raises(writer.Refused, match="belongs to another account"):
+        dispatch("check-write-session", "sean@pam", ticket=ticket)
+    assert dispatch("revoke-write-session", ticket=ticket) == {"revoked": True}
+    with pytest.raises(writer.Refused, match="no active host write session"):
+        dispatch("check-write-session", ticket=ticket)
+    with pytest.raises(writer.Refused, match="no active host write session"):
+        writer.dispatch(issue.replace("issue-file-nonce", "put-file", 1) + " " + nonce)
+    log = (tmp_path / "audit.log").read_text()
+    assert all(secret not in log for secret in (ticket, challenge, "012345", "fixture-csrf"))
+
+
+def test_host_writer_session_expires_even_if_wall_clock_moves_back(tmp_path, monkeypatch):
+    writer = _load()
+    monkeypatch.setattr(writer, "WRITE_SESSIONS", str(tmp_path / "sessions"))
+    ticket = "PVE:root@pam:fixture-ticket"
+    monkeypatch.setattr(writer, "_exchange_totp", lambda *args: (ticket, "fixture-csrf"))
+    monotonic_start = time.monotonic()
+    session = writer._start_write_session("root@pam", {})
+    monkeypatch.setattr(writer.time, "time", lambda: session["expires_at"] - 120)
+    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 3601)
+    with pytest.raises(writer.Refused, match="authorization expired"):
+        writer._check_write_session("root@pam", ticket)
+
 
 # ===== SNAPSMACK EOF =====
