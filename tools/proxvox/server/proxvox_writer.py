@@ -1,35 +1,16 @@
 #!/usr/bin/env python3
 """Root-owned forced-command WRITER for the PROX VOX host account. (SS-1507)
 
-Sean's go, 2026-11-24 22:43, relayed by the PM. He also asked, fairly, why
-PROX VOX never had working write access: the write side was built as Proxmox
-API access (proxvox/write_client.py, which does POST/PUT/DELETE against
-/api2/json after a live TOTP login) and that API has no way to put a FILE
-inside a container. So file writing never existed, and nobody had tried it
-until the backup script needed changing.
+The host completes the owner's Proxmox TOTP challenge on verified local TLS.
+The resulting writer session lasts up to one hour, is checked again immediately
+before file replacement, and can be revoked on the host. A Proxmox ticket
+obtained any other way cannot open a writer session. Each file write requires a
+host-issued, one-use nonce for the exact target, bytes and expected live hash.
 
-THE ONE DESIGN DECISION THAT MATTERS, AND WHY IT IS HERE AND NOT ON THE
-DESKTOP. The allowlist of writable paths lives in THIS FILE, on the host,
-root-owned, delivered by the provisioner. It is NOT a setting the desktop
-sends. If the allowlist lived in the client, then anyone who reached Sean's
-desktop could write to any path on the Proxmox host and in every container,
-because the host would simply do as it was told. The client cannot widen this
-list by asking. That is the whole point of a forced command, and it is the
-difference between a scope and a suggestion.
-
-WHAT THIS CANNOT DO, said plainly because a guard believed to do more than it
-does is worse than no guard:
-  - It cannot write anywhere outside ALLOWED (below), and cannot create new
-    paths outside it.
-  - It cannot write a key, certificate or credential file. Those are refused
-    by name even if someone adds a matching path to ALLOWED by mistake.
-  - It cannot run an arbitrary command. MAINTENANCE is a closed set of fixed
-    argument lists with no caller-supplied values at all.
-  - It cannot delete anything. There is no delete operation, and no B2 or
-    cloud capability of any kind -- Sean ruled that out and it is not here.
-  - It does NOT stop someone already running as Sean on Sean's desktop during
-    a live TOTP session. Nothing at this layer can. The honest control for
-    that is the live authorisation in write_client.py, not a better path list.
+During that session the writer can replace regular files on the Proxmox host and
+its containers without a path allowlist. The unauthenticated rehearsal remains
+limited to the configured preview paths. This protocol does not run caller
+commands, delete files, or control Backblaze.
 
 EVERY WRITE IS: verify the declared hash of what arrived, refuse if it does
 not match, back the old file up, write a temporary file beside it, fsync,
@@ -70,59 +51,12 @@ MAX_WRITE_BYTES = 8 * 1024 * 1024
 # outside every document root, created 0700.
 BACKUP_DIR = "/var/backups/proxvox"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# THE ALLOWLIST. Sean sees this list before it goes live and adding to it needs
-# his yes. Each entry is (target, glob). target is "host" or a container vmid
-# as a string. A glob is matched SEGMENT BY SEGMENT -- a * never crosses a
-# slash -- and it is checked against the path BOTH as given and after symlink
-# resolution. This comment used to claim "after resolution" while the code
-# only normalised the string, which is the exact fault this repo calls out:
-# a code comment is not evidence. Codex caught it in review.
-# ─────────────────────────────────────────────────────────────────────────────
-# IT SHIPS EMPTY, AND THAT IS THE POINT.
-#
-# The PM's ruling, 2026-11-24 23:45: REMOVE /usr/local/bin/mariadb_backup.sh.
-# A root-executed script is not a first-release write target; it can be added
-# later with a per-change hash approval from Sean. Agreed, and it is gone.
-#
-# My other three entries were WRONG, and Codex caught it. I had guessed
-# /var/www/*/public_html/* and /var/www/*/htdocs/* for CT102. The provisioner
-# measured the real layout on the live container: CT102 serves from
-# /var/www/sites, and CT106 from /var/www/<site> with no wrapper. Neither of my
-# patterns would have matched anything, and the one that nearly did would have
-# granted far more than it read. CT101 is named in no provisioner at all, so I
-# have no verified path for it and will not invent one -- the PM said the roots
-# come from the read inventory, not guesses, and I cannot run that inventory
-# without Sean's session.
-#
-# So the list is EMPTY until a path is confirmed against the host and approved.
-# An empty allowlist means this wrapper refuses every write, which is the
-# correct state for something that is not installed and has no approved
-# target. The structure, the grant and the guards are all reviewable without
-# it, and a wrong path here is worse than no path.
-#
-# To add one: confirm it with the read-only broker's inventory, post it in the
-# room, get Sean's yes, and add (target, pattern) with the reason beside it.
+# Paths that can be rehearsed without a host-attested writer session.
 ALLOWED = (
-    # CT101, snapsmack.ca -- the project and release site, not a CMS install.
-    # VERIFIED, NOT GUESSED: Codex ran the read-only inventory on 2026-11-25
-    # (SS-1507, room seq 7538). /etc/apache2/sites-enabled/snapsmack.ca.conf
-    # names snapsmack.ca and www.snapsmack.ca with DocumentRoot
-    # /var/www/snapsmack.ca, and he read the file itself back at SHA-256
-    # 7141f5ed07da5555aa34ce38bb348dfdf4d2f555e53e9be1357f0a3ddf10ea0f.
-    #
-    # ONE FILE, NOT THE TREE. The PM's spec said "CT101 snapsmack.ca web
-    # root", and the only approved use is the Desktop Tools section of the
-    # homepage. A whole web root would grant far more than that needs, and the
-    # narrowest entry that serves the actual job is the single file. Widening
-    # it later is a decision somebody makes on purpose.
     ("101", "/var/www/snapsmack.ca/index.php"),
 )
 
-# Refused even if a matching pattern is added to ALLOWED by mistake. A write to
-# any of these is either a credential replacement or a way to impersonate the
-# host, and no maintenance task needs one. Mirrors the read wrapper's
-# WRITE_KEY_PATHS, which withholds the same files' contents on the way out.
+# Refused paths for unauthenticated rehearsal.
 NEVER_WRITE = (
     "/etc/pve/*",
     "/etc/corosync/*",
@@ -235,7 +169,7 @@ def _never_write(path):
 
 
 def _check_allowed(target, path):
-    """Raise unless (target, path) is in ALLOWED and not in NEVER_WRITE."""
+    """Limit requests that do not present host-attested authorization."""
     blocked = _never_write(path)
     if blocked:
         raise Refused(
@@ -283,6 +217,8 @@ def _sha256_of(target, path):
     if target == "host":
         if not os.path.exists(path):
             return ""
+        if not stat.S_ISREG(os.stat(path).st_mode):
+            raise Refused("the file writer requires a regular destination file")
         digest = hashlib.sha256()
         with open(path, "rb") as handle:
             for chunk in iter(lambda: handle.read(1024 * 1024), b""):
@@ -293,6 +229,7 @@ def _sha256_of(target, path):
                            timeout=REMOTE_COMMAND_TIMEOUT_SECONDS, check=False)
     if probe.returncode != 0:
         return ""
+    _run(_ct(target) + ["/usr/bin/test", "-f", path])
     raw = _run(_ct(target) + ["/usr/bin/sha256sum", "--", path])
     return raw.decode("ascii", "replace").split()[0]
 
@@ -406,7 +343,7 @@ def _refuse_if_changed(target, path, expected):
                           actual[:12] or "(absent)"))
 
 
-def _put_host(path, content, dry_run, expected=None):
+def _put_host(path, content, dry_run, expected=None, require_live_session=None):
     _refuse_symlinks(path)
     before = _sha256_of("host", path)
     backup = ""
@@ -455,6 +392,8 @@ def _put_host(path, content, dry_run, expected=None):
     # IMMEDIATELY BEFORE THE REPLACE, not at the start of the request.
     try:
         _refuse_if_changed("host", path, expected)
+        if require_live_session is not None:
+            require_live_session()
     except Refused:
         # The temp file is ours and half-finished; leave nothing behind.
         try:
@@ -498,7 +437,7 @@ def _refuse_container_symlinks(vmid, path):
                 % (path, vmid, walked))
 
 
-def _put_container(vmid, path, content, dry_run, expected=None):
+def _put_container(vmid, path, content, dry_run, expected=None, require_live_session=None):
     before = _sha256_of(vmid, path)
     declared = hashlib.sha256(content).hexdigest()
     if dry_run:
@@ -552,7 +491,16 @@ def _put_container(vmid, path, content, dry_run, expected=None):
     # than this release wants). The trade-off is in the room for a ruling
     # rather than settled by me, because it is two reviewers' requirements in
     # conflict, not a loose end.
-    _refuse_if_changed(vmid, path, expected)
+    try:
+        _refuse_if_changed(vmid, path, expected)
+        if require_live_session is not None:
+            require_live_session()
+    except Refused:
+        try:
+            _run(_ct(vmid) + ["/bin/rm", "-f", "--", tmp])
+        except (OSError, Refused):
+            pass
+        raise
     _run(_ct(vmid) + ["/bin/mv", "-f", "--", tmp, path])
     after = _sha256_of(vmid, path)
     return {"dry_run": False, "target": "ct" + vmid, "path": path,
@@ -781,7 +729,8 @@ def _check_grant(grant_json, *, target, path, sha256, now=None, verifier=None):
     expires = min(expires, _check_write_session(user, ticket))
     return {"user": user, "expires": expires,
             "identity": _grant_identity(user, target, path, sha256, expires),
-            "ticket_fingerprint": hashlib.sha256(grant["ticket"].encode("utf-8")).hexdigest()}
+            "ticket": ticket,
+            "ticket_fingerprint": hashlib.sha256(ticket.encode("utf-8")).hexdigest()}
 
 
 def _grant_identity(user, target, path, sha256, expires):
@@ -1217,7 +1166,9 @@ def dispatch(command):
             "never_write": list(NEVER_WRITE),
             "maintenance": sorted(MAINTENANCE),
             "max_write_bytes": MAX_WRITE_BYTES,
-            "note": "This list lives on the host. The caller cannot widen it.",
+            "note": "Without a live owner session, only listed paths can be rehearsed. "
+                    "With host-witnessed TOTP and an operation nonce, the file writer supports "
+                    "regular files on the host and its containers.",
         }
 
     # ── put-file[-dry] host|<vmid> <path> <sha256>, content base64 on stdin ──
@@ -1228,7 +1179,6 @@ def dispatch(command):
         where = args[1]
         path = _absolute(args[2])
         target = "host" if where == "host" else _vmid(where)
-        _check_allowed(target, path)
         declared = args[3]
         # args[4], when present, is the hash the caller EXPECTS the file to
         # hold right now -- Codex asked for this. It turns a blind overwrite
@@ -1238,6 +1188,9 @@ def dispatch(command):
         expected_live = args[4] if len(args) >= 5 else None
         grant_json = args[5] if len(args) >= 6 else None
         nonce = args[6] if len(args) == 7 else None
+        require_live_session = None
+        if dry_run or not grant_json:
+            _check_allowed(target, path)
         if (op == "issue-file-nonce" and len(args) != 6) or (dry_run and len(args) > 5):
             raise Refused("invalid arguments for the host write operation")
 
@@ -1311,8 +1264,16 @@ def dispatch(command):
             # would leave a window in which a crash loses the record and the
             # grant works again.
             _spend_grant(checked["identity"], checked["expires"])
+            def require_live_session():
+                _check_write_session(checked["user"], checked["ticket"])
+                if checked["expires"] <= time.time():
+                    raise Refused("the grant expired before the file could be replaced")
 
         content = _read_stdin_content(declared)
+        if target == "host":
+            _refuse_symlinks(path)
+        elif not dry_run:
+            _refuse_container_symlinks(target, path)
         # THE EARLY CHECK IS A COURTESY. It refuses an obviously stale write
         # before anything is copied or created, which is worth having -- but it
         # is NOT the guarantee, because the content is read from stdin after
@@ -1321,8 +1282,8 @@ def dispatch(command):
         # inside _put_host and _put_container. Codex's finding on cd1b963f.
         _refuse_if_changed(target, path, expected_live)
         if target == "host":
-            return _put_host(path, content, dry_run, expected=expected_live)
-        return _put_container(target, path, content, dry_run, expected=expected_live)
+            return _put_host(path, content, dry_run, expected_live, require_live_session)
+        return _put_container(target, path, content, dry_run, expected_live, require_live_session)
 
     # ── maint[-dry] <name> ── a closed set, no caller arguments ──
     if op in {"maint", "maint-dry"} and len(args) == 2:

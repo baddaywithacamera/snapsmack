@@ -124,7 +124,7 @@ def test_every_allowlisted_path_was_measured_not_guessed(w):
     assert [row["pattern"] for row in scope["allowed"]] == [
         "/var/www/snapsmack.ca/index.php"]
     assert scope["allowed"][0]["target"] == "101"
-    assert "cannot widen" in scope["note"]
+    assert "Without a live owner session" in scope["note"]
     flat = " ".join(row["pattern"] for row in scope["allowed"])
     assert "mariadb_backup" not in flat
     assert "public_html" not in flat and "htdocs" not in flat
@@ -970,9 +970,10 @@ def test_host_writer_session_requires_real_challenge_and_supports_revoke(
 
     path = (tmp_path / "index.php").as_posix()
     content_hash = hashlib.sha256(b"fixture content").hexdigest()
-    monkeypatch.setattr(writer, "ALLOWED", (("host", path),))
+    monkeypatch.setattr(writer, "ALLOWED", ())
     monkeypatch.setattr(writer, "_absolute", lambda value: value)
     monkeypatch.setattr(writer, "WRITE_NONCES", str(tmp_path / "nonces"))
+    monkeypatch.setattr(writer, "SPENT_GRANTS", str(tmp_path / "spent"))
     monkeypatch.setattr(writer, "_verify_ticket_against_local_api", lambda ticket, user: True)
     grant = json.dumps({"user": "root@pam", "target": "host", "path": path,
                         "sha256": content_hash, "ticket": ticket, "expires": time.time() + 120})
@@ -994,13 +995,20 @@ def test_host_writer_session_requires_real_challenge_and_supports_revoke(
     assert session["ticket"] == ticket
     assert dispatch("check-write-session", ticket=ticket)["expires_at"] == session["expires_at"]
     nonce = writer.dispatch(issue)["write_nonce"]
+    put = issue.replace("issue-file-nonce", "put-file", 1)
+    monkeypatch.setattr(writer.sys, "stdin", io.TextIOWrapper(
+        io.BytesIO(base64.b64encode(b"fixture content"))
+    ))
+    assert writer.dispatch(f"{put} {nonce}")["verified"]
+    assert (tmp_path / "index.php").read_bytes() == b"fixture content"
+    nonce = writer.dispatch(issue)["write_nonce"]
     with pytest.raises(writer.Refused, match="belongs to another account"):
         dispatch("check-write-session", "sean@pam", ticket=ticket)
     assert dispatch("revoke-write-session", ticket=ticket) == {"revoked": True}
     with pytest.raises(writer.Refused, match="no active host write session"):
         dispatch("check-write-session", ticket=ticket)
     with pytest.raises(writer.Refused, match="no active host write session"):
-        writer.dispatch(issue.replace("issue-file-nonce", "put-file", 1) + " " + nonce)
+        writer.dispatch(f"{put} {nonce}")
     log = (tmp_path / "audit.log").read_text()
     assert all(secret not in log for secret in (ticket, challenge, "012345", "fixture-csrf"))
 

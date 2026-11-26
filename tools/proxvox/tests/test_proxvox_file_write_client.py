@@ -187,7 +187,7 @@ def test_scope_reaches_the_real_host_and_returns_the_hosts_own_list(w, monkeypat
     assert sent[0]["account"] == "proxvox-root-rw"
     # The list came from the HOST, and says so.
     assert answer["allowed"] == [{"target": "host", "pattern": _posix(host_file)}]
-    assert "cannot widen it" in answer["note"]
+    assert "host-witnessed TOTP and an operation nonce" in answer["note"]
     assert audit.actions() == ["file_write_attempt", "file_write_done"]
 
 
