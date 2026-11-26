@@ -157,7 +157,7 @@ function snapsmack_build_skin_view(array $response, array $presentation = []): a
                 'href' => (string)($tile['url'] ?? (!empty($tile['img_slug'])
                     ? snap_route_url('photo', ['slug' => (string)$tile['img_slug']])
                     : '')),
-                'alt' => (string)($tile['img_alt'] ?? $tile['img_title'] ?? ''),
+                'alt' => (string)($tile['img_alt'] ?? ''),
                 'id' => (int)($tile['id'] ?? $tile['img_id'] ?? 0),
                 'width' => max(1, (int)($tile['presentation_width'] ?? $tile['img_width'] ?? 1)),
                 'height' => max(1, (int)($tile['presentation_height'] ?? $tile['img_height'] ?? 1)),

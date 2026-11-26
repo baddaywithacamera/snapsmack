@@ -286,7 +286,7 @@ header('Pragma: no-cache');
               $ago   = pp_timeago($t['created_at'] ?? null);
               ?>
             <a class="pp-tile" href="<?php echo pp_e($link); ?>">
-              <img loading="lazy" src="<?php echo pp_e($thumb); ?>" alt="<?php echo pp_e(($t['img_alt'] ?? '') !== '' ? $t['img_alt'] : ($t['img_title'] ?? '')); ?>">
+              <img loading="lazy" src="<?php echo pp_e($thumb); ?>" alt="<?php echo pp_e($t['img_alt'] ?? ''); ?>">
               <?php if ($multi): ?><span class="pp-multi"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4h11a2 2 0 0 1 2 2v11h-2V6H7V4zm-3 4h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z"/></svg></span><?php endif; ?>
               <?php if ($ago !== ''): ?><span class="pp-badge"><?php echo pp_e($ago); ?></span><?php endif; ?>
             </a>

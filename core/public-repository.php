@@ -157,6 +157,11 @@ final class SnapPublicRepository
         return $this->mediumThumbColumn ? ",{$prefix}img_thumb_medium" : '';
     }
 
+    /** Keep older story lookups working when saved photo ALT is unavailable. */
+    private function imageAltSelect(string $prefix = ''): string {
+        return $this->imagesColumnSelectable('`img_alt`') === true ? $prefix . 'img_alt' : 'NULL';
+    }
+
     /** As columnsSelectable(), against snap_images. */
     private function imagesColumnSelectable(string $columnList): ?bool {
         try {
@@ -372,12 +377,16 @@ final class SnapPublicRepository
 
     /** Minimal cover lookup used by story routing on every supported schema. */
     public function photographPathById(int $id): string {
-        $row = $this->one(
-            "SELECT img_file FROM snap_images
+        return trim((string)($this->photographCoverById($id)['img_file'] ?? ''));
+    }
+
+    public function photographCoverById(int $id): ?array {
+        $alt = $this->imageAltSelect();
+        return $this->one(
+            "SELECT img_file, {$alt} AS img_alt FROM snap_images
              WHERE id=? AND img_status='published' AND img_date <= NOW() LIMIT 1",
             [$id]
         );
-        return trim((string)($row['img_file'] ?? ''));
     }
 
     public function postBySlug(string $slug, ?string $type = null): ?array {
@@ -509,10 +518,13 @@ final class SnapPublicRepository
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
         if (!$ids) return [];
         $ids = array_slice($ids, 0, 50);
-        $rows = $this->all(
-            'SELECT id,asset_name,asset_path FROM snap_assets WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
-            $ids
-        );
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        try {
+            $rows = $this->all("SELECT id,asset_name,asset_path,asset_alt FROM snap_assets WHERE id IN ({$in})", $ids);
+        } catch (PDOException $e) {
+            if (!$this->looksLikeUnknownColumn($e)) throw $e;
+            $rows = $this->all("SELECT id,asset_name,asset_path FROM snap_assets WHERE id IN ({$in})", $ids);
+        }
         $byId = [];
         foreach ($rows as $row) $byId[(int)$row['id']] = $row;
         $ordered = [];
@@ -581,9 +593,10 @@ final class SnapPublicRepository
 
     public function longformLanding(int $limit, int $offset = 0): array {
         $px = $this->postFilter('exclude_from_archive', 'p');
+        $alt = $this->imageAltSelect('i.');
         return $this->all(
             "SELECT p.id,p.title,p.slug,p.description,p.created_at,p.updated_at,p.featured_image_id,
-                    i.img_file AS featured_image_path,i.img_thumb_aspect AS featured_thumb,
+                    i.img_file AS featured_image_path,{$alt} AS featured_image_alt,i.img_thumb_aspect AS featured_thumb,
                     i.img_width AS featured_width,i.img_height AS featured_height
              FROM snap_posts p LEFT JOIN snap_images i ON i.id=p.featured_image_id
                AND i.img_status='published' AND i.img_date <= NOW()
@@ -661,11 +674,11 @@ final class SnapPublicRepository
     }
 
     public function activePageBySlug(string $slug): ?array {
-        return $this->one(
+        return $this->withStaticPageImageAlt($this->one(
             "SELECT id,slug,title,content,image_asset,image_size,image_align,image_shadow,menu_order,created_at
              FROM snap_pages WHERE slug=? AND is_active=1 LIMIT 1",
             [$slug]
-        );
+        ));
     }
 
     /** Resolve the configured static homepage without exposing SQL to a skin. */
@@ -677,7 +690,23 @@ final class SnapPublicRepository
         );
         $stmt->execute([$id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return is_array($row) ? $row : null;
+        return $this->withStaticPageImageAlt(is_array($row) ? $row : null);
+    }
+
+    private function withStaticPageImageAlt(?array $page): ?array {
+        $assetPath = trim((string)($page['image_asset'] ?? ''));
+        if ($assetPath === '') return $page;
+        try {
+            $asset = $this->one(
+                "SELECT asset_alt FROM snap_assets WHERE asset_path=? ORDER BY id DESC LIMIT 1",
+                [$assetPath]
+            );
+        } catch (PDOException $e) {
+            // Old schemas may lack the optional asset metadata.
+            $asset = null;
+        }
+        $page['image_alt'] = (string)($asset['asset_alt'] ?? '');
+        return $page;
     }
 
     public function archivePhotographs(int $limit, int $offset = 0, int $categoryId = 0, int $albumId = 0, string $search = ''): array {
@@ -1019,7 +1048,7 @@ final class SnapPublicRepository
      *  unchanged. */
     public function filmstripPhotographs(int $limit = 50): array {
         return $this->all(
-            "SELECT i.id,i.img_slug,i.img_file,i.img_thumb_square,i.img_title
+            "SELECT i.id,i.img_slug,i.img_file,i.img_thumb_square,i.img_title,i.img_alt
              FROM snap_images i
              WHERE i.img_status='published' AND i.img_date <= NOW()
              ORDER BY i.sort_order ASC,i.id DESC

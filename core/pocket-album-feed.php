@@ -106,7 +106,7 @@ function snapsmack_pocket_album_payload(
         $photographs[] = [
             'id' => (int)($row['id'] ?? 0),
             'title' => (string)($row['img_title'] ?? ''),
-            'alt' => (string)($row['img_alt'] ?? $row['img_title'] ?? ''),
+            'alt' => (string)($row['img_alt'] ?? ''),
             'page_url' => $slug !== '' ? $absolute(rawurlencode($slug)) : '',
             'image_url' => $absolute((string)($row['img_file'] ?? '')),
             'thumb_url' => $absolute((string)($row['img_thumb_aspect'] ?? $row['img_file'] ?? '')),

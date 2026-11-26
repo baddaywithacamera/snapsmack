@@ -29,8 +29,32 @@ $controller = (string)file_get_contents(__DIR__ . '/../core/smacktalk-public-con
 $singleStart = strpos($controller, 'function snapsmack_smacktalk_single');
 $singleEnd = strpos($controller, 'function snapsmack_smacktalk_feed');
 $single = substr($controller, $singleStart, $singleEnd - $singleStart);
-if (!str_contains($single, 'photographPathById') || preg_match('/featured\s*=.*photographById/', $single)) {
+if (!str_contains($single, 'photographCoverById') || preg_match('/featured\s*=.*photographById/', $single)) {
     throw new RuntimeException('Story routing still expands a cover through the optional full photograph schema.');
+}
+
+$coverStart = strpos($source, 'public function photographCoverById');
+$cover = substr($source, $coverStart, $start - $coverStart);
+if (!str_contains($cover, '$this->imageAltSelect()') || !str_contains($cover, 'SELECT img_file, {$alt} AS img_alt FROM snap_images')) {
+    throw new RuntimeException('Story cover requires more than the stable path and optional saved ALT.');
+}
+
+if (in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+    require_once __DIR__ . '/../core/public-repository.php';
+    $db = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $db->sqliteCreateFunction('NOW', static fn() => '2026-11-26 12:00:00');
+    $db->exec("CREATE TABLE snap_images (id INTEGER, img_file TEXT, img_status TEXT, img_date TEXT)");
+    $db->exec("INSERT INTO snap_images VALUES (1, 'img/cover.jpg', 'published', '2026-11-25')");
+    $repo = new SnapPublicRepository($db);
+    if ($repo->photographCoverById(1) !== ['img_file' => 'img/cover.jpg', 'img_alt' => null]) {
+        throw new RuntimeException('Legacy story cover disappears when ALT is unavailable.');
+    }
+    $db->exec('ALTER TABLE snap_images ADD COLUMN img_alt TEXT');
+    $saved = 'Saved ALT, with & and <example>';
+    $db->prepare('UPDATE snap_images SET img_alt=? WHERE id=1')->execute([$saved]);
+    if ((new SnapPublicRepository($db))->photographCoverById(1)['img_alt'] !== $saved) {
+        throw new RuntimeException('Fresh story cover lookup loses the saved ALT.');
+    }
 }
 
 echo "PASS: public post lookup does not require unrelated optional post columns.\n";

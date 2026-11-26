@@ -302,6 +302,7 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
         $tiles[] = ['image_id' => (int)($image['id'] ?? 0),
             'full' => $base . $full, 'thumb' => $base . $thumb,
             'title' => (string)($image['img_title'] ?? ''),
+            'alt' => (string)($image['img_alt'] ?? ''),
             'width' => max(1, (int)($image['img_width'] ?? 3)),
             'height' => max(1, (int)($image['img_height'] ?? 2))];
     }
@@ -316,7 +317,9 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         // request handling never forwards an override from request parameters.
         $post = $previewPost ?? ($slug !== '' ? $repository->postBySlug($slug, 'longform') : $repository->postById($id, 'longform'));
         if ($post && !empty($post['featured_image_id'])) {
-            $post['featured_image_path'] = $repository->photographPathById((int)$post['featured_image_id']);
+            $cover = $repository->photographCoverById((int)$post['featured_image_id']);
+            $post['featured_image_path'] = trim((string)($cover['img_file'] ?? ''));
+            $post['featured_image_alt'] = (string)($cover['img_alt'] ?? '');
         }
     } catch (Throwable $e) { return null; }
     if (!$post) return null;
@@ -346,7 +349,7 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         if (!empty($post['signature_image_id'])) {
             $image = $repository->photographById((int)$post['signature_image_id']);
             if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
-                'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
+                'alt' => (string)($image['img_alt'] ?? '')];
         }
     } catch (Throwable $e) { /* optional relationships may not exist on older installs */ }
     $parser = new SnapSmack($pdo, adminPreview: $previewPost !== null);

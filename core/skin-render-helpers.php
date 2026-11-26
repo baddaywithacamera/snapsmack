@@ -356,12 +356,11 @@ function snap_page_hero_html(array $item, string $title = ''): string {
     $align = in_array(($item['image_align'] ?? ''), ['left', 'right'], true)
         ? (string)$item['image_align'] : 'center';
     $shadow = !empty($item['image_shadow']) ? ' page-hero--shadow' : '';
-    if ($title === '') $title = (string)($item['title'] ?? '');
     return '<div id="photobox" class="page-hero page-hero--' . $size
         . ' page-hero--' . $align . $shadow . '">'
         . '<div class="main-photo">'
         . '<img src="' . snap_escape_url(rtrim($base, '/') . '/' . ltrim($hero, '/'))
-        . '" class="post-image" alt="' . snap_escape_attr($title) . '">'
+        . '" class="post-image" alt="' . snap_escape_attr($item['image_alt'] ?? '') . '">'
         . '</div></div>';
 }
 
@@ -484,7 +483,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 $html .= '<div class="' . $classes . '" data-image-id="' . snap_escape_attr($photograph['id'] ?? '') . '" style="' . snap_escape_attr($photograph['frame_style'] ?? '') . '">'
                     . (string)snap_render_component('image', [
                         'url' => $photograph['img_file'],
-                        'alt' => $photograph['img_alt'] ?? $photograph['img_title'] ?? '',
+                        'alt' => $photograph['img_alt'] ?? '',
                         'attributes' => ['data-lightbox-src' => $photograph['img_file']],
                     ]) . '</div>';
             }
@@ -498,7 +497,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         } elseif ($image !== '') {
             $html .= (string)snap_render_component('image', [
                 'url' => $image,
-                'alt' => $item['img_alt'] ?? $item['img_title'] ?? '',
+                'alt' => $item['img_alt'] ?? '',
                 'class' => $prefix . '-single-img',
                 'attributes' => ['data-lightbox-src' => $image],
             ]);
@@ -565,7 +564,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html = '<span class="' . $classes . '" aria-hidden="true"></span>';
         } else {
             $html = '<a href="' . snap_escape_url($url) . '" class="' . $classes . '" title="' . snap_escape_attr($title) . '" aria-label="' . snap_escape_attr($title) . '">';
-            if ($image !== '') $html .= (string)snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? $title]);
+            if ($image !== '') $html .= (string)snap_render_component('image', ['url' => $image, 'alt' => $item['img_alt'] ?? '']);
             $count = (int)($item['image_count'] ?? 0);
             if ($count > 1) $html .= '<span class="pg-carousel-badge" aria-label="' . $count . ' photos">&#x29C9;</span>';
             $html .= '</a>';
@@ -669,7 +668,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         if ($thumb !== '') {
             $html .= (string)snap_render_component('image', [
                 'url' => $thumb,
-                'alt' => $item['img_alt'] ?? $item['img_title'] ?? '',
+                'alt' => $item['img_alt'] ?? '',
                 // SAY NOTHING RATHER THAN SAY 3:2. These two attributes used
                 // to fall back to 3 and 2, which is not a safe default: it is
                 // an assertion that every photograph is landscape. A query
@@ -1257,7 +1256,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
             $html .= '<div class="' . $prefix . '-thumb' . ($ratio < 1 ? ' ' . $prefix . '-thumb-portrait' : '')
                 . '" style="aspect-ratio:' . snap_escape_attr((string)round($ratio, 4)) . '">'
                 . (string)snap_render_component('image', [
-                    'url' => $thumb, 'alt' => $item['img_alt'] ?? $title])
+                    'url' => $thumb, 'alt' => $item['img_alt'] ?? ''])
                 . '</div>';
         }
         $html .= '<div class="' . $prefix . '-archive-title">' . snap_escape_html($title) . '</div></a>';
@@ -1329,7 +1328,6 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
         } elseif (in_array($prefix, ['go'], true)) {
             $hero = trim((string)($item['image_asset'] ?? ''));
             if ($hero !== '') {
-                if ($title === '') $title = (string)($item['title'] ?? '');
                 $base = defined('BASE_URL') ? (string)BASE_URL : '/';
                 $size = in_array(($item['image_size'] ?? ''), ['medium', 'small'], true)
                     ? (string)$item['image_size'] : 'full';
@@ -1339,7 +1337,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                     . ' ' . $prefix . '-page-hero--' . $align
                     . (!empty($item['image_shadow']) ? ' ' . $prefix . '-page-hero--shadow' : '') . '">'
                     . '<img src="' . snap_escape_url(rtrim($base, '/') . '/' . ltrim($hero, '/'))
-                    . '" alt="' . snap_escape_attr($title) . '"></figure>';
+                    . '" alt="' . snap_escape_attr($item['image_alt'] ?? '') . '"></figure>';
             }
         }
     } elseif ($name === 'search-summary') {
@@ -1432,7 +1430,7 @@ function snap_render_component(string $name, array $data): SnapTrustedHtml {
                 if ($thumb !== '') {
                     $html .= (string)snap_render_component('image', [
                         'url' => $thumb,
-                        'alt' => $row['img_alt'] ?? $text,
+                        'alt' => $row['img_alt'] ?? '',
                     ]);
                 }
                 $html .= '<h2 class="search-result-title">' . snap_escape_html($text) . '</h2>'

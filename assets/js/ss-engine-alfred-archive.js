@@ -50,7 +50,9 @@
 
         // Build the ordered navigation array from the grid DOM.
         var items = tiles.map(function (t) {
+            var thumb = t.querySelector('img');
             return {
+                alt: thumb ? (thumb.getAttribute('alt') || '') : '',
                 full:  t.getAttribute('data-full') || '',
                 title: t.getAttribute('data-title') || ''
             };
@@ -84,7 +86,7 @@
             current = i;
             var it = items[i];
             img.setAttribute('src', it.full);
-            img.setAttribute('alt', it.title || '');
+            img.setAttribute('alt', it.alt);
             if (caption) { caption.textContent = it.title || ''; }
             clampButtons();
         }

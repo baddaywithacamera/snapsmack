@@ -321,7 +321,7 @@ function pocket_album_refresh_one(PDO $pdo, string $src, int $album, ?callable $
             'image_url' => $onSource((string)($row['image_url'] ?? '')),
             'thumb_url' => $thumb,
             'title' => (string)($row['title'] ?? ''),
-            'alt_text' => (string)($row['alt'] ?? $row['title'] ?? ''),
+            'alt_text' => (string)($row['alt'] ?? ''),
             'img_width' => max(0, (int)($row['width'] ?? 0)),
             'img_height' => max(0, (int)($row['height'] ?? 0)),
             'taken_on' => (string)($row['date'] ?? ''),
@@ -416,7 +416,7 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
                 'page_url' => $slug !== '' ? $base . '/' . rawurlencode($slug) : '',
                 'thumb_url' => $thumb,
                 'title' => (string)($row['img_title'] ?? ''),
-                'alt_text' => (string)($row['img_alt'] ?? $row['img_title'] ?? ''),
+                'alt_text' => (string)($row['img_alt'] ?? ''),
                 'width' => max(0, (int)($row['img_width'] ?? 0)),
                 'height' => max(0, (int)($row['img_height'] ?? 0)),
             ];

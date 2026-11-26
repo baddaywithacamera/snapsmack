@@ -851,7 +851,7 @@ class SnapSmack {
                 return sprintf(
                     '<div class="snap-inline-frame align-center"><div class="ip-ascii-frame-inner"><img src="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
                     htmlspecialchars($base . ltrim($src, '/')),
-                    snap_alt_attr($img['img_alt'] ?? null, $img['img_title'] ?? 'Random image'),
+                    snap_alt_attr($img['img_alt'] ?? null),
                     htmlspecialchars($base . ltrim($img['img_file'], '/'))
                 );
             } catch (PDOException $e) { return ''; }
@@ -867,7 +867,7 @@ class SnapSmack {
                 return sprintf(
                     '<div class="snap-inline-frame align-center"><div class="ip-ascii-frame-inner"><img src="%s" alt="%s" loading="lazy" data-lightbox-src="%s" style="cursor:zoom-in"></div></div>',
                     htmlspecialchars($base . ltrim($src, '/')),
-                    snap_alt_attr($img['img_alt'] ?? null, $img['img_title'] ?? 'Latest image'),
+                    snap_alt_attr($img['img_alt'] ?? null),
                     htmlspecialchars($base . ltrim($img['img_file'], '/'))
                 );
             } catch (PDOException $e) { return ''; }
@@ -1179,7 +1179,7 @@ class SnapSmack {
                         $width,
                         $full_src,
                         $classes,
-                        snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
+                        snap_alt_attr($asset['alt'] ?? null),
                         $dimensions,
                         $border_css
                     );
@@ -1191,7 +1191,7 @@ class SnapSmack {
                     $width,
                     $full_src,
                     $classes,
-                    snap_alt_attr($asset['alt'] ?? null, $asset['name'] ?? ''),
+                    snap_alt_attr($asset['alt'] ?? null),
                     htmlspecialchars($full_url),
                     $caption_attr,
                     $dimensions,

@@ -566,7 +566,7 @@ function snapsmack_public_controller(SnapPublicRepository $repository, array $re
             foreach ($assets as $asset) {
                 $sliderItems[] = [
                     'img_file' => (string)($asset['asset_path'] ?? ''),
-                    'img_alt' => (string)($asset['asset_name'] ?? ''),
+                    'img_alt' => (string)($asset['asset_alt'] ?? ''),
                     'overlay_name' => $imageOverlay ? (string)($asset['asset_name'] ?? '') : (string)($settings['htbs_overlay_name'] ?? ''),
                     'overlay_tagline' => $imageOverlay ? '' : (string)($settings['htbs_overlay_tagline'] ?? ''),
                 ];
