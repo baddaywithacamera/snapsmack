@@ -807,6 +807,8 @@ class GramPoster:
 # (same _upload_ready as solo/gram); the photographer's original is never modified.
 
 class SmacktalkPoster:
+    signature_image_id = 0
+
     def __init__(self, base_url: str, smackpress_key: str, site_data=None, session=None,
                  *, signature_image_id=0):
         self.signature_image_id = signature_image_id
