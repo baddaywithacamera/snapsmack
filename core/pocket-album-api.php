@@ -79,7 +79,8 @@ $pa_base = rtrim((string)($pa_settings['site_url'] ?? ''), '/');
 // all. That path is a direct repository query in
 // core/pocket-album-display.php, so /images works with sharing off. This gate
 // only governs another site reading this one.
-$pa_enabled = (string)($pa_settings['pocket_album_share'] ?? '') === 'on';
+require_once __DIR__ . '/pocket-album-share-control.php';
+$pa_enabled = snap_pocket_album_share_enabled($pa_settings);
 if (!$pa_enabled) {
     http_response_code(404);
     header('Content-Type: application/json; charset=utf-8');

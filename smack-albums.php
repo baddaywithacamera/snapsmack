@@ -16,6 +16,7 @@
 
 
 require_once 'core/auth-smack.php';
+require_once 'core/pocket-album-share-control.php';
 
 if (!isset($settings)) {
     $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -89,6 +90,19 @@ if (!empty($_GET['ajax']) && $_GET['ajax'] === 'posts') {
 
 // --- FORM SUBMISSION ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // POCKET ALBUM cross-site sharing switch. Handled FIRST and exited, because
+    // the album fields below are trimmed unconditionally and this POST does not
+    // carry them. core/pocket-album-share-control.php says what was wrong.
+    $pa_share = snap_pocket_album_share_read($_POST);
+    if ($pa_share !== null) {
+        csrf_verify();
+        snap_pocket_album_share_save($pdo, $pa_share);
+        header("Location: smack-albums.php?msg=" . ($pa_share === 'on'
+            ? 'ALBUM+SHARING+ENABLED'
+            : 'ALBUM+SHARING+DISABLED'));
+        exit;
+    }
+
     $name             = trim($_POST['album_name']);
     $desc             = trim($_POST['album_description']);
     $featured_post_id = !empty($_POST['featured_post_id']) ? (int)$_POST['featured_post_id'] : null;
@@ -245,6 +259,13 @@ include 'core/sidebar.php';
                 </div>
             </div>
         </div>
+    </form>
+
+    <form method="POST" class="mt-20">
+        <?php
+        csrf_field();
+        snap_pocket_album_share_render($settings);
+        ?>
     </form>
 </div>
 
