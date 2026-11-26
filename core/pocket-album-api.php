@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Last non-empty line must be: // ===== SNAPSMACK EOF =====
 
 /**
- * POCKET ALBUM, the SOURCE endpoint: GET /api/pocket-album?album=N&page=1
+ * POCKET ALBUM, the SOURCE endpoint: GET /api.php?route=pocket-album&album=N&page=1
  *
  * SS-1575. core/pocket-album-feed.php builds the payload; this is the door it
  * is served through, and without it the feed was unreachable code. A measured
