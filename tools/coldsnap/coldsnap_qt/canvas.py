@@ -62,6 +62,25 @@ KIND_LABELS = {"para": "Paragraph", "h2": "Heading", "h3": "Sub-heading",
                "quote": "Quote", "pullquote": "Pull quote", "raw": "Raw"}
 
 
+def add_mosaic_photo_actions(menu, position, count, blocks, cluster, dispatch):
+    """Use the same photo commands and labels in both mosaic editors."""
+    can_mirror = any(block["count"] > 1 and block["start"] <= position < block["start"] + block["count"]
+                     for block in blocks)
+    for label, change, step, enabled in (
+        ("Move this image earlier", "move", -1, position > 0),
+        ("Move this image later", "move", 1, position < count - 1),
+        ("Swap this image to the other side", "mirror", 0, can_mirror),
+        ("Make larger", "size", 1, count > 1),
+        ("Make smaller", "size", -1, count > 1),
+        ("Reverse arrangement", "reverse", 0, any(block["count"] > 1 for block in blocks)),
+        ("Break up", "break", 0, bool(cluster)),
+        ("Include or exclude photos…", "selection", 0, True),
+    ):
+        action = menu.addAction(label)
+        action.triggered.connect(lambda _checked=False, c=change, s=step: dispatch(c, s))
+        action.setEnabled(enabled)
+
+
 def _block_kind(block) -> str:
     kind = block.blockFormat().property(PROP_KIND)
     return kind if kind in BLOCK_KINDS else "para"
@@ -434,6 +453,7 @@ class _Objects(QPyTextObject):
             buttons.append((button, [tile_hits[tile['id']][0] for tile in cluster]))
         if pos is not None:
             self.canvas._inline_mosaic_hits[pos] = (tile_hits, buttons)
+            self.canvas._inline_mosaic_sections[pos] = out.get("sections", ())
         self._mosaic_footer(painter, r, len(paths), layout, len(clusters))
 
     def _cached_cell_pixmap(self, path: str, cell_size: QSize):
@@ -827,6 +847,7 @@ class BiggieCanvas(QTextEdit):
         self._inline_browser_jobs = {}
         self._inline_browser_cache = {}
         self._inline_mosaic_hits = {}
+        self._inline_mosaic_sections = {}
         self._selected_obj_pos = None
         self._selected_block_pos = None
         self._block_close_rect = None
@@ -874,8 +895,9 @@ class BiggieCanvas(QTextEdit):
         layout = str(data.get('layout') or 'asymmetric')
         gap = max(0, min(20, _mosaic_gap(data)))
         width = max(1, round(width))
+        mirrors = tuple(data.get('mirrors') or ()) if len(paths) == len(data.get('order', ())) else ()
         key = (tuple(paths), tuple(str(item['identity']) for item in images),
-               tuple(item['weight'] for item in images), layout, gap, width)
+               tuple(item['weight'] for item in images), layout, gap, width, mirrors)
         if key in self._inline_browser_cache:
             return paths, self._inline_browser_cache[key]
         if key != self._inline_browser_active and key not in self._inline_browser_jobs:
@@ -891,10 +913,10 @@ class BiggieCanvas(QTextEdit):
             self._inline_browser.geometry_ready.connect(self._finish_inline_mosaic)
             self._inline_browser.failed.connect(self._fail_inline_mosaic)
         key = next(iter(self._inline_browser_jobs))
-        paths, _identities, weights, layout, gap, width = key
+        paths, _identities, weights, layout, gap, width, mirrors = key
         self._inline_browser_active = key
         self._inline_browser.set_mosaic(list(enumerate(paths)), layout, gap,
-                                        {str(i): w for i, w in enumerate(weights, 1)}, width)
+                                        {str(i): w for i, w in enumerate(weights, 1)}, width, mirrors)
 
     def _fail_inline_mosaic(self, message):
         self._inline_browser_error = message
@@ -1452,20 +1474,24 @@ class BiggieCanvas(QTextEdit):
         self.setCurrentCharFormat(self._char_format_for(_block_kind(cur.block())))
         self.setFocus()
 
-    def insert_mosaic(self, order, layout: str, *, position: str = "after", weights=None):
+    def insert_mosaic(self, order, layout: str, *, position: str = "after", weights=None, mirrors=()):
         payload = {"order": list(order), "layout": str(layout)}
         if weights:
             payload["weights"] = {str(k): int(v) for k, v in weights.items() if int(v or 0) != 0}
+        if mirrors:
+            payload["mirrors"] = list(mirrors)
         self._insert_object("mosaic", payload, position=position)
 
-    def replace_mosaic(self, order, layout: str, weights=None):
+    def replace_mosaic(self, order, layout: str, weights=None, mirrors=()):
         pos = self._pending_obj_pos
         self._pending_obj_pos = None
         if pos is None:
-            return self.insert_mosaic(order, layout, weights=weights)
+            return self.insert_mosaic(order, layout, weights=weights, mirrors=mirrors)
         payload = {"order": list(order), "layout": str(layout)}
         if weights:
             payload["weights"] = {str(k): int(v) for k, v in weights.items() if int(v or 0) != 0}
+        if mirrors:
+            payload["mirrors"] = list(mirrors)
         self._insert_object("mosaic", payload, replace_at=pos)
 
     def insert_image(self, img_id: str, size: str = "full", align: str = "center",
@@ -1691,6 +1717,7 @@ class BiggieCanvas(QTextEdit):
 
     def paintEvent(self, event):
         self._inline_mosaic_hits.clear()
+        self._inline_mosaic_sections.clear()
         scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
         doc = self.document()
         layout = doc.documentLayout()
@@ -1876,20 +1903,19 @@ class BiggieCanvas(QTextEdit):
             menu.addSeparator()
             if kind == "mosaic":
                 point = self._unscale_point(event.pos()).toPoint()
-                tiles, _buttons = self._inline_mosaic_hits.get(pos, ({}, []))
-                identity = next((ident for ident, rect in tiles.values() if rect.contains(point)), None)
-                if identity is not None:
+                tiles, buttons = self._inline_mosaic_hits.get(pos, ({}, []))
+                picked = next(((number, ident) for number, (ident, rect) in tiles.items()
+                               if rect.contains(point)), None)
+                if picked:
+                    number, identity = picked
                     order = list(data.get('order') or range(1, len(self.bucket) + 1))
                     index = next((i for i, item in enumerate(order) if str(item) == str(identity)), -1)
-                    for label, change, step, enabled in (
-                        ('Make larger', 'size', 1, len(order) > 1),
-                        ('Make smaller', 'size', -1, len(order) > 1),
-                        ('Move photo earlier', 'move', -1, index > 0),
-                        ('Move photo later', 'move', 1, 0 <= index < len(order) - 1),
-                    ):
-                        action = menu.addAction(label, lambda p=pos, i=identity, c=change, s=step:
-                                                self._edit_inline_photo(p, i, c, s))
-                        action.setEnabled(enabled)
+                    blocks = self._inline_mosaic_sections.get(pos, ()) if len(tiles) == len(order) and index == number - 1 else ()
+                    cluster = next((group for _button, group in buttons if identity in group), ())
+                    add_mosaic_photo_actions(
+                        menu, index, len(order), blocks, cluster,
+                        lambda change, step: self._dispatch_inline_mosaic(hit, identity, change, step, blocks, cluster),
+                    )
                     menu.addSeparator()
                 menu.addAction("Change this mosaic…", lambda: self._edit_mosaic(hit))
             elif kind == "image":
@@ -1913,6 +1939,25 @@ class BiggieCanvas(QTextEdit):
             menu.addAction(f"Remove this {KIND_OBJ.get(kind, kind)}", lambda: self._remove_object(pos))
         menu.exec(event.globalPos())
 
+    def _dispatch_inline_mosaic(self, hit, identity, change, step, blocks, cluster):
+        _kind, original, pos = hit
+        if change == "selection":
+            self._edit_mosaic(hit)
+        elif change == "break":
+            self._break_inline_cluster(pos, cluster)
+        elif change in ("mirror", "reverse"):
+            data = dict(original)
+            order = list(data.get('order') or range(1, len(self.bucket) + 1))
+            index = next(i for i, item in enumerate(order) if str(item) == str(identity))
+            toggled = {f'{block["start"]}:{block["count"]}' for block in blocks
+                       if block["count"] > 1 and
+                       (change == "reverse" or block["start"] <= index < block["start"] + block["count"])}
+            if toggled:
+                data.update(order=order, mirrors=sorted(set(data.get("mirrors") or ()) ^ toggled))
+                self._insert_object("mosaic", data, replace_at=pos)
+        else:
+            self._edit_inline_photo(pos, identity, change, step)
+
     def _edit_inline_photo(self, pos, identity, change, step):
         hit = self._object_at(pos)
         if not hit or hit[0] != 'mosaic':
@@ -1928,6 +1973,10 @@ class BiggieCanvas(QTextEdit):
             target = index + step
             if not 0 <= target < len(order):
                 return False
+            if data.get("mirrors"):
+                indices = list(range(len(order)))
+                indices[index], indices[target] = indices[target], indices[index]
+                data["mirrors"] = biggie.remap_mosaic_mirrors(data["mirrors"], indices)
             order[index], order[target] = order[target], order[index]
         else:
             old = weights.get(str(identity), 0)
@@ -2434,6 +2483,8 @@ def _export_block(block, nested: bool = False) -> list:
                         blk["layout"] = str(data.get("layout") or "asymmetric")
                         if data.get("weights"):
                             blk["weights"] = dict(data["weights"])
+                        if data.get("mirrors"):
+                            blk["mirrors"] = list(data["mirrors"])
                     out.append(blk)
                 elif okind == "image":
                     image = {"type": "image", "img_id": str(data.get("img_id", ""))}

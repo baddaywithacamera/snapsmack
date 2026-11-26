@@ -19,12 +19,25 @@ function coldSnapRenderMosaic(model) {
         masonry: 'ss-masonry', 'one-column': 'ss-masonry',
     };
     const wall = !model.images.some(photo => photo.weight) && wallClasses[model.layout];
+    let sections = [];
     if (!wall) {
         grid.className = 'snap-mosaic preview-grid';
         grid.dataset.mosaic = JSON.stringify(model.images);
         grid.dataset.gap = String(model.gap);
+        if (model.mirroredSections?.length) grid.dataset.mirrorSections = model.mirroredSections.join(',');
         if (model.layout !== 'asymmetric' && !wallClasses[model.layout]) grid.dataset.template = model.layout;
-        window.SnapMosaic.renderMosaic(grid);
+        const layout = window.SnapMosaic.renderMosaic(grid);
+        if (layout) {
+            let start = 0;
+            sections = layout.sections.map(section => {
+                const count = layout.items.filter(item =>
+                    item.y >= section.y && item.y < section.y + section.height
+                ).length;
+                const group = { start, count };
+                start += count;
+                return group;
+            });
+        }
     } else {
         grid.className = wall + ' snap-mosaic-wall preview-grid';
         grid.style.setProperty('--ss-gap', model.gap + 'px');
@@ -54,7 +67,7 @@ function coldSnapRenderMosaic(model) {
             width: tile.width, height: tile.height,
         };
     });
-    return { items, height: parent.height };
+    return { items, height: parent.height, sections };
 }
 
 // ===== SNAPSMACK EOF =====

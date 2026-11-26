@@ -376,4 +376,29 @@ test('making the top-left photo larger breaks a 2x2 inside a fourteen-photo quil
     assertCleanGeometry(after, 1200);
 });
 
+test('mirrors a four-photo block without altering other sections or any photo size', () => {
+    const photos = Array.from({ length: 14 }, (_, id) => ({
+        id, width: id === 0 ? 800 : 900, height: 600, weight: id === 4 ? 1 : 0,
+    }));
+    const original = engine.computeLayout(photos, 1200, 4, 'natural');
+    const group = original.sections.find(section =>
+        original.items.filter(item => item.y >= section.y && item.y < section.y + section.height).length === 4
+        && original.items.some(item => item.image.id === 0 && item.y >= section.y && item.y < section.y + section.height)
+    );
+    assert.ok(group, 'fixture contains the selected four-photo block');
+    const start = original.items.findIndex(item => item.y >= group.y && item.y < group.y + group.height);
+    const mirrored = engine.computeLayout(photos, 1200, 4, 'natural', '', [start + ':4']);
+    assert.deepEqual(mirrored.sections, original.sections);
+    assert.equal(mirrored.height, original.height);
+    original.items.forEach((tile, index) => {
+        const expectedX = index >= start && index < start + 4
+            ? 2 * group.x + group.width - tile.x - tile.width : tile.x;
+        assert.ok(Math.abs(mirrored.items[index].x - expectedX) < 0.001);
+        assert.deepEqual({ ...mirrored.items[index], x: tile.x }, { ...tile });
+    });
+    assert.notEqual(mirrored.items[0].x, original.items[0].x);
+    const phone = engine.computeLayout(photos, 480, 4, 'natural');
+    assert.deepEqual(engine.computeLayout(photos, 480, 4, 'natural', '', [start + ':4']), phone);
+});
+
 // ===== SNAPSMACK EOF =====

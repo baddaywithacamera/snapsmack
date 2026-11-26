@@ -942,8 +942,19 @@ function smackpress_mosaic_weights_available(PDO $pdo): bool {
     }
 }
 
+function smackpress_mosaic_mirrors_available(PDO $pdo): bool {
+    try {
+        return $pdo->query('SELECT mosaic_mirrors FROM snap_mosaics LIMIT 0') !== false;
+    } catch (PDOException $e) {
+        return false;
+    }
+}
+
 if ($sub === 'mosaics' && $method === 'GET') {
-    smackpress_ok(['mosaic_weights' => smackpress_mosaic_weights_available($pdo)]);
+    smackpress_ok([
+        'mosaic_weights' => smackpress_mosaic_weights_available($pdo),
+        'mosaic_mirrors' => smackpress_mosaic_mirrors_available($pdo),
+    ]);
 }
 
 if ($sub === 'mosaics' && $method === 'POST') {
@@ -986,9 +997,38 @@ if ($sub === 'mosaics' && $method === 'POST') {
     // authored order. asset_ids is stored exactly as sent either way --
     // shuffling is presentation and never rewrites what was saved.
     $gallery_shuffle = !empty($body['gallery_shuffle']) ? 1 : 0;
+    $mirrors = $body['mosaic_mirrors'] ?? [];
+    if (!is_array($mirrors) || !array_is_list($mirrors)
+        || ($mirrors && ($gallery_shuffle || (!$weights && in_array($layout, ['columns', 'rows', 'square', 'masonry', 'one-column'], true))))) {
+        smackpress_error(422, 'Mosaic mirrors require an ordered editorial layout.');
+    }
+    $mirrored_ids = [];
+    foreach ($mirrors as $group) {
+        if (!is_array($group) || !array_is_list($group) || count($group) < 2) {
+            smackpress_error(422, 'Each mirror must identify an ordered block of two or more Gallery images.');
+        }
+        $start = array_search($group[0], $asset_ids, true);
+        if ($start === false || array_slice($asset_ids, $start, count($group)) !== $group
+            || count(array_unique($group)) !== count($group) || array_intersect($mirrored_ids, $group)) {
+            smackpress_error(422, 'Each mirror must match a separate contiguous block of Gallery images.');
+        }
+        array_push($mirrored_ids, ...$group);
+    }
 
     $values = [$title, json_encode($asset_ids), $gap, $layout, $gallery_shuffle];
-    if ($weights) {
+    if ($mirrors && !smackpress_mosaic_mirrors_available($pdo)) {
+        smackpress_error(409, 'Update the site schema before publishing mirrored mosaic blocks.');
+    }
+    if ($mirrors) {
+        if ($weights && !smackpress_mosaic_weights_available($pdo)) {
+            smackpress_error(409, 'Update the site schema before publishing resized mosaic tiles.');
+        }
+        $mirror_columns = $weights ? 'mosaic_mirrors, mosaic_weights' : 'mosaic_mirrors';
+        $mirror_params = $weights ? '?, ?' : '?';
+        $stmt = $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle, $mirror_columns) VALUES (?, ?, ?, ?, ?, $mirror_params)");
+        $values[] = json_encode($mirrors, JSON_THROW_ON_ERROR);
+        if ($weights) $values[] = json_encode((object)$weights, JSON_THROW_ON_ERROR);
+    } elseif ($weights) {
         if (!smackpress_mosaic_weights_available($pdo)) {
             smackpress_error(409, 'Update the site schema before publishing resized mosaic tiles.');
         }
@@ -1001,6 +1041,7 @@ if ($sub === 'mosaics' && $method === 'POST') {
     $mosaic_id = (int)$pdo->lastInsertId();
     $receipt = ['mosaic_id' => $mosaic_id, 'shortcode' => '[mosaic:' . $mosaic_id . ']'];
     if ($weights) $receipt['mosaic_weights'] = (object)$weights;
+    if ($mirrors) $receipt['mosaic_mirrors'] = $mirrors;
     smackpress_ok($receipt);
 }
 

@@ -966,12 +966,15 @@ class SmacktalkPoster:
         r'(?:\s+(shuffle))?'
         r'(?:\s+gap=([0-9]{1,2}))?'
         r'(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?'
+        r'(?:\s+mirrors=([0-9]+:[0-9]+(?:,[0-9]+:[0-9]+)*))?'
         r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
     _WEIGHTED_MOSAIC = re.compile(r'\[mosaic\b[^\]\r\n]*\bweights=[^\]\r\n]*\]', re.I)
+    _MIRRORED_MOSAIC = re.compile(r'\[mosaic\b[^\]\r\n]*\bmirrors=[^\]\r\n]*\]', re.I)
 
     def _check_mosaic_weights(self, body, photo_count):
         weighted = self._WEIGHTED_MOSAIC.findall(body)
-        if not weighted:
+        mirrored = self._MIRRORED_MOSAIC.findall(body)
+        if not weighted and not mirrored:
             return
         for token in weighted:
             match = self._MOSAIC_TOKEN.fullmatch(token)
@@ -981,12 +984,37 @@ class SmacktalkPoster:
             weights = self._mosaic_weights(match.group(5))
             if not weights or any(pos not in positions or pos > photo_count for pos in weights):
                 raise ValueError("A resized mosaic photo is missing. Reopen the mosaic and save it again.")
+        for token in mirrored:
+            match = self._MOSAIC_TOKEN.fullmatch(token)
+            if not match or not match.group(1) or not match.group(6) or match.group(3):
+                raise ValueError("The mirrored mosaic is invalid. Reopen it and save it again.")
+            positions = [int(pos) for pos in match.group(1).split(",")]
+            if len(set(positions)) != len(positions) or any(not 1 <= pos <= photo_count for pos in positions):
+                raise ValueError("A mirrored mosaic photo is missing. Reopen it and save it again.")
+            self._mosaic_mirror_groups(match.group(6), positions)
         response = self.session.get(self._route("smackpress/mosaics"), timeout=20)
         if response.status_code in (404, 405):
-            raise RuntimeError("This site's CMS cannot publish resized mosaic tiles yet. Update the site before sending this draft.")
+            change = "mirrored mosaic blocks" if mirrored else "resized mosaic tiles"
+            raise RuntimeError(f"This site's CMS cannot publish {change} yet. Update the site before sending this draft.")
         response.raise_for_status()
-        if response.json().get("mosaic_weights") is not True:
+        capabilities = response.json()
+        if weighted and capabilities.get("mosaic_weights") is not True:
             raise RuntimeError("This site's CMS cannot publish resized mosaic tiles yet. Update the site before sending this draft.")
+        if mirrored and capabilities.get("mosaic_mirrors") is not True:
+            raise RuntimeError("This site's CMS cannot publish mirrored mosaic blocks yet. Update the site before sending this draft.")
+
+    @staticmethod
+    def _mosaic_mirror_groups(raw, photos):
+        groups = []
+        used = set()
+        for value in raw.split(",") if raw else ():
+            start, count = map(int, value.split(":"))
+            group = photos[start:start + count]
+            if count < 2 or len(group) != count or used.intersection(group):
+                raise ValueError("The mirrored mosaic blocks are invalid. Reopen the mosaic and save it again.")
+            groups.append(group)
+            used.update(group)
+        return groups
 
     @staticmethod
     def _mosaic_weights(raw):
@@ -1000,7 +1028,7 @@ class SmacktalkPoster:
 
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
                       layout="asymmetric", gallery_shuffle=False,
-                      mosaic_weights=None) -> Tuple[int, str]:
+                      mosaic_weights=None, mosaic_mirrors=None) -> Tuple[int, str]:
         """Create a snap_mosaics panel from ordered Gallery image ids via
         POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]').
 
@@ -1017,6 +1045,8 @@ class SmacktalkPoster:
             payload["gallery_shuffle"] = True
         if mosaic_weights:
             payload["mosaic_weights"] = mosaic_weights
+        if mosaic_mirrors:
+            payload["mosaic_mirrors"] = mosaic_mirrors
         r = self.session.post(
             self._route("smackpress/mosaics"),
             json=payload,
@@ -1028,6 +1058,8 @@ class SmacktalkPoster:
         data = r.json()
         if mosaic_weights and data.get("mosaic_weights") != mosaic_weights:
             raise RuntimeError("The site did not confirm the mosaic sizes. The post was not sent.")
+        if mosaic_mirrors and data.get("mosaic_mirrors") != mosaic_mirrors:
+            raise RuntimeError("The site did not confirm the mirrored mosaic blocks. The post was not sent.")
         mid = int(data.get("mosaic_id") or 0)
         if mid <= 0:
             raise RuntimeError("mosaics endpoint did not return a mosaic_id")
@@ -1120,9 +1152,14 @@ class SmacktalkPoster:
                 }
             if not chosen:
                 return ''
+            options = {}
+            if site_weights:
+                options["mosaic_weights"] = site_weights
+            if match.group(6):
+                options["mosaic_mirrors"] = self._mosaic_mirror_groups(match.group(6), chosen)
             mid, shortcode = self.create_mosaic(
                 chosen, title=(draft.title or "Mosaic"), gap=gallery_gap, layout=layout,
-                gallery_shuffle=shuffle, **({"mosaic_weights": site_weights} if site_weights else {}))
+                gallery_shuffle=shuffle, **options)
             mosaic_ids.append(mid)
             return shortcode
 

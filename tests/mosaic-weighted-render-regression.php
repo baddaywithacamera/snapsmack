@@ -30,6 +30,7 @@ $parser = new SnapSmack($pdo);
 $render = static fn(int $id): string => (string)$parser->parseContent('[mosaic:' . $id . ']');
 $before = [$render(1), $render(2)];
 $pdo->exec('ALTER TABLE snap_mosaics ADD COLUMN mosaic_weights TEXT');
+$pdo->exec('ALTER TABLE snap_mosaics ADD COLUMN mosaic_mirrors TEXT');
 if ($before !== [$render(1), $render(2)]) {
     throw new RuntimeException('Adding the optional column changed an unweighted mosaic.');
 }
@@ -44,7 +45,19 @@ if (array_column($tiles, 'id') !== [8, 10, 9] ||
     array_map(static fn(array $tile): int => $tile['weight'] ?? 0, $tiles) !== [-1, 0, 1]) {
     throw new RuntimeException('A size moved to the wrong photograph or changed authored order.');
 }
+$pdo->exec("UPDATE snap_mosaics SET mosaic_mirrors = '[[8,10,9]]' WHERE id = 2");
+if (!str_contains($render(2), 'data-mirror-sections="0:3"')) {
+    throw new RuntimeException('The mirrored group must reach the compositor.');
+}
+$pdo->exec("UPDATE snap_mosaics SET asset_ids = '[9,10,8]' WHERE id = 2");
+if (str_contains($render(2), 'data-mirror-sections=')) {
+    throw new RuntimeException('An edited group must not inherit the old mirror.');
+}
+$pdo->exec("UPDATE snap_mosaics SET asset_ids = '[8,10,9]' WHERE id = 2");
 $pdo->exec('UPDATE snap_mosaics SET gallery_shuffle = 1 WHERE id = 2');
+if (str_contains($render(2), 'data-mirror-sections=')) {
+    throw new RuntimeException('A shuffled mosaic must not mirror unrelated groups.');
+}
 for ($i = 0; $i < 8; $i++) {
     preg_match('/data-mosaic="([^"]+)"/', $render(2), $match);
     $tiles = json_decode(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'), true, 512, JSON_THROW_ON_ERROR);

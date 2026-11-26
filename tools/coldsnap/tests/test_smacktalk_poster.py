@@ -392,6 +392,43 @@ def test_weighted_mosaic_create_requires_a_server_receipt_for_the_weights():
         poster.create_mosaic([205, 101, 203], mosaic_weights=weights)
 
 
+def test_mirrored_mosaic_requires_cms_support_and_sends_ordered_gallery_ids():
+    from types import SimpleNamespace
+    from pytest import raises
+    from sumna_post import SmacktalkPoster
+
+    class Site:
+        def __init__(self, supported):
+            self.supported = supported
+            self.receipt = {"mosaic_id": 91, "mosaic_mirrors": [[205, 101]]}
+            self.posts = []
+
+        def get(self, _url, **kwargs):
+            return FakeResp(200, {"mosaic_mirrors": self.supported})
+
+        def post(self, url, *, json, **kwargs):
+            self.posts.append(json)
+            assert url.endswith("smackpress/mosaics")
+            return FakeResp(200, self.receipt)
+
+    token = "[mosaic=2,1,3 layout=asymmetric mirrors=0:2]"
+    site = Site(False)
+    poster = SmacktalkPoster("https://example.test", "key", session=site)
+    with raises(RuntimeError, match="cannot publish mirrored mosaic blocks yet"):
+        poster._check_mosaic_weights(token, 3)
+    assert site.posts == []
+
+    site.supported = True
+    poster._check_mosaic_weights(token, 3)
+    assert poster._resolve_mosaics(token, [101, 205, 203], SimpleNamespace(title="Mirror")) == (
+        "[mosaic:91]", [91])
+    assert site.posts[0]["asset_ids"] == [205, 101, 203]
+    assert site.posts[0]["mosaic_mirrors"] == [[205, 101]]
+    site.receipt.pop("mosaic_mirrors")
+    with raises(RuntimeError, match="did not confirm the mirrored mosaic blocks"):
+        poster._resolve_mosaics(token, [101, 205, 203], SimpleNamespace(title="Mirror"))
+
+
 if __name__ == "__main__":
     passed = (_checks() + _mosaic_token_checks() + _bucket_img_checks()
               + _gap_checks())

@@ -127,7 +127,9 @@ def serialize_block(b: dict) -> str:
                 if iv != 0:
                     w_parts.append(f"{k}:{iv}")
         w_attr = (" weights=" + ",".join(w_parts)) if w_parts else ""
-        return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + w_attr + "]"
+        mirrors = b.get("mirrors") or ()
+        m_attr = (" mirrors=" + ",".join(mirrors)) if mirrors else ""
+        return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + w_attr + m_attr + "]"
     return str(b.get("text", ""))          # raw — verbatim
 
 
@@ -139,6 +141,20 @@ def wire_mosaic_ids(block: dict, positions: dict) -> None:
             str(positions.get(str(identity), identity)): weight
             for identity, weight in block["weights"].items()
         }
+
+
+def remap_mosaic_mirrors(mirrors, retained_indices):
+    """Keep mirrors whose complete original group remains contiguous and in order."""
+    retained = list(retained_indices)
+    positions = {old: new for new, old in enumerate(retained)}
+    result = []
+    for mirror in mirrors:
+        start, count = map(int, mirror.split(":"))
+        if start in positions:
+            first = positions[start]
+            if count > 1 and retained[first:first + count] == list(range(start, start + count)):
+                result.append(f"{first}:{count}")
+    return result
 
 
 def serialize_blocks(blocks: list) -> str:
@@ -156,6 +172,11 @@ _MULTI = re.compile(
     r"|<blockquote>.*?</blockquote>"
     r"|\[pullquote\].*?\[/pullquote\])",
     re.DOTALL | re.IGNORECASE)
+
+MOSAIC_TOKEN = re.compile(
+    r"\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)"
+    r"(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?"
+    r"(?:\s+mirrors=([0-9]+:[0-9]+(?:,[0-9]+:[0-9]+)*))?)?\]", re.IGNORECASE)
 
 _RX = {
     "heading": re.compile(r"^<h([23])>(.*)</h\1>$", re.DOTALL | re.IGNORECASE),
@@ -176,7 +197,6 @@ _RX = {
         r"^<figure[^>]*>\s*(\[img:[^\]]+\])\s*<figcaption[^>]*>(.*?)</figcaption>\s*</figure>$",
         re.DOTALL | re.IGNORECASE,
     ),
-    "mosaic":  re.compile(r"^\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?)?\]$", re.IGNORECASE),
     "columns": re.compile(r"^\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
     "list":    re.compile(r"^<(ul|ol)>(.*)</\1>$", re.DOTALL | re.IGNORECASE),
     "quote":   re.compile(r"^<blockquote>(.*)</blockquote>$", re.DOTALL | re.IGNORECASE),
@@ -216,7 +236,7 @@ def _classify(seg: str) -> dict:
     m = _RX["spacer"].match(seg)
     if m:
         return {"type": "spacer", "px": int(m.group(1))}
-    m = _RX["mosaic"].match(seg)
+    m = MOSAIC_TOKEN.fullmatch(seg)
     if m:
         if m.group(1):
             out = {"type": "mosaic",
@@ -229,6 +249,8 @@ def _classify(seg: str) -> dict:
                     weights[int(k)] = int(v)
                 if weights:
                     out["weights"] = weights
+            if m.group(4):
+                out["mirrors"] = m.group(4).split(",")
             return out
         return {"type": "mosaic"}
     fm = _RX["figure_image"].match(seg)

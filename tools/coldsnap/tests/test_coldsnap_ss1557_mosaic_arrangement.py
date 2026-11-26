@@ -62,7 +62,7 @@ def _run_dialog(monkeypatch, mode, order, layout, action):
     return mode._mosaic_dialog(order, layout)
 
 
-def test_right_click_arrangement_actions_only_reorder_saved_ids(monkeypatch, tmp_path):
+def test_right_click_mirrors_save_position_changes_without_reordering_ids(monkeypatch, tmp_path):
     monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
     _app()
     paths = _photos(tmp_path)
@@ -80,14 +80,15 @@ def test_right_click_arrangement_actions_only_reorder_saved_ids(monkeypatch, tmp
             monkeypatch, mode, [0, 1, 2, 3], "asymmetric",
             lambda dialog: dialog._mosaic_reverse(),
         )
-        assert reversed_result == ([4, 3, 2, 1], "asymmetric")
+        assert reversed_result == ([1, 2, 3, 4], "asymmetric")
+        assert mode._last_mosaic_mirrors == ["0:4"]
 
         side_swapped = _run_dialog(
             monkeypatch, mode, [0, 1, 2, 3], "asymmetric",
             lambda dialog: dialog._mosaic_swap_side(0),
         )
-        assert side_swapped[0] != [1, 2, 3, 4]
-        assert sorted(side_swapped[0]) == [1, 2, 3, 4]
+        assert side_swapped == ([1, 2, 3, 4], "asymmetric")
+        assert mode._last_mosaic_mirrors == ["0:4"]
 
         assert [_digest(path) for path in paths] == before
         assert not any(image.edit_flip_h or image.edit_flip_v for image in mode._bucket)
@@ -95,7 +96,7 @@ def test_right_click_arrangement_actions_only_reorder_saved_ids(monkeypatch, tmp
         mode.close()
 
 
-def test_three_photo_reverse_changes_side_and_order(monkeypatch, tmp_path):
+def test_three_photo_reverse_mirrors_the_existing_preset(monkeypatch, tmp_path):
     monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
     _app()
     paths = _photos(tmp_path, 3)
@@ -106,7 +107,67 @@ def test_three_photo_reverse_changes_side_and_order(monkeypatch, tmp_path):
             monkeypatch, mode, [0, 1, 2], "one-left",
             lambda dialog: dialog._mosaic_reverse(),
         )
-        assert result == ([3, 2, 1], "one-right")
+        assert result == ([1, 2, 3], "one-left")
+        assert mode._last_mosaic_mirrors == ["0:3"]
+    finally:
+        mode.close()
+
+
+def test_dialog_mirror_undo_redo_and_fit_preserve_geometry(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    _app()
+    paths = _photos(tmp_path)
+    mode = TakeMode(lambda: {"url": "https://example.test"})
+    mode._bucket = [O.DraftImage(local_path=path, original_path=path) for path in paths]
+
+    def exercise(dialog):
+        dialog.show()
+        preview = dialog._mosaic_preview
+        before = _wait_for_preview(preview)
+        menu = preview._arrangement_menu(0)
+        next(action for action in menu.actions() if action.text() == "Swap this image to the other side").trigger()
+        after = _wait_for_preview(preview)
+        assert after != before
+        for original, mirrored in zip(before, after):
+            assert {**mirrored, "x": original["x"]} == original
+
+        buttons = {button.text(): button for button in dialog.findChildren(QPushButton)}
+        buttons["Undo"].click()
+        assert _wait_for_preview(preview) == before
+        buttons["Redo"].click()
+        assert _wait_for_preview(preview) == after
+        for label in ("100%", "+", "Fit"):
+            buttons[label].click()
+            assert all(preview._row_at(rect.center()) == row for row, rect in preview._rects)
+
+    try:
+        assert _run_dialog(monkeypatch, mode, [0, 1, 2, 3], "asymmetric", exercise) == (
+            [1, 2, 3, 4], "asymmetric")
+        assert mode._last_mosaic_mirrors == ["0:4"]
+    finally:
+        mode.close()
+
+
+def test_post_body_mirror_is_undoable_and_survives_draft_serialization(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    _app()
+    paths = _photos(tmp_path)
+    mode = TakeMode(lambda: {"url": "https://example.test"})
+    mode.body.set_bucket(paths)
+    mode.body._set_biggie(True)
+    canvas = mode.body.canvas
+    try:
+        original = {"type": "mosaic", "order": [1, 2, 3, 4], "layout": "asymmetric"}
+        canvas.from_blocks([original])
+        hit = canvas._object_at(canvas.document().begin().position())
+        canvas._dispatch_inline_mosaic(hit, 1, "mirror", 0, [{"start": 0, "count": 4}], ())
+        mirrored = {**original, "mirrors": ["0:4"]}
+        assert mode.body.authoring_blocks() == [mirrored]
+        assert biggie.parse_body(biggie.serialize_block(mirrored)) == [mirrored]
+        canvas.undo()
+        assert mode.body.authoring_blocks() == [original]
+        canvas.redo()
+        assert mode.body.authoring_blocks() == [mirrored]
     finally:
         mode.close()
 
@@ -171,6 +232,8 @@ def test_preview_right_click_names_arrangement_actions(tmp_path):
         "Make larger",
         "Make smaller",
         "Reverse arrangement",
+        "Break up",
+        "Include or exclude photos…",
     ]
     preview.close()
 

@@ -36,6 +36,7 @@ from sumna_post import AuthorizationExpiredError, SmacktalkPoster
 
 from . import theme, biggie
 from .canvas import mosaic_cells as _mosaic_cells
+from .canvas import add_mosaic_photo_actions
 from .widgets import (Accordion, Card, build_rail, hint, field_label,
                       big_button, load_pixmap)
 from .mosaic_browser import MosaicBrowser
@@ -68,7 +69,9 @@ class MosaicPreview(QWidget):
     sizeRequested = Signal(int, int)
     reverseRequested = Signal()
     breakRequested = Signal(object)
+    selectionRequested = Signal()
     clustersChanged = Signal(int)
+    zoomChanged = Signal(str)
 
     def __init__(self, parent=None, *, content_width: int = 760, gap: int = 4):
         super().__init__(parent)
@@ -83,9 +86,11 @@ class MosaicPreview(QWidget):
         self._layout_name, self._drag_from = "asymmetric", None
         self._rendered_layout = "asymmetric"
         self._weights = {}
+        self._mirrored_sections = ()
         self._cells = {"items": [], "height": 0}
         self._fit_viewport = None
         self._fit_scale = 1.0
+        self._zoom = None
         self._clusters = []
         self._cluster_widgets = []
         self._browser = MosaicBrowser(self)
@@ -110,11 +115,12 @@ class MosaicPreview(QWidget):
         self.setFixedWidth(self._content_width + 16)
         self._refresh_browser()
 
-    def set_mosaic(self, tiles, layout_name, gap: int = 4, weights=None):
+    def set_mosaic(self, tiles, layout_name, gap: int = 4, weights=None, mirrored_sections=()):
         self._tiles = list(tiles)
         self._layout_name = str(layout_name or "asymmetric")
         self._gap = max(0, min(20, int(gap)))
         self._weights = {str(k): int(v) for k, v in (weights or {}).items() if int(v or 0) != 0}
+        self._mirrored_sections = tuple(mirrored_sections)
         self._refresh_browser()
 
     def _refresh_browser(self):
@@ -123,7 +129,8 @@ class MosaicPreview(QWidget):
         self._rects = []
         self._cells = {"items": [], "height": 0}
         self._browser.set_mosaic(
-            self._tiles, self._layout_name, self._gap, self._weights, self._content_width)
+            self._tiles, self._layout_name, self._gap, self._weights, self._content_width,
+            self._mirrored_sections)
 
     def computed_cells(self):
         """Geometry from the last completed browser render."""
@@ -135,9 +142,33 @@ class MosaicPreview(QWidget):
         self._place_geometry()
 
     def eventFilter(self, watched, event):
-        if watched is self._fit_viewport and event.type() == QEvent.Resize:
-            self._place_geometry()
+        if watched is self._fit_viewport:
+            if event.type() == QEvent.Resize:
+                self._place_geometry()
+            elif event.type() == QEvent.Wheel and self._zoom_from_wheel(event):
+                return True
         return super().eventFilter(watched, event)
+
+    def wheelEvent(self, event):
+        if not self._zoom_from_wheel(event):
+            super().wheelEvent(event)
+
+    def _zoom_from_wheel(self, event):
+        if self._fit_viewport is None or not (event.modifiers() & Qt.ControlModifier):
+            return False
+        delta = event.angleDelta().y()
+        if delta:
+            self.step_zoom(1 if delta > 0 else -1)
+        event.accept()
+        return True
+
+    def set_zoom(self, scale):
+        self._zoom = scale
+        self._place_geometry()
+
+    def step_zoom(self, direction):
+        scale = round(self._fit_scale * 100) + direction * 10
+        self.set_zoom(max(10, min(200, scale)) / 100)
 
     def _use_geometry(self, geometry):
         self._error.hide()
@@ -151,11 +182,14 @@ class MosaicPreview(QWidget):
         geometry = self._cells
         height = geometry["height"] if geometry["items"] else 220
         scale = 1.0
-        if self._fit_viewport is not None:
+        if self._zoom is not None:
+            scale = self._zoom
+        elif self._fit_viewport is not None:
             available = self._fit_viewport.size()
             scale = min(1, max(1, available.width() - 16) / self._content_width,
                         max(1, available.height() - 16) / height)
         self._fit_scale = scale
+        self.zoomChanged.emit(f"{round(scale * 100)}%")
         self._browser.set_visual_scale(scale)
         self._rects = [
             (self._tiles[cell["id"] - 1][0], QRect(
@@ -223,34 +257,20 @@ class MosaicPreview(QWidget):
             return None
         position = ordered_rows.index(row)
         menu = QMenu(self)
-        earlier = menu.addAction(
-            "Move this image earlier",
-            lambda: self.moveRequested.emit(row, -1),
+        cluster = next(([self._tiles[cell["id"] - 1][0] for cell in group]
+                        for group in self._clusters if any(cell["id"] == position + 1 for cell in group)), ())
+        dispatch = {
+            "move": lambda step: self.moveRequested.emit(row, step),
+            "size": lambda step: self.sizeRequested.emit(row, step),
+            "mirror": lambda _step: self.sideSwapRequested.emit(row),
+            "reverse": lambda _step: self.reverseRequested.emit(),
+            "break": lambda _step: self.breakRequested.emit([cluster]),
+            "selection": lambda _step: self.selectionRequested.emit(),
+        }
+        add_mosaic_photo_actions(
+            menu, position, len(ordered_rows), self._cells.get("sections", ()), cluster,
+            lambda change, step: dispatch[change](step),
         )
-        later = menu.addAction(
-            "Move this image later",
-            lambda: self.moveRequested.emit(row, 1),
-        )
-        earlier.setEnabled(position > 0)
-        later.setEnabled(position < len(ordered_rows) - 1)
-        menu.addAction(
-            "Swap this image to the other side",
-            lambda: self.sideSwapRequested.emit(row),
-        )
-        menu.addSeparator()
-        larger = menu.addAction(
-            "Make larger",
-            lambda: self.sizeRequested.emit(row, 1),
-        )
-        smaller = menu.addAction(
-            "Make smaller",
-            lambda: self.sizeRequested.emit(row, -1),
-        )
-        can_resize = len(ordered_rows) >= 2
-        larger.setEnabled(can_resize)
-        smaller.setEnabled(can_resize)
-        menu.addSeparator()
-        menu.addAction("Reverse arrangement", self.reverseRequested.emit)
         return menu
 
     def contextMenuEvent(self, event):
@@ -1387,17 +1407,16 @@ class TakeMode(QWidget):
         cursor = self.body.editor.textCursor()
         block = cursor.block()
         block_text = block.text()
-        existing = re.search(
-            r'\[mosaic=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?\]',
-            block_text, re.IGNORECASE)
+        existing = next((match for match in biggie.MOSAIC_TOKEN.finditer(block_text) if match.group(1)), None)
         existing_span = None
         existing_order, existing_layout, existing_weights = [], None, {}
         rotation_originals = {}
         if existing:
-            existing_order = [int(value) - 1 for value in existing.group(1).split(',')]
-            existing_order = [value for value in existing_order
-                              if 0 <= value < len(self._bucket)]
+            full_order = [int(value) - 1 for value in existing.group(1).split(',')]
+            existing_order = [value for value in full_order if 0 <= value < len(self._bucket)]
             existing_layout = existing.group(2).lower()
+            if existing.group(4) and len(existing_order) == len(full_order):
+                self._pending_mosaic_mirrors = existing.group(4).split(",")
             if existing.group(3):
                 for pair in existing.group(3).split(','):
                     k, v = pair.strip().split(':', 1)
@@ -1410,14 +1429,14 @@ class TakeMode(QWidget):
         preselected = [] if existing_order else self.selected_tray_indices()
         self._pending_mosaic_weights = dict(existing_weights)
         self._last_mosaic_weights = {}
+        self._last_mosaic_mirrors = ()
         result = self._mosaic_dialog(existing_order, existing_layout, preselected_order=preselected)
         if not result:
             return
         chosen, layout_name = result
         chosen_weights = dict(getattr(self, "_last_mosaic_weights", {}) or {})
-        w_parts = [f"{k}:{v}" for k, v in sorted(chosen_weights.items()) if int(v or 0) != 0]
-        w_attr = (" weights=" + ",".join(w_parts)) if w_parts else ""
-        marker = "[mosaic=" + ",".join(map(str, chosen)) + " layout=" + layout_name + w_attr + "]"
+        marker = biggie.serialize_block({"type": "mosaic", "order": chosen, "layout": layout_name,
+                                         "weights": chosen_weights, "mirrors": self._last_mosaic_mirrors})
         if existing_span:
             replace_cursor = self.body.editor.textCursor()
             replace_cursor.setPosition(existing_span[0])
@@ -1444,6 +1463,8 @@ class TakeMode(QWidget):
         if self.body.canvas._pending_obj_pos is not None:
             hit = self.body.canvas._object_at(self.body.canvas._pending_obj_pos)
             if hit and hit[0] == "mosaic":
+                if len(existing_order) == len(order or ()):
+                    self._pending_mosaic_mirrors = hit[1].get("mirrors") or ()
                 raw_w = (hit[1] or {}).get("weights") or {}
                 for k, v in raw_w.items():
                     if str(k) in uuid_to_index:
@@ -1453,6 +1474,7 @@ class TakeMode(QWidget):
         preselected = [] if existing_order else self.selected_tray_indices()
         self._pending_mosaic_weights = dict(existing_weights)
         self._last_mosaic_weights = {}
+        self._last_mosaic_mirrors = ()
         result = self._mosaic_dialog(
             existing_order,
             (layout or "").lower() or None,
@@ -1470,9 +1492,11 @@ class TakeMode(QWidget):
             if 1 <= int(k) <= len(self._bucket) and int(v or 0) != 0
         }
         if order:
-            self.body.canvas.replace_mosaic(stable, layout_name, weights=stable_weights)
+            self.body.canvas.replace_mosaic(stable, layout_name, weights=stable_weights,
+                                            mirrors=self._last_mosaic_mirrors)
         else:
-            self.body.canvas.insert_mosaic(stable, layout_name, weights=stable_weights)
+            self.body.canvas.insert_mosaic(stable, layout_name, weights=stable_weights,
+                                           mirrors=self._last_mosaic_mirrors)
 
     def _mosaic_used_indices(self, keep):
         """0-based bucket indices already spoken for by OTHER mosaics in this post.
@@ -1673,8 +1697,8 @@ class TakeMode(QWidget):
         preview_scroll = QScrollArea()
         preview_scroll.setWidgetResizable(False)
         preview_scroll.setAlignment(Qt.AlignCenter)
-        preview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        preview_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        preview_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        preview_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         preview_scroll.setFrameShape(QFrame.NoFrame)
         preview_scroll.setStyleSheet("QScrollArea { background: #090b0a; border: 1px solid #262926; }")
         preview_scroll.setWidget(preview)
@@ -1692,6 +1716,22 @@ class TakeMode(QWidget):
         preview_pane_lay.setSpacing(4)
         preview_pane_lay.addWidget(preview_scroll, 1)
         preview_pane_lay.addWidget(preview_hint)
+        zoom_controls = QHBoxLayout()
+        zoom_controls.addStretch()
+        zoom_value = QLabel()
+        preview.zoomChanged.connect(zoom_value.setText)
+        zoom_value.setText(f"{round(preview._fit_scale * 100)}%")
+        for label, handler in (
+            ("Fit", lambda: preview.set_zoom(None)),
+            ("−", lambda: preview.step_zoom(-1)),
+            ("+", lambda: preview.step_zoom(1)),
+            ("100%", lambda: preview.set_zoom(1.0)),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(handler)
+            zoom_controls.addWidget(button)
+        zoom_controls.addWidget(zoom_value)
+        preview_pane_lay.addLayout(zoom_controls)
         cluster_bar = QHBoxLayout()
         cluster_count = QLabel()
         break_all = QPushButton("Break up all")
@@ -1763,11 +1803,14 @@ class TakeMode(QWidget):
         layout.addLayout(preset_row)
 
         arrows = QHBoxLayout()
+        undo = QPushButton("Undo")
+        redo = QPushButton("Redo")
         up = QPushButton("Move earlier")
         down = QPushButton("Move later")
         rotate_left = QPushButton("↶ Rotate left")
         rotate_right = QPushButton("↷ Rotate right")
         suggest = QPushButton("✨ Suggest arrangement")
+        arrows.addWidget(undo); arrows.addWidget(redo)
         arrows.addWidget(up); arrows.addWidget(down)
         arrows.addWidget(rotate_left); arrows.addWidget(rotate_right)
         arrows.addStretch(1); arrows.addWidget(suggest)
@@ -1781,6 +1824,16 @@ class TakeMode(QWidget):
             for bi, w in pending_w.items()
             if int(w or 0) != 0
         }
+        pending_mirrors = getattr(self, "_pending_mosaic_mirrors", ())
+        self._pending_mosaic_mirrors = ()
+        mirrored_groups = set()
+        for value in pending_mirrors:
+            start, count = map(int, value.split(":"))
+            if start >= 0 and count > 1 and start + count <= len(initial_checked):
+                mirrored_groups.add(tuple(initial_checked[start:start + count]))
+        undo_history = []
+        redo_history = []
+        current_state = None
         active_bucket_idx = [display_order[0] if display_order else None]
         tiles_by_idx = {}
         constraint = {"previous": None, "attempts": 0, "keep_partial": False}
@@ -1789,8 +1842,50 @@ class TakeMode(QWidget):
         def checked_indices():
             return [bi for bi in display_order if bi in checked_set]
 
+        def mirror_positions(photos):
+            return [
+                f"{start}:{len(group)}"
+                for group in sorted(mirrored_groups)
+                if group[0] in photos
+                for start in [photos.index(group[0])]
+                if tuple(photos[start:start + len(group)]) == group
+            ]
+
+        def snapshot():
+            return (tuple(display_order), frozenset(checked_set), dict(weights_by_idx),
+                    preset.currentData(), frozenset(mirrored_groups))
+
+        def update_history_buttons():
+            undo.setEnabled(bool(undo_history))
+            redo.setEnabled(bool(redo_history))
+
+        def restore_history(source, destination):
+            nonlocal current_state
+            if not source:
+                return
+            constraint["previous"] = None
+            destination.append(snapshot())
+            current_state = source.pop()
+            order, included, saved_weights, saved_layout, saved_mirrors = current_state
+            display_order[:] = order
+            checked_set.clear()
+            checked_set.update(included)
+            weights_by_idx.clear()
+            weights_by_idx.update(saved_weights)
+            mirrored_groups.clear()
+            mirrored_groups.update(saved_mirrors)
+            rebuild_grid()
+            refresh_layouts(saved_layout)
+
         def refresh_preview():
+            nonlocal current_state
             inc = checked_indices()
+            state = snapshot()
+            if current_state is not None and state != current_state:
+                undo_history.append(current_state)
+                redo_history.clear()
+                current_state = state
+            update_history_buttons()
             tiles = [
                 (pos, self._bucket[bi].local_path, self._bucket[bi].thumb_aspect)
                 for pos, bi in enumerate(display_order)
@@ -1801,12 +1896,13 @@ class TakeMode(QWidget):
                 for i, bi in enumerate(inc)
                 if weights_by_idx.get(bi, 0) != 0
             }
-            preview.set_mosaic(tiles, preset.currentData() or "asymmetric", weights=w_map)
+            preview.set_mosaic(tiles, preset.currentData() or "asymmetric", weights=w_map,
+                               mirrored_sections=mirror_positions(inc))
 
-        def refresh_layouts():
+        def refresh_layouts(selected=None):
             inc = checked_indices()
             count = len(inc)
-            previous = preset.currentData()
+            previous = selected if selected is not None else preset.currentData()
             preset.blockSignals(True)
             preset.clear()
             layouts_list = self._mosaic_layouts(count)
@@ -1906,46 +2002,27 @@ class TakeMode(QWidget):
             refresh_preview()
 
         def swap_preview_side(row):
-            included_rows = [
-                position for position, bucket_index in enumerate(display_order)
-                if bucket_index in checked_set
-            ]
-            if row not in included_rows or len(included_rows) < 2:
+            photos = checked_indices()
+            if not 0 <= row < len(display_order) or display_order[row] not in checked_set:
                 return
-            if len(included_rows) == 3 and preset.currentData() in ("one-left", "one-right"):
-                opposite = "one-right" if preset.currentData() == "one-left" else "one-left"
-                target_layout = preset.findData(opposite)
-                if target_layout >= 0:
-                    preset.setCurrentIndex(target_layout)
-                return
-            rects = {tile_row: rect for tile_row, rect in preview._rects}
-            source_rect = rects.get(row)
-            if source_rect is None:
-                return
-            source_x = source_rect.center().x()
-            target = max(
-                (candidate for candidate in included_rows if candidate != row),
-                key=lambda candidate: abs(rects[candidate].center().x() - source_x),
-            )
-            display_order[row], display_order[target] = display_order[target], display_order[row]
-            rebuild_grid()
-            refresh_preview()
+            position = photos.index(display_order[row])
+            for section in preview.computed_cells().get("sections", ()):
+                start, count = section["start"], section["count"]
+                if count > 1 and start <= position < start + count:
+                    mirrored_groups.symmetric_difference_update([tuple(photos[start:start + count])])
+                    refresh_preview()
+                    return
 
         def reverse_arrangement():
-            included_rows = [
-                position for position, bucket_index in enumerate(display_order)
-                if bucket_index in checked_set
+            photos = checked_indices()
+            groups = [
+                tuple(photos[section["start"]:section["start"] + section["count"]])
+                for section in preview.computed_cells().get("sections", ())
+                if section["count"] > 1
             ]
-            reversed_photos = [display_order[position] for position in reversed(included_rows)]
-            for position, bucket_index in zip(included_rows, reversed_photos):
-                display_order[position] = bucket_index
-            if len(included_rows) == 3 and preset.currentData() in ("one-left", "one-right"):
-                opposite = "one-right" if preset.currentData() == "one-left" else "one-left"
-                target_layout = preset.findData(opposite)
-                if target_layout >= 0:
-                    preset.setCurrentIndex(target_layout)
-            rebuild_grid()
-            refresh_preview()
+            if groups:
+                mirrored_groups.symmetric_difference_update(groups)
+                refresh_preview()
 
         def resize_preview_row(row, direction):
             if row < 0 or row >= len(display_order):
@@ -2114,6 +2191,7 @@ class TakeMode(QWidget):
         preview.sizeRequested.connect(resize_preview_row)
         preview.reverseRequested.connect(reverse_arrangement)
         preview.breakRequested.connect(break_clusters)
+        preview.selectionRequested.connect(select_all.setFocus)
         preview.clustersChanged.connect(cluster_status)
         break_all.clicked.connect(break_every_cluster)
 
@@ -2130,6 +2208,12 @@ class TakeMode(QWidget):
 
         up.clicked.connect(lambda: move(-1))
         down.clicked.connect(lambda: move(1))
+        undo.clicked.connect(lambda: restore_history(undo_history, redo_history))
+        redo.clicked.connect(lambda: restore_history(redo_history, undo_history))
+        QShortcut(QKeySequence(QKeySequence.Undo), dialog,
+                  activated=lambda: restore_history(undo_history, redo_history))
+        QShortcut(QKeySequence(QKeySequence.Redo), dialog,
+                  activated=lambda: restore_history(redo_history, undo_history))
         buttons = QDialogButtonBox(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
@@ -2154,6 +2238,8 @@ class TakeMode(QWidget):
             found = preset.findData(existing_layout)
             if found >= 0:
                 preset.setCurrentIndex(found)
+        current_state = snapshot()
+        update_history_buttons()
 
         if dialog.exec() != QDialog.Accepted:
             for bucket_index, state in rotation_originals.items():
@@ -2175,6 +2261,7 @@ class TakeMode(QWidget):
             for bi in display_order
             if bi in checked_set and weights_by_idx.get(bi, 0) != 0
         }
+        self._last_mosaic_mirrors = mirror_positions(checked_indices())
         return chosen, str(preset.currentData() or "asymmetric")
 
     def _add_photos(self):
@@ -3007,11 +3094,14 @@ class TakeMode(QWidget):
                     out.append(copied)
                 elif kind == "mosaic":
                     order = node.get("order") or []
-                    kept = [_remap_identity(x) for x in order if not _matches(x)]
+                    retained = [i for i, identity in enumerate(order) if not _matches(identity)]
+                    kept = [_remap_identity(order[i]) for i in retained]
                     if order and not kept:
                         continue
                     copied = dict(node)
                     copied["order"] = kept
+                    if copied.get("mirrors"):
+                        copied["mirrors"] = biggie.remap_mosaic_mirrors(copied["mirrors"], retained)
                     if copied.get("weights"):
                         copied["weights"] = {
                             str(_remap_identity(key)): weight
@@ -3037,7 +3127,6 @@ class TakeMode(QWidget):
         if getattr(self.body, "_biggie_on", False):
             self.body.biggie.from_blocks(cleaned)
         else:
-            from . import biggie
             self.body.editor.setPlainText(biggie.serialize_blocks(cleaned))
 
     def _remove_from_tray(self, indices=None, *, in_post_fn=None) -> bool:
@@ -3138,9 +3227,10 @@ class TakeMode(QWidget):
                         out["img_id"] = "bucket:%d" % (old_position - 1)
             elif kind == "mosaic" and out.get("order"):
                 order = []
+                retained = []
                 saved_weights = {str(key): weight for key, weight in (out.get("weights") or {}).items()}
                 weights = {}
-                for identity in out["order"]:
+                for index, identity in enumerate(out["order"]):
                     key = str(identity)
                     if key == asset_uuid:
                         continue
@@ -3150,11 +3240,14 @@ class TakeMode(QWidget):
                             continue
                         identity = old_position - 1 if old_position > position else old_position
                     order.append(identity)
+                    retained.append(index)
                     if key in saved_weights:
                         weights[str(identity)] = saved_weights[key]
                 if not order:
                     continue
                 out["order"] = order
+                if out.get("mirrors"):
+                    out["mirrors"] = biggie.remap_mosaic_mirrors(out["mirrors"], retained)
                 if "weights" in out:
                     out["weights"] = weights
             elif kind == "columns":

@@ -77,7 +77,7 @@ class MosaicBrowser(QWebEngineView):
         root = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).resolve().parents[1]
         return (root / 'assets' / 'coldsnap-mosaic-preview.js').read_text(encoding='utf-8')
 
-    def set_mosaic(self, tiles, layout, gap, weights, width):
+    def set_mosaic(self, tiles, layout, gap, weights, width, mirrored_sections=()):
         images = []
         for index, tile in enumerate(tiles, 1):
             source = Path(tile[1]).resolve()
@@ -97,7 +97,8 @@ class MosaicBrowser(QWebEngineView):
                 'weight': weights.get(str(index), 0),
             })
         self._revision += 1
-        self._pending = {'images': images, 'layout': layout, 'gap': gap, 'width': width}
+        self._pending = {'images': images, 'layout': layout, 'gap': gap, 'width': width,
+                         'mirroredSections': list(mirrored_sections)}
         if self._ready:
             self._render()
 
