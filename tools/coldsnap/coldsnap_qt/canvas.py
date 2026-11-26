@@ -62,7 +62,7 @@ KIND_LABELS = {"para": "Paragraph", "h2": "Heading", "h3": "Sub-heading",
                "quote": "Quote", "pullquote": "Pull quote", "raw": "Raw"}
 
 
-def add_mosaic_photo_actions(menu, position, count, blocks, cluster, dispatch):
+def add_mosaic_photo_actions(menu, position, count, blocks, cluster, additions, dispatch):
     """Use the same photo commands and labels in both mosaic editors."""
     can_mirror = any(block["count"] > 1 and block["start"] <= position < block["start"] + block["count"]
                      for block in blocks)
@@ -74,7 +74,8 @@ def add_mosaic_photo_actions(menu, position, count, blocks, cluster, dispatch):
         ("Make smaller", "size", -1, count > 1),
         ("Reverse arrangement", "reverse", 0, any(block["count"] > 1 for block in blocks)),
         ("Break up", "break", 0, bool(cluster)),
-        ("Include or exclude photos…", "selection", 0, True),
+        ("Include selected tray photos", "include", 0, bool(additions)),
+        ("Exclude this image", "exclude", 0, count > 1),
     ):
         action = menu.addAction(label)
         action.triggered.connect(lambda _checked=False, c=change, s=step: dispatch(c, s))
@@ -848,6 +849,7 @@ class BiggieCanvas(QTextEdit):
         self._inline_browser_cache = {}
         self._inline_mosaic_hits = {}
         self._inline_mosaic_sections = {}
+        self.mosaic_tray_additions = lambda _order: ()
         self._selected_obj_pos = None
         self._selected_block_pos = None
         self._block_close_rect = None
@@ -1903,19 +1905,7 @@ class BiggieCanvas(QTextEdit):
             menu.addSeparator()
             if kind == "mosaic":
                 point = self._unscale_point(event.pos()).toPoint()
-                tiles, buttons = self._inline_mosaic_hits.get(pos, ({}, []))
-                picked = next(((number, ident) for number, (ident, rect) in tiles.items()
-                               if rect.contains(point)), None)
-                if picked:
-                    number, identity = picked
-                    order = list(data.get('order') or range(1, len(self.bucket) + 1))
-                    index = next((i for i, item in enumerate(order) if str(item) == str(identity)), -1)
-                    blocks = self._inline_mosaic_sections.get(pos, ()) if len(tiles) == len(order) and index == number - 1 else ()
-                    cluster = next((group for _button, group in buttons if identity in group), ())
-                    add_mosaic_photo_actions(
-                        menu, index, len(order), blocks, cluster,
-                        lambda change, step: self._dispatch_inline_mosaic(hit, identity, change, step, blocks, cluster),
-                    )
+                if self._add_inline_photo_actions(menu, hit, point):
                     menu.addSeparator()
                 menu.addAction("Change this mosaic…", lambda: self._edit_mosaic(hit))
             elif kind == "image":
@@ -1939,10 +1929,43 @@ class BiggieCanvas(QTextEdit):
             menu.addAction(f"Remove this {KIND_OBJ.get(kind, kind)}", lambda: self._remove_object(pos))
         menu.exec(event.globalPos())
 
-    def _dispatch_inline_mosaic(self, hit, identity, change, step, blocks, cluster):
+    def _add_inline_photo_actions(self, menu, hit, point):
+        _kind, data, pos = hit
+        tiles, buttons = self._inline_mosaic_hits.get(pos, ({}, []))
+        picked = next(((number, ident) for number, (ident, rect) in tiles.items()
+                       if rect.contains(point)), None)
+        if not picked:
+            return False
+        number, identity = picked
+        order = list(data.get('order') or range(1, len(self.bucket) + 1))
+        index = next((i for i, item in enumerate(order) if str(item) == str(identity)), -1)
+        blocks = self._inline_mosaic_sections.get(pos, ()) if len(tiles) == len(order) and index == number - 1 else ()
+        cluster = next((group for _button, group in buttons if identity in group), ())
+        additions = self.mosaic_tray_additions(order)
+        add_mosaic_photo_actions(
+            menu, index, len(order), blocks, cluster, additions,
+            lambda change, step: self._dispatch_inline_mosaic(hit, identity, change, step, blocks, cluster, additions),
+        )
+        return True
+
+    def _dispatch_inline_mosaic(self, hit, identity, change, step, blocks, cluster, additions=()):
         _kind, original, pos = hit
-        if change == "selection":
-            self._edit_mosaic(hit)
+        if change in ("include", "exclude"):
+            data = dict(original)
+            order = list(data.get("order") or range(1, len(self.bucket) + 1))
+            if change == "include":
+                if not additions:
+                    return
+                data["order"] = order + list(additions)
+            else:
+                retained = [index for index, photo in enumerate(order) if str(photo) != str(identity)]
+                if not retained or len(retained) == len(order):
+                    return
+                data["order"] = [order[index] for index in retained]
+                data["mirrors"] = biggie.remap_mosaic_mirrors(data.get("mirrors") or (), retained)
+                data["weights"] = {key: weight for key, weight in (data.get("weights") or {}).items()
+                                   if str(key) != str(identity)}
+            self._insert_object("mosaic", data, replace_at=pos)
         elif change == "break":
             self._break_inline_cluster(pos, cluster)
         elif change in ("mirror", "reverse"):

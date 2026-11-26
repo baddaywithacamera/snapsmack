@@ -168,6 +168,16 @@ def test_post_body_mirror_is_undoable_and_survives_draft_serialization(monkeypat
         assert mode.body.authoring_blocks() == [original]
         canvas.redo()
         assert mode.body.authoring_blocks() == [mirrored]
+        hit = canvas._object_at(canvas.document().begin().position())
+        canvas._dispatch_inline_mosaic(hit, 1, "exclude", 0, (), ())
+        assert mode.body.authoring_blocks() == [{**original, "order": [2, 3, 4]}]
+        hit = canvas._object_at(canvas.document().begin().position())
+        canvas._dispatch_inline_mosaic(hit, 2, "include", 0, (), (), [1])
+        assert mode.body.authoring_blocks() == [{**original, "order": [2, 3, 4, 1]}]
+        canvas.undo()
+        assert mode.body.authoring_blocks() == [{**original, "order": [2, 3, 4]}]
+        canvas.undo()
+        assert mode.body.authoring_blocks() == [mirrored]
     finally:
         mode.close()
 
@@ -233,7 +243,8 @@ def test_preview_right_click_names_arrangement_actions(tmp_path):
         "Make smaller",
         "Reverse arrangement",
         "Break up",
-        "Include or exclude photos…",
+        "Include selected tray photos",
+        "Exclude this image",
     ]
     preview.close()
 

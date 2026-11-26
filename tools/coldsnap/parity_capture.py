@@ -24,7 +24,7 @@ def run(output_dir: str) -> int:
     from PySide6.QtCore import QTimer, Qt
     from PySide6.QtGui import QFont, QFontDatabase
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QPushButton, QSplitter
+    from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QMenu, QPushButton, QSplitter
 
     import sumna_offline as O
     from coldsnap_qt import biggie, theme
@@ -107,10 +107,12 @@ def run(output_dir: str) -> int:
         initial_order = dialog._mosaic_checked_indices()
         dialog._mosaic_move_preview(2, -1)
         moved_order = dialog._mosaic_checked_indices()
+        preview = dialog._mosaic_preview
+        wait_for(lambda: len(preview._rects) == len(moved_order))
         dialog._mosaic_reverse()
         reversed_order = dialog._mosaic_checked_indices()
-        before_side_swap = list(reversed_order)
-        wait_for(lambda: len(dialog._mosaic_preview._rects) == len(before_side_swap))
+        reverse_mirrors = preview._mirrored_sections
+        wait_for(lambda: len(preview._rects) == len(reversed_order))
         dialog._mosaic_swap_side(0)
         side_swapped_order = dialog._mosaic_checked_indices()
         captured.update({
@@ -121,9 +123,9 @@ def run(output_dir: str) -> int:
             "mosaic_move_controls": "Move earlier" in dialog_buttons and "Move later" in dialog_buttons,
             "mosaic_move_inside_arrangement": initial_order == [0, 1, 2, 3]
                 and moved_order == [0, 2, 1, 3],
-            "mosaic_reverse_arrangement": reversed_order == [3, 1, 2, 0],
-            "mosaic_swap_to_other_side": side_swapped_order != before_side_swap
-                and sorted(side_swapped_order) == sorted(before_side_swap),
+            "mosaic_reverse_arrangement": reversed_order == moved_order and bool(reverse_mirrors),
+            "mosaic_swap_to_other_side": side_swapped_order == moved_order
+                and preview._mirrored_sections != reverse_mirrors,
         })
         dialog.reject()
 
@@ -343,6 +345,44 @@ def run(output_dir: str) -> int:
                                              and splitter.widget(1).verticalScrollBar().maximum() > 0)
             dialog_proof["fits_preview"] = (preview.width() <= preview._fit_viewport.width()
                                              and preview.height() <= preview._fit_viewport.height())
+            # A tall lead in a mostly 3:2 quilt makes the exact 1 + 3 stack.
+            mirror_lead = fixture_dir / "quilt-mirror-01.jpg"
+            image = Image.new("RGB", (750, 900), (42, 67, 88))
+            ImageDraw.Draw(image).text((32, 32), "02", fill="white", font_size=150)
+            image.save(mirror_lead)
+            dialog_mode._bucket[0].local_path = str(mirror_lead)
+            preview.set_mosaic([(0, str(mirror_lead), ""), *preview._tiles[1:]],
+                               "asymmetric", weights=preview._weights)
+            if not wait_for(lambda: len(preview.computed_cells()["items"]) == 14):
+                return QDialog.Rejected
+            dialog_proof["mirror_base"] = preview.computed_cells()
+            dialog_proof["mirror_base_capture"] = dialog.grab().save(str(out / "12-dialog-quilt-original-stack.png"), "PNG")
+            photo_menu = preview._arrangement_menu(preview._rects[0][0])
+            labels = [action.text() for action in photo_menu.actions() if not action.isSeparator()]
+            dialog_proof["photo_menu"] = labels
+            photo_menu.popup(preview.mapToGlobal(preview._rects[0][1].center()))
+            app.processEvents()
+            dialog_proof["menu_capture"] = photo_menu.grab().save(str(out / "12-dialog-photo-menu.png"), "PNG")
+            photo_menu.hide()
+            next(action for action in photo_menu.actions()
+                 if action.text() == "Swap this image to the other side").trigger()
+            if not wait_for(lambda: len(preview.computed_cells()["items"]) == 14):
+                return QDialog.Rejected
+            dialog_proof["mirrored"] = preview.computed_cells()
+            dialog_proof["mirror_capture"] = dialog.grab().save(str(out / "13-dialog-quilt-mirrored.png"), "PNG")
+            controls = {button.text(): button for button in dialog.findChildren(QPushButton)}
+            controls["Undo"].click()
+            dialog_proof["undo"] = wait_for(lambda: preview.computed_cells() == dialog_proof["mirror_base"])
+            dialog_proof["undo_capture"] = dialog.grab().save(str(out / "14-dialog-quilt-undo.png"), "PNG")
+            controls["Redo"].click()
+            dialog_proof["redo"] = wait_for(lambda: preview.computed_cells() == dialog_proof["mirrored"])
+            controls["100%"].click()
+            dialog_proof["zoom_hit"] = preview._fit_scale == 1.0 and all(
+                preview._row_at(rect.center()) == row for row, rect in preview._rects)
+            dialog_proof["zoom_capture"] = dialog.grab().save(str(out / "15-dialog-quilt-zoom.png"), "PNG")
+            controls["Fit"].click()
+            dialog_proof["fit_hit"] = preview._fit_scale < 1.0 and all(
+                preview._row_at(rect.center()) == row for row, rect in preview._rects)
             buttons = dialog.findChild(QDialogButtonBox)
             QTest.mouseClick(buttons.button(QDialogButtonBox.Ok), Qt.LeftButton)
             return dialog.result()
@@ -355,11 +395,18 @@ def run(output_dir: str) -> int:
         result = dialog_mode._mosaic_dialog(list(range(14)), "asymmetric")
         dialog_proof["confirmed_order_and_layout"] = result
         dialog_proof["confirmed_weights"] = dict(getattr(dialog_mode, "_last_mosaic_weights", {}))
+        dialog_proof["confirmed_mirrors"] = list(getattr(dialog_mode, "_last_mosaic_mirrors", ()))
     finally:
         QDialog.exec = original_dialog_exec
         dialog_mode.close()
     quad_before = dialog_proof.get("before", {}).get("items", [])[:4]
     quad_after = dialog_proof.get("after", {}).get("items", [])[:4]
+    quilt_after = dialog_proof.get("mirror_base", {}).get("items", [])
+    quilt_mirrored = dialog_proof.get("mirrored", {}).get("items", [])
+
+    def same_photo_size_and_y(old, new):
+        return old["id"] == new["id"] and all(abs(old[field] - new[field]) < 0.04
+                                               for field in ("y", "width", "height"))
 
     def tile_area(tile):
         return tile["width"] * tile["height"]
@@ -381,7 +428,59 @@ def run(output_dir: str) -> int:
             and dialog_proof.get("confirmed_order_and_layout") == (list(range(1, 15)), "asymmetric")
             and [tile["id"] for tile in dialog_proof.get("after", {}).get("items", [])] == list(range(1, 15)),
         "long_dialog_captures": bool(dialog_proof.get("before_capture") and dialog_proof.get("after_capture")),
+        "long_dialog_mirrors_the_four_tile_group": len(quilt_after) == len(quilt_mirrored) == 14
+            and all(same_photo_size_and_y(old, new) for old, new in zip(quilt_after, quilt_mirrored))
+            and all(old["x"] != new["x"] for old, new in zip(quilt_after[:4], quilt_mirrored[:4]))
+            and quilt_after[4:] == quilt_mirrored[4:]
+            and len({round(tile["x"]) for tile in quilt_after[1:4]}) == 1
+            and len({round(tile["y"]) for tile in quilt_after[1:4]}) == 3
+            and len({round(tile["x"]) for tile in quilt_mirrored[1:4]}) == 1
+            and quilt_mirrored[0]["x"] > quilt_mirrored[1]["x"]
+            and dialog_proof.get("confirmed_mirrors") == ["0:4"],
+        "long_dialog_undo_redo_and_zoom": all(dialog_proof.get(key) for key in
+            ("undo", "redo", "zoom_hit", "fit_hit", "menu_capture", "mirror_base_capture",
+             "mirror_capture", "undo_capture", "zoom_capture")),
     })
+
+    post_canvas = BiggieCanvas()
+    post_canvas.setStyleSheet(theme.stylesheet())
+    post_canvas.set_preview_width(800)
+    post_canvas.resize(825, 800)
+    post_canvas.set_bucket([str(fixture_dir / "quilt-mirror-01.jpg"),
+                            *(str(fixture_dir / f"quilt-{index:02}.jpg") for index in range(2, 15))])
+    post_canvas.insert_mosaic(list(range(1, 15)), "asymmetric", weights={1: 1, 5: 1})
+    post_canvas.show()
+
+    def post_mosaic():
+        return next(((pos, tiles) for pos, (tiles, _badges) in post_canvas._inline_mosaic_hits.items()
+                     if len(tiles) == 14), (None, {}))
+
+    post_proof = {}
+    if wait_for(lambda: bool(post_mosaic()[1])):
+        position, tiles = post_mosaic()
+        point = tiles[1][1].center()
+        post_proof["before_capture"] = post_canvas.grab().save(str(out / "16-post-quilt-before.png"), "PNG")
+
+        menu = QMenu(post_canvas)
+        if post_canvas._add_inline_photo_actions(menu, post_canvas._object_at(position), point):
+            post_proof["menu_matches"] = [action.text() for action in menu.actions()] == dialog_proof.get("photo_menu")
+            menu.ensurePolished()
+            menu.resize(menu.sizeHint())
+            post_proof["menu_capture"] = menu.grab().save(str(out / "17-post-photo-menu.png"), "PNG")
+            next(action for action in menu.actions()
+                 if action.text() == "Swap this image to the other side").trigger()
+        mirrored = post_canvas._object_at(position)[1]
+        post_proof["stored"] = mirrored.get("mirrors") == ["0:4"]
+        if wait_for(lambda: bool(post_mosaic()[1]) and post_mosaic()[1][1][1].left() > point.x()):
+            post_proof["after_capture"] = post_canvas.grab().save(str(out / "18-post-quilt-mirrored.png"), "PNG")
+        post_canvas.undo()
+        post_proof["undo"] = not post_canvas._object_at(position)[1].get("mirrors")
+        post_canvas.redo()
+        post_proof["redo"] = post_canvas._object_at(position)[1].get("mirrors") == ["0:4"]
+    checks["post_body_photo_menu_mirror_and_undo"] = all(post_proof.get(key) for key in
+        ("menu_matches", "menu_capture", "before_capture", "after_capture", "stored", "undo", "redo"))
+    wait_for(lambda: all(not loader._pending for loader in post_canvas.findChildren(PhotoLoader)))
+    post_canvas.close()
 
     mode._remote_post_id = 42
     mode._remote_slug = "parity-gate"
@@ -397,6 +496,7 @@ def run(output_dir: str) -> int:
         "inline_break": inline,
         "inline_row_break": inline_row,
         "dialog_quilt": dialog_proof,
+        "post_quilt": post_proof,
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")

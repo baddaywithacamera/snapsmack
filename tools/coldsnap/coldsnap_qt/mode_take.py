@@ -69,7 +69,8 @@ class MosaicPreview(QWidget):
     sizeRequested = Signal(int, int)
     reverseRequested = Signal()
     breakRequested = Signal(object)
-    selectionRequested = Signal()
+    includeRequested = Signal()
+    excludeRequested = Signal(int)
     clustersChanged = Signal(int)
     zoomChanged = Signal(str)
 
@@ -93,6 +94,7 @@ class MosaicPreview(QWidget):
         self._zoom = None
         self._clusters = []
         self._cluster_widgets = []
+        self.tray_additions = lambda: ()
         self._browser = MosaicBrowser(self)
         self._browser.geometry_ready.connect(self._use_geometry)
         self._browser.failed.connect(self._show_error)
@@ -265,10 +267,11 @@ class MosaicPreview(QWidget):
             "mirror": lambda _step: self.sideSwapRequested.emit(row),
             "reverse": lambda _step: self.reverseRequested.emit(),
             "break": lambda _step: self.breakRequested.emit([cluster]),
-            "selection": lambda _step: self.selectionRequested.emit(),
+            "include": lambda _step: self.includeRequested.emit(),
+            "exclude": lambda _step: self.excludeRequested.emit(row),
         }
         add_mosaic_photo_actions(
-            menu, position, len(ordered_rows), self._cells.get("sections", ()), cluster,
+            menu, position, len(ordered_rows), self._cells.get("sections", ()), cluster, self.tray_additions(),
             lambda change, step: dispatch[change](step),
         )
         return menu
@@ -416,6 +419,7 @@ class TakeMode(QWidget):
         self.body = BodyEditor(allow_mosaic=True, simple_height=220)
         self.body.bar.hide()  # SHORTCODES live in the left rail (Slice 8)
         self.body.canvas.mosaicEditRequested.connect(self._canvas_mosaic)
+        self.body.canvas.mosaic_tray_additions = self._mosaic_tray_additions
         self.body.canvas.photographsDropped.connect(
             lambda paths: self._add_photo_paths(paths, insert=True))
         self.body.canvas.photographPasted.connect(self._paste_photo)
@@ -1498,6 +1502,14 @@ class TakeMode(QWidget):
             self.body.canvas.insert_mosaic(stable, layout_name, weights=stable_weights,
                                            mirrors=self._last_mosaic_mirrors)
 
+    def _mosaic_tray_additions(self, order):
+        positions = {str(photo.asset_uuid): index for index, photo in enumerate(self._bucket)}
+        current = {positions.get(str(photo), int(photo) - 1 if str(photo).isdigit() else -1)
+                   for photo in order}
+        used = self._mosaic_used_indices(current)
+        return tuple(self._bucket[index].asset_uuid for index in self.selected_tray_indices()
+                     if 0 <= index < len(self._bucket) and index not in current and index not in used)
+
     def _mosaic_used_indices(self, keep):
         """0-based bucket indices already spoken for by OTHER mosaics in this post.
 
@@ -1817,6 +1829,8 @@ class TakeMode(QWidget):
         layout.addLayout(arrows)
 
         checked_set = set(initial_checked)
+        preview.tray_additions = lambda: [bi for bi in self.selected_tray_indices()
+                                          if bi in display_order and bi not in checked_set]
         pending_w = getattr(self, "_pending_mosaic_weights", None) or {}
         self._pending_mosaic_weights = {}
         weights_by_idx = {
@@ -1836,7 +1850,7 @@ class TakeMode(QWidget):
         current_state = None
         active_bucket_idx = [display_order[0] if display_order else None]
         tiles_by_idx = {}
-        constraint = {"previous": None, "attempts": 0, "keep_partial": False}
+        constraint = {"previous": None, "attempts": 0, "keep_partial": False, "history_recorded": False}
         focus_after_resize = [None]
 
         def checked_indices():
@@ -1882,8 +1896,11 @@ class TakeMode(QWidget):
             inc = checked_indices()
             state = snapshot()
             if current_state is not None and state != current_state:
-                undo_history.append(current_state)
-                redo_history.clear()
+                if constraint["previous"] is None or not constraint["history_recorded"]:
+                    undo_history.append(current_state)
+                    redo_history.clear()
+                    if constraint["previous"] is not None:
+                        constraint["history_recorded"] = True
                 current_state = state
             update_history_buttons()
             tiles = [
@@ -1975,6 +1992,17 @@ class TakeMode(QWidget):
                 checked_set.clear()
             rebuild_grid()
             refresh_layouts()
+
+        def include_tray_photos():
+            checked_set.update(preview.tray_additions())
+            rebuild_grid()
+            refresh_layouts()
+
+        def exclude_preview_photo(row):
+            if len(checked_set) > 1:
+                checked_set.discard(display_order[row])
+                rebuild_grid()
+                refresh_layouts()
 
         def swap_rows(first, second):
             if first == second or first < 0 or second < 0:
@@ -2095,6 +2123,7 @@ class TakeMode(QWidget):
             constraint["previous"] = (list(display_order), dict(weights_by_idx), previous_layout)
             constraint["attempts"] = 0
             constraint["keep_partial"] = keep_partial
+            constraint["history_recorded"] = False
 
         def break_every_cluster():
             constrain_layout(preset.currentData(), keep_partial=True)
@@ -2191,7 +2220,8 @@ class TakeMode(QWidget):
         preview.sizeRequested.connect(resize_preview_row)
         preview.reverseRequested.connect(reverse_arrangement)
         preview.breakRequested.connect(break_clusters)
-        preview.selectionRequested.connect(select_all.setFocus)
+        preview.includeRequested.connect(include_tray_photos)
+        preview.excludeRequested.connect(exclude_preview_photo)
         preview.clustersChanged.connect(cluster_status)
         break_all.clicked.connect(break_every_cluster)
 
