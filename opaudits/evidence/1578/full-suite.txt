@@ -1,0 +1,14 @@
+SS-1578 search-as-a-menu-item — full PHP suite
+run at: 2026-11-25T22:19:50Z
+branch: claude/ss1578-menu-search-item @ d2c4a58e
+base:   v0.7.1004D (60515665)
+
+PASS=495 FAIL=1 of 496
+failing: agreed-rules-gate.php
+
+THE ONE FAILURE IS THE VERSION, NOT THE CODE. The gate refuses because
+the source declares 0.7.1004D while HEAD is past that tag, and
+v0.7.1004D is PUBLISHED on origin so it must never move. Any branch cut
+off the tag fails this until 0.7.1005D is opened on dev. Before the
+strength record was adopted it was 492 of 494 with that gate plus the
+new-test-file entry; adopting the entry cleared the second.

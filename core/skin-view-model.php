@@ -351,21 +351,36 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
         $type = (string)($item['type'] ?? 'custom');
         $label = (string)($item['label'] ?? '');
         $url = (string)($item['url'] ?? '');
+        // THESE THREE PATTERNS WERE INVALID AND HAD NEVER MATCHED ANYTHING.
+        //
+        // They used # as the delimiter AND contained [?#], so the character
+        // class closed the pattern early: preg_match returned false with
+        // "Internal error" and emitted a PHP warning for EVERY custom menu
+        // item on every page render. Found by driving this resolver for
+        // SS-1578 rather than by reading it -- the warnings appeared the
+        // moment a test passed a custom link through.
+        //
+        // So the rewrite described below has never happened: a site whose
+        // saved menu still stores blogroll.php, archive.php or albums.php as
+        // a custom URL kept the dead endpoint. The delimiter is now ~ and the
+        // inner # is escaped; the pattern itself is unchanged, so this
+        // restores the intended behaviour rather than adding any.
+        //
         // Existing owner menus may predate the strict SMACKTALK controller and
         // still store the old public PHP endpoint as a custom URL. Keep the
         // owner's label/order but route that known CMS destination through the
         // bounded controller just like a newly-created Blogroll item.
         if ($strict_controller && $type === 'custom'
-            && preg_match('#(?:^|/)blogroll\.php(?:[?#].*)?$#i', trim($url))) {
+            && preg_match('~(?:^|/)blogroll\.php(?:[?\#].*)?$~i', trim($url))) {
             $type = 'blogroll';
         }
         if ($type === 'blogroll' && !$blogroll_enabled) return null;
         if ($strict_controller && $type === 'custom'
-            && preg_match('#(?:^|/)archive\.php(?:[?#].*)?$#i', trim($url))) {
+            && preg_match('~(?:^|/)archive\.php(?:[?\#].*)?$~i', trim($url))) {
             $type = 'image_archive';
         }
         if ($strict_controller && $type === 'custom'
-            && preg_match('#(?:^|/)albums\.php(?:[?#].*)?$#i', trim($url))) {
+            && preg_match('~(?:^|/)albums\.php(?:[?\#].*)?$~i', trim($url))) {
             $type = 'albums';
         }
         // A GRAMOFSMACK landing page is already its complete chronological
@@ -374,6 +389,32 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
         if ($is_carousel && in_array($type, ['archive', 'image_archive'], true)) return null;
         switch ($type) {
             case 'container': $url = ''; break;
+            // SS-1578: SEARCH AS A MENU ITEM.
+            //
+            // The last of the five WordPress menu capabilities Sean needs for
+            // mccormickphotography. The other four already work -- nested
+            // dropdowns, label-only containers, custom links and page links --
+            // and I verified that by driving this resolver rather than by
+            // reading the renderer, which is how I got it wrong the first time.
+            //
+            // WHAT WAS ACTUALLY MISSING was the TYPE. There is no way for the
+            // owner to put a search box in the menu on any skin. TILEZ appears
+            // to have one, but it is hand-rolled in that skin's own
+            // tilez-icon-nav block as a <details> disclosure -- a workaround in
+            // one layout, not a capability. Measured on the live nav at
+            // baddaywithacamera.ca: six flat page links in ul.main-menu and no
+            // form inside it.
+            //
+            // The url here is the FORM ACTION, resolved exactly as
+            // image_archive resolves it, because the archive is where a search
+            // lands and the alias a site has chosen must be honoured. The
+            // renderer prints a form rather than a link; see the 'search' arm
+            // of snap_render_navigation_tree().
+            case 'search':
+                $url = $strict_controller
+                    ? snapsmack_public_route_url($base, $route_aliases, 'archive', 'archive')
+                    : $base . 'archive.php';
+                break;
             case 'home': $url = $base; break;
             case 'archive':
                 $url = $strict_smacktalk
@@ -426,12 +467,25 @@ function snapsmack_prepare_skin_navigation(PDO $pdo, array $settings, array $man
             $resolved = $resolve($child);
             if ($resolved !== null) $children[] = $resolved;
         }
-        return [
+        $resolved = [
             'label' => (string)($item['label'] ?? ''),
             'url' => $url,
             'target' => (($item['target'] ?? '') === '_blank') ? '_blank' : '',
             'children' => $children,
         ];
+        // 'kind' IS CARRIED ONLY FOR SEARCH, so every other item's shape is
+        // byte-for-byte what it was. A skin that does not read a new key
+        // cannot be changed by one -- the same reasoning the response
+        // allowlist records -- but a search item needs the renderer to print
+        // a form instead of a link, and the renderer must not have to guess
+        // that from a url it shares with the Archive item.
+        if ($type === 'search') {
+            $resolved['kind'] = 'search';
+            // The placeholder is the owner's label when they set one, so a
+            // menu reading SEARCH PHOTOGRAPHS says that inside the box too.
+            $resolved['label'] = $resolved['label'] !== '' ? $resolved['label'] : 'Search';
+        }
+        return $resolved;
     };
 
     $out = [];

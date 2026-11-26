@@ -247,6 +247,18 @@ include 'core/sidebar.php';
                             <button type="button" id="add-container-btn" class="btn-smack">Add Container</button>
                         </div>
                     </div>
+                    <!-- SS-1578. The last of the five menu capabilities: a
+                         search box as a menu item. The label is used for the
+                         placeholder and for the screen-reader text, so an
+                         owner who types SEARCH PHOTOGRAPHS gets that inside
+                         the box as well as on the item. -->
+                    <div class="menu-pool-section">
+                        <div class="menu-pool-section-label">Search Box <span class="dim">(a search field in the menu)</span></div>
+                        <div class="menu-custom-link-form">
+                            <input type="text" id="search-label" placeholder="Label e.g. SEARCH" maxlength="60">
+                            <button type="button" id="add-search-btn" class="btn-smack">Add Search</button>
+                        </div>
+                    </div>
                     <?php if (!empty($album_items)): ?>
                     <div class="menu-pool-section">
                         <div class="menu-pool-section-label">Albums</div>

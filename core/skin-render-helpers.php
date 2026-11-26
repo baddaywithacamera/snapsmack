@@ -253,9 +253,70 @@ function snap_render_navigation_tree(array $items, int $depth = 0): string {
         if ($hasChildren) $classes[] = 'nav-has-children';
         if (!empty($item['current'])) $classes[] = 'current-menu-item';
         if (!empty($item['current_ancestor'])) $classes[] = 'current-menu-ancestor';
-        $html .= '<li' . ($classes !== [] ? ' class="' . implode(' ', $classes) . '"' : '') . '>';
         $label = snap_escape_html($item['label'] ?? $item['title'] ?? '');
         $url = (string)($item['url'] ?? '');
+
+        // SS-1578: A SEARCH ITEM IS A FORM, NOT A LINK.
+        //
+        // The shape is taken from what Sean's old site actually emits, read
+        // off old.mccormickphotography.com rather than invented: a menu <li>
+        // carrying a GET form, a type=search input, and a submit button whose
+        // only visible content is a magnifier with screen-reader text beside
+        // it. That is the acceptance reference for this ticket.
+        //
+        //   <li class="header-search">
+        //     <form method="get" class="search-form" action="...">
+        //       <input type="search" class="search-field" name="s" ...>
+        //       <button type="submit" class="search-button">
+        //         <span class="screen-reader-text">Search</span> ...
+        //
+        // TWO DELIBERATE DIFFERENCES. The parameter is `q`, not WordPress's
+        // `s`, because that is the name this CMS answers on -- the archive
+        // reads ?q= and TILEZ's own hand-rolled search box already posts q.
+        // Using `s` would render a box that searched nothing. And the icon is
+        // an inline SVG rather than a Font Awesome <div class="fa">, because
+        // this product does not load Font Awesome and an empty div would be an
+        // invisible button.
+        //
+        // The class names match the old site so a skin that wants to style it
+        // has the selectors it expects; .header-search and .search-form are
+        // what its stylesheet reaches for.
+        if ((string)($item['kind'] ?? '') === 'search') {
+            $action = snap_escape_url($url);
+            $classes[] = 'header-search';
+            // THE LABEL WRAPS THE INPUT, so there is no id to collide.
+            //
+            // Codex's finding, and he was right: my first version used
+            // for="snap-menu-search" with a matching id, and THREE skins
+            // render this component twice -- alfred, telegram and tilez all
+            // emit a desktop menu and a collapsed one from the same items. So
+            // the page carried two inputs with one id, which is invalid, and
+            // the label bound to whichever came first: the second search box
+            // had no working label at all. He reported it on ALFRED; it was
+            // never only ALFRED.
+            //
+            // A WRAPPING LABEL NEEDS NO ID. That removes the uniqueness
+            // requirement rather than working around it with a counter, which
+            // would have had to stay unique across two render passes and
+            // every future skin that renders the tree a third time. The
+            // visible text stays in a screen-reader span inside the label, so
+            // what a screen reader announces is unchanged.
+            $html .= '<li class="' . implode(' ', $classes) . '">'
+                . '<form method="get" class="search-form" action="' . $action . '" role="search">'
+                . '<label class="search-label">'
+                . '<span class="screen-reader-text">' . $label . '</span>'
+                . '<input type="search" class="search-field" name="q"'
+                . ' placeholder="' . snap_escape_attr($item['label'] ?? 'Search') . '">'
+                . '</label>'
+                . '<button type="submit" class="search-button">'
+                . '<span class="screen-reader-text">' . $label . '</span>'
+                . '<svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+                . '<circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>'
+                . '</button></form></li>';
+            continue;
+        }
+
+        $html .= '<li' . ($classes !== [] ? ' class="' . implode(' ', $classes) . '"' : '') . '>';
         // "page", and only on the current item: an ancestor is a branch you are
         // inside, not the location, and two aria-current values in one menu
         // announce two current pages.

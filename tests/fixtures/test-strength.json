@@ -1473,6 +1473,15 @@
             600
         ]
     },
+    "menu-search-item-regression.php": {
+        "assertions": 35,
+        "predicates": 31,
+        "thresholds": [
+            2,
+            2,
+            5
+        ]
+    },
     "menu-separator-contract-regression.php": {
         "assertions": 11,
         "predicates": 16,
@@ -1536,8 +1545,8 @@
         "thresholds": []
     },
     "mosaic-gallery-columns-regression.php": {
-        "assertions": 6,
-        "predicates": 7,
+        "assertions": 9,
+        "predicates": 12,
         "thresholds": []
     },
     "mosaic-shuffle-render-regression.php": {
@@ -2497,14 +2506,14 @@
     },
     "skin-package-upload-regression.php": {
         "assertions": 16,
-        "predicates": 15,
+        "predicates": 16,
         "thresholds": [
             2
         ]
     },
     "skin-packager-illegal-skin-regression.php": {
-        "assertions": 5,
-        "predicates": 4,
+        "assertions": 9,
+        "predicates": 5,
         "thresholds": []
     },
     "skin-parity-ledger-regression.php": {

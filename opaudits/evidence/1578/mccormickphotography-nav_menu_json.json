@@ -1,0 +1,139 @@
+[
+  {
+    "type": "home",
+    "label": "HOME",
+    "children": []
+  },
+  {
+    "type": "container",
+    "label": "ABOUT SÉAN",
+    "children": [
+      {
+        "type": "page",
+        "label": "ABOUT SÉAN",
+        "slug": "about-sean",
+        "children": []
+      },
+      {
+        "type": "custom",
+        "label": "ARTIST’S STATEMENT",
+        "url": "/2023/02/17/artists-statement",
+        "children": [],
+        "_note": "dated WordPress permalink, not a page slug; needs the real destination on the new site"
+      }
+    ]
+  },
+  {
+    "type": "container",
+    "label": "PORTFOLIO",
+    "children": [
+      {
+        "type": "page",
+        "label": "FLICKR PHOTOSTREAM",
+        "slug": "flickr",
+        "children": []
+      },
+      {
+        "type": "container",
+        "label": "PEOPLE",
+        "children": [
+          {
+            "type": "page",
+            "label": "ENGAGEMENT SHOOT",
+            "slug": "portfolio-engagement-shoot",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "GRAD SHOOT",
+            "slug": "portfolio-grad-shoot",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "HIGH SCHOOL SPORTS",
+            "slug": "portfolio-high-school-sports",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "WEDDING SHOOT",
+            "slug": "portfolio-wedding-shoot",
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "container",
+        "label": "FINE ART",
+        "children": [
+          {
+            "type": "page",
+            "label": "ALBERTA SKIES",
+            "slug": "portfolio-alberta-skies",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "AROUND TOWN",
+            "slug": "portfolio-around-town",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "CARS, TRUCKS, & TRACTORS",
+            "slug": "portfolio-cars-trucks-and-tractors",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "LANDSCAPES",
+            "slug": "portfolio-landscapes",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "OLD AND ABANDONED",
+            "slug": "portfolio-old-and-abandoned",
+            "children": []
+          },
+          {
+            "type": "page",
+            "label": "PANORAMIC IMAGES",
+            "slug": "portfolio-panoramic-images",
+            "children": []
+          }
+        ]
+      },
+      {
+        "type": "page",
+        "label": "SEAN’S SELECTIONS",
+        "slug": "portfolio-seans-selections",
+        "children": []
+      }
+    ]
+  },
+  {
+    "type": "custom",
+    "label": "BLOG",
+    "url": "/category/blog",
+    "children": [],
+    "_note": "WordPress taxonomy; needs a SnapSmack album or category id"
+  },
+  {
+    "type": "page",
+    "label": "LINKS",
+    "slug": "links",
+    "children": []
+  },
+  {
+    "type": "page",
+    "label": "CONTACT",
+    "slug": "contact",
+    "children": []
+  },
+  {
+    "type": "search",
+    "label": "SEARCH"
+  }
+]
