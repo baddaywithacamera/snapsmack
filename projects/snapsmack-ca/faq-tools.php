@@ -41,7 +41,7 @@ $faq_qas = <<<'HTML'
 
             <div class="qa" id="q-tools-ai-record">
                 <h3>Can I turn off the AI edit record in SNAP SLAPPER?</h3>
-                <p>No. Generative Fill, Generative Expand, AI Heal, and whole-image restoration are all written into the exported file&rsquo;s metadata &mdash; tool, purpose, region, how much of the frame, provider and model, the instruction sent, and when. There is no setting that disables it and none is coming. If you want to hide that a generative model touched a photograph, you will need a third-party tool to strip the metadata, and that is your decision to make in your software, not something ours will do for you. We&rsquo;re not driving your getaway car if you rob the pixel bank. Ordinary corrections &mdash; crop, levels, colour, sharpening, a non-generative clone &mdash; are recorded as ordinary edits and carry no AI flag.</p>
+                <p>No. Generative Fill, AI Heal, and whole-image restoration are all written into the exported file&rsquo;s metadata &mdash; tool, purpose, region, how much of the frame, provider and model, the instruction sent, and when. There is no setting that disables it and none is coming. If you want to hide that a generative model touched a photograph, you will need a third-party tool to strip the metadata, and that is your decision to make in your software, not something ours will do for you. We&rsquo;re not driving your getaway car if you rob the pixel bank. Ordinary corrections &mdash; crop, levels, colour, sharpening, a non-generative clone &mdash; are recorded as ordinary edits and carry no AI flag.</p>
             </div>
             <div class="qa" id="q-tools-ai">
                 <h3>The AI enrichment &mdash; whose key, whose data?</h3>
