@@ -244,7 +244,7 @@ $page_css = <<<'CSS'
 .desktop-tools-copy { font-size: 1rem; line-height: 1.65; }
 .desktop-tools-copy p + p { margin-top: 20px; }
 .desktop-tools-quote { display: inline-block; margin: 24px 0; padding: 10px 14px; border-left: 3px solid var(--red); color: #d0d0d0; background: #000; font: italic .82rem/1.4 Georgia, serif; }
-.desktop-tools-quote cite { margin-inline-start: .65em; color: #ff3838; font-style: normal; font-weight: 700; }
+.desktop-tools-quote cite { color: #ff3838; font-style: normal; font-weight: normal; }
 .desktop-tools-platform { display: inline-block; margin-top: 24px; padding: 8px 12px; color: var(--black); background: var(--white); font: 900 .72rem/1 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
 .desktop-tools-shot { margin: 0; }
 .desktop-tools-shot button { display: block; width: 100%; padding: 0; border: 3px solid var(--white); background: var(--black); cursor: zoom-in; }
@@ -528,7 +528,7 @@ require_once __DIR__ . '/includes/header.php';
             <div class="desktop-tools-lead">
                 <div class="desktop-tools-copy">
                     <p>Most software lives in a browser now. Ask yourself who that suits. It isn't you. A browser app is cheaper to build, cheaper to run, and it bills monthly. When the company behind it changes its mind, gets bought, or shuts the doors, your work is locked inside a building you don't own, on a computer you can't touch.</p>
-                    <blockquote class="desktop-tools-quote">&ldquo;This is some bullshit!&rdquo; <cite>Harry Vanderspeigle</cite></blockquote>
+                    <blockquote class="desktop-tools-quote">&ldquo;This is some bullshit!&rdquo; ~ <cite>Harry Vanderspeigle</cite></blockquote>
                     <p>SNAPSMACK does it the other way round. The website stays light. It's a publishing engine, not a gymnasium. The heavy lifting happens on your own computer, with tools that work offline, on files that never pass through anyone's cloud to reach your own site. When SMACK YOUR BATCH UP publishes a shoot, the resizing happens on your machine, before anything uploads. Your server never breaks a sweat, and neither does your wallet: there is no per-seat fee, no subscription, and no landlord.</p>
                     <span class="desktop-tools-platform">Platform: Windows</span>
                 </div>
