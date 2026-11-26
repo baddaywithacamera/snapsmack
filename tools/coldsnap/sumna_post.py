@@ -807,7 +807,9 @@ class GramPoster:
 # (same _upload_ready as solo/gram); the photographer's original is never modified.
 
 class SmacktalkPoster:
-    def __init__(self, base_url: str, smackpress_key: str, site_data=None, session=None):
+    def __init__(self, base_url: str, smackpress_key: str, site_data=None, session=None,
+                 *, signature_image_id=0):
+        self.signature_image_id = signature_image_id
         self.base_url = (base_url or "").rstrip("/")
         self.key = (smackpress_key or "").strip()
         self.session = session or requests.Session()
@@ -884,7 +886,10 @@ class SmacktalkPoster:
         }
         signature_ids = [image_ids[n] for n, image in enumerate(draft.images)
                          if n < len(image_ids) and getattr(image, "is_signature", False)]
-        payload["signature_image_id"] = int(signature_ids[0]) if signature_ids else 0
+        if not draft.signature_enabled:
+            payload["signature_image_id"] = 0
+        elif signature_ids or self.signature_image_id or not draft.remote_post_id:
+            payload["signature_image_id"] = int(signature_ids[0]) if signature_ids else self.signature_image_id
         if draft.post_date:
             payload["date"] = draft.post_date
         # An imported post keeps its old URL slug (SMACKPRESS / BLOGGER FLOGGER);

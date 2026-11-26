@@ -28,11 +28,12 @@ from PySide6.QtWidgets import (
     QComboBox, QPushButton, QFileDialog, QMessageBox, QProgressDialog, QScrollArea, QFrame,
     QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QAbstractItemView,
     QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider, QDateEdit,
-    QMenu,
+    QMenu, QCheckBox, QInputDialog,
 )
 
 import sumna_offline as O
 import snap_library
+from snap_home import site_key
 from sumna_post import AuthorizationExpiredError, SmacktalkPoster
 
 from . import theme, biggie
@@ -486,6 +487,16 @@ class TakeMode(QWidget):
         card_col.addWidget(colophon_label)
         card_col.addWidget(self.colophon_edit)
 
+        signature_row = QHBoxLayout()
+        self.signature_check = QCheckBox("Include blog signature")
+        self.signature_check.setChecked(True)
+        signature_row.addWidget(self.signature_check)
+        signature_settings = QPushButton("Blog signature…")
+        signature_settings.clicked.connect(self._configure_signature)
+        signature_row.addWidget(signature_settings)
+        signature_row.addStretch()
+        card_col.addLayout(signature_row)
+
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
@@ -804,6 +815,7 @@ class TakeMode(QWidget):
         self.body.canvas.cursorPositionChanged.connect(self._update_page_chrome)
         self.title_edit.textChanged.connect(self._changed)
         self.colophon_edit.textChanged.connect(self._changed)
+        self.signature_check.toggled.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
         self._update_page_chrome()
         QTimer.singleShot(0, self._recover_last_draft)
@@ -4043,6 +4055,7 @@ class TakeMode(QWidget):
         self._remote_slug = str(getattr(draft, "slug", "") or "")
         self.title_edit.setText(draft.title)
         self.colophon_edit.setText(draft.colophon)
+        self.signature_check.setChecked(draft.signature_enabled)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
         self._bucket = [O.DraftImage(local_path=im.local_path, filename=im.filename,
@@ -4078,6 +4091,7 @@ class TakeMode(QWidget):
         self._remote_slug = ""
         self.title_edit.clear()
         self.colophon_edit.clear()
+        self.signature_check.setChecked(True)
         self.tags_edit.clear()
         self.status_combo.setCurrentText("published")
         self.body.clear()
@@ -4140,6 +4154,7 @@ class TakeMode(QWidget):
             draft.slug = str(self._remote_slug)
         draft.title = self.title_edit.text().strip()
         draft.colophon = self.colophon_edit.text().strip()
+        draft.signature_enabled = self.signature_check.isChecked()
         draft.tags = self.tags_edit.text().strip()
         if authored is None:
             authored = self.body.authoring_blocks()
@@ -4327,6 +4342,23 @@ class TakeMode(QWidget):
         self.rail.refresh_batches()
 
     # -- network -------------------------------------------------------------
+    def _signature_default(self, url):
+        return self._view_settings.value(f"take/signatures/{site_key(url)}", 0, type=int)
+
+    def _configure_signature(self):
+        url = str((self.app_config() or {}).get("url") or "").strip()
+        if not url:
+            QMessageBox.warning(self, "No site", "Pick a site at the top first.")
+            return
+        host = site_key(url)
+        value, accepted = QInputDialog.getInt(
+            self, f"Blog signature for {host}",
+            "CMS image ID for the signature (0 clears the default)",
+            self._signature_default(url), 0, 2147483647,
+        )
+        if accepted:
+            self._view_settings.setValue(f"take/signatures/{host}", value)
+
     def _poster_and_url(self):
         cfg = self.app_config() or {}
         url = (cfg.get("url") or "").strip()
@@ -4351,6 +4383,6 @@ class TakeMode(QWidget):
             return None, url
         if not verify_site_mode(self, conn, "smacktalk", "TAKE"):
             return None, url
-        return SmacktalkPoster(url, key, site_data=None), url
+        return SmacktalkPoster(url, key, signature_image_id=self._signature_default(url)), url
 
 # ===== SNAPSMACK EOF =====

@@ -210,6 +210,45 @@ def take_composer_checks(mode, files, *, check_renderer=False):
         mode.body._set_biggie(True)
         rebuilt = mode._build_draft(session)
         results["draft_roundtrip"] = rebuilt.colophon == draft.colophon and rebuilt.caption == draft.caption
+        captioned = SmacktalkPoster("https://example.test", "fixture")._resolve_bucket_images(
+            rebuilt.caption + "\n\n[img:12|full|center|caption=Caption proof]", [12],
+        )
+        results["captioned_post_keeps_clickable_link"] = (
+            '<a href="https://example.test/0?one=1&amp;two=2"' in captioned
+            and "&lt;a href" not in captioned
+            and "<figcaption>Caption proof</figcaption>" in captioned
+        )
+
+        from coldsnap_qt import connect_panel, mode_take
+        with ExitStack() as stack:
+            stack.enter_context(_replace_for_fixture(
+                mode, "app_config", lambda: {"url": "https://example.test", "smackpress_key": "fixture"},
+            ))
+            stack.enter_context(_replace_for_fixture(
+                mode_take.QInputDialog, "getInt", lambda *args: (413, True),
+            ))
+            stack.enter_context(_replace_for_fixture(
+                connect_panel, "verify_site_mode", lambda *args: True,
+            ))
+            mode._configure_signature()
+            poster, _ = mode._poster_and_url()
+            results["signature_control_visible"] = mode.signature_check.isVisible()
+            results["signature_default_is_site_specific"] = (
+                mode._signature_default("https://example.test/") == 413
+                and mode._signature_default("https://elsewhere.test") == 0
+            )
+            signed = poster.build_payload(rebuilt, [1], 1)
+            results["signature_reuses_existing_gallery_id"] = (
+                signed.get("signature_image_id") == 413 and signed["bucket_image_ids"] == [1]
+            )
+            mode.signature_check.setChecked(False)
+            opted_out = O.Draft.from_dict(mode._build_draft(session).to_dict())
+            results["signature_opt_out_survives_save"] = (
+                not opted_out.signature_enabled
+                and poster.build_payload(opted_out, [1], 1).get("signature_image_id") == 0
+            )
+            mode.signature_check.setChecked(True)
+
         from PySide6.QtWidgets import QMessageBox
 
         errors = []

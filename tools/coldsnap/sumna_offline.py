@@ -227,6 +227,7 @@ class Draft:
     title:      str = ""
     caption:    str = ""                  # body / description — ALWAYS the synced truth
     colophon:   str = ""                  # optional post-production/equipment note
+    signature_enabled: bool = True       # an essay can opt out of its blog signature
     body_blocks: str = ""                 # BIGGIE authoring blocks (JSON array); caption
                                           # is recomputed from these on every save, so a
                                           # BIGGIE-off build always reads a correct body
