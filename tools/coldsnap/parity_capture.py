@@ -41,7 +41,7 @@ def isolated_settings(directory):
 
 def take_composer_checks(mode, files):
     """Exercise the real composer controls against a disposable queued post."""
-    from PySide6.QtCore import QPoint, QPointF, QTimer, Qt
+    from PySide6.QtCore import QPoint, QPointF, Qt
     from PySide6.QtGui import QDragEnterEvent, QDropEvent, QMouseEvent
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu
@@ -51,8 +51,10 @@ def take_composer_checks(mode, files):
     from sumna_post import SmacktalkPoster
 
     app = QApplication.instance()
+    mode._clear()
     mode.body._set_biggie(True)
     mode._add_photo_paths(files, insert=False)
+    mode.photos_tray.set_open(True)
     mode.title_edit.setText("Composer proof")
     mode.colophon_edit.setText("Made with a 50 mm lens.")
     mode._toggle_post_details(False)
@@ -128,17 +130,17 @@ def take_composer_checks(mode, files):
     tile = mode.bucket_col.itemAt(0).widget()
 
     def menu_action(tile, label):
-        def select():
-            menu = app.activePopupWidget()
-            if isinstance(menu, QMenu):
-                action = next(action for action in menu.actions() if label in action.text())
-                QTest.mouseClick(menu, Qt.LeftButton, pos=menu.actionGeometry(action).center())
-                menu.close()
-
+        from PySide6 import QtWidgets
         from PySide6.QtGui import QContextMenuEvent
+
+        class ChooseAction(QMenu):
+            def exec(self, *args):
+                return next(action for action in self.actions()
+                            if label in action.text() and action.isEnabled())
+
         point = tile.rect().center()
-        QTimer.singleShot(0, select)
-        tile.contextMenuEvent(QContextMenuEvent(QContextMenuEvent.Mouse, point, tile.mapToGlobal(point)))
+        with _replace_for_fixture(QtWidgets, "QMenu", ChooseAction):
+            tile.contextMenuEvent(QContextMenuEvent(QContextMenuEvent.Mouse, point, tile.mapToGlobal(point)))
 
     featured_index = tile._index
     mode._set_featured_photo((featured_index + 1) % len(mode._bucket))
@@ -148,12 +150,15 @@ def take_composer_checks(mode, files):
     tile = mode.bucket_col.itemAt(0).widget()
     from PySide6.QtWidgets import QMessageBox
     removed = mode._bucket[tile._index]
+    removed_indices = []
+    tile.removeRequested.connect(removed_indices.append)
     with _replace_for_fixture(QMessageBox, "question", lambda *args: QMessageBox.Yes):
         menu_action(tile, "Remove from tray")
-    results["tray_remove"] = (
-        len(mode._bucket) == 5 and all(photo.asset_uuid != removed.asset_uuid for photo in mode._bucket)
-        and Path(removed.local_path).is_file()
-    )
+    results["tray_remove_action_emitted"] = len(removed_indices) == 1
+    results["tray_remove_single_entry"] = len(mode._bucket) == 5
+    results["tray_remove_correct_photo"] = all(photo.asset_uuid != removed.asset_uuid for photo in mode._bucket)
+    results["tray_remove_original_preserved"] = Path(removed.local_path).is_file()
+
 
     suffixes = ("", ' target="_blank" rel="noopener"', ' rel="nofollow"',
                 ' target="_blank" rel="noopener nofollow"')
@@ -201,6 +206,7 @@ def run(output_dir: str) -> int:
     from PySide6.QtWidgets import QApplication
     from shiboken6 import delete, isValid
 
+    from coldsnap_qt.canvas import BiggieCanvas
     from coldsnap_qt.mosaic_browser import MosaicBrowser
 
     app = QApplication([])
@@ -218,13 +224,23 @@ def run(output_dir: str) -> int:
 
     def guarded_init(view, *args, **kwargs):
         if any(isinstance(window, MosaicBrowser) for window in app.allWidgets()):
-            overlap.append(True)
+            import traceback
+            overlap.append("".join(traceback.format_stack(limit=10)))
             raise RuntimeError("Parity capture attempted to open a second mosaic browser")
         original_init(view, *args, **kwargs)
 
     original_init = MosaicBrowser.__init__
+    start_inline = BiggieCanvas._start_inline_mosaic
+
+    def start_active_canvas(canvas):
+        if not getattr(canvas, "_fixture_pause_inline", False):
+            start_inline(canvas)
+
     try:
-        with isolated_settings(home), _replace_for_fixture(MosaicBrowser, "__init__", guarded_init):
+        with ExitStack() as stack:
+            stack.enter_context(isolated_settings(home))
+            stack.enter_context(_replace_for_fixture(MosaicBrowser, "__init__", guarded_init))
+            stack.enter_context(_replace_for_fixture(BiggieCanvas, "_start_inline_mosaic", start_active_canvas))
             return _run_capture(out, app, retire_views, overlap)
     finally:
         for window in app.topLevelWidgets():
@@ -279,7 +295,12 @@ def _run_capture(out, app, retire_views, overlap):
     mode._selected_photo_idx = 1
     mode._refresh_bucket()
     mode._populate_photo_tools()
+    mode.photos_tray.set_open(True)
     mode.body._set_biggie(True)
+    app.processEvents()
+    tiles = [mode.bucket_col.itemAt(index).widget() for index in range(mode.bucket_col.count())]
+    tile_badges = [{"index": tile._index, "orientation": tile._orientation, "ratio": tile._ratio_text}
+                  for tile in tiles if isinstance(tile, PhotoThumbTile)]
     identities = [str(image.asset_uuid) for image in mode._bucket]
     mode.body.canvas.from_blocks([
         {"type": "para", "text": "The first paragraph proves the editor keeps readable space between blocks."},
@@ -291,16 +312,10 @@ def _run_capture(out, app, retire_views, overlap):
     app.processEvents()
     mode.grab().save(str(out / "01-editor-parity.png"), "PNG")
 
-    tiles = mode.findChildren(PhotoThumbTile)
-    tile_badges = [
-        {"index": tile._index, "orientation": tile._orientation, "ratio": tile._ratio_text}
-        for tile in tiles
-    ]
     buttons = [button.text() for button in mode.findChildren(QPushButton)]
     checks = {
-        "ratio_badges": len({tile._index for tile in tiles}) >= 6 and all(
-            tile._orientation in {"P", "L", "SQ"}
-            for tile in tiles
+        "ratio_badges": len(tile_badges) == len(paths) and all(
+            tile["orientation"] in {"P", "L", "SQ"} for tile in tile_badges
         ),
         "featured_photo_control": "★ Featured photo (landing tile)" in buttons and mode._cover_idx == 1,
         "pixel_mirror_controls_absent": "⇆ Flip H" not in buttons and "⇅ Flip V" not in buttons,
@@ -308,6 +323,7 @@ def _run_capture(out, app, retire_views, overlap):
     }
 
     mode.hide()
+    mode.body.canvas._fixture_pause_inline = True
     mode.body.canvas.setUpdatesEnabled(False)
     retire_views()
     mode.body.canvas._inline_browser = None
@@ -526,6 +542,7 @@ def _run_capture(out, app, retire_views, overlap):
     # Exercise the actual Edit Mosaic menu and the long preview separately
     # from the inline four-photo cases above.
     dialog_mode = TakeMode(lambda: {"url": "https://mosaic-fixture.invalid"})
+    dialog_mode.body.canvas._fixture_pause_inline = True
     dialog_mode.setStyleSheet(theme.stylesheet())
     app.processEvents()
     # The frozen runtime can already have recovered an earlier fixture draft.
@@ -760,6 +777,7 @@ def _run_capture(out, app, retire_views, overlap):
     # Drive the reported 15-photo trailing cluster and photo 28 through the
     # frozen dialog. Keep the proof on generated photos and a sandbox draft.
     trailing_mode = TakeMode(lambda: {"url": "https://trailing-mosaic-fixture.invalid"})
+    trailing_mode.body.canvas._fixture_pause_inline = True
     trailing_mode.setStyleSheet(theme.stylesheet())
     app.processEvents()
     trailing_mode._clear()
@@ -888,6 +906,7 @@ def _run_capture(out, app, retire_views, overlap):
         "dialog_quilt": dialog_proof,
         "post_quilt": post_proof,
         "trailing_mosaic_and_tray": trailing,
+        "browser_overlap_stacks": overlap,
         "pass": all(value for key, value in checks.items() if key != "mosaic_thumbnail_count"),
     }
     (out / "parity.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")

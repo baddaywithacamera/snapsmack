@@ -18,7 +18,7 @@ import win32job
 import win32process
 
 
-def run(executable, output, timeout=90):
+def run(executable, output, timeout=90, *, source=None):
     executable = Path(executable).resolve(strict=True)
     output = Path(output).resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -43,7 +43,8 @@ def run(executable, output, timeout=90):
             QTWEBENGINE_DISABLE_SANDBOX="1",
             QTWEBENGINE_CHROMIUM_FLAGS="--disable-gpu",
         )
-        command = subprocess.list2cmdline([str(executable), "--parity-capture", str(output)])
+        entry = [str(Path(source).resolve(strict=True))] if source else []
+        command = subprocess.list2cmdline([str(executable), *entry, "--parity-capture", str(output)])
         startup = win32process.STARTUPINFO()
         process, thread, pid, _ = win32process.CreateProcess(
             str(executable), command, None, None, False,
@@ -89,7 +90,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("executable")
     parser.add_argument("output")
+    parser.add_argument('--source', help='Run a source launcher with the supplied Python executable')
     args = parser.parse_args()
-    raise SystemExit(run(args.executable, args.output))
+    raise SystemExit(run(args.executable, args.output, source=args.source))
 
 # ===== SNAPSMACK EOF =====
