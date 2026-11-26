@@ -15,10 +15,10 @@ declare(strict_types=1);
  * 2026-11-26: "cannot find pocket album share option in config."
  *
  * So this test does not inject a settings array -- that only ever proved the
- * read path, which was the one half that already worked. It drives the real
- * reader with a real $_POST, writes through the real save path into a real
- * database, reads the value back out the way an admin page load does, and
- * hands THAT to the same gate the endpoint uses.
+ * read path, which was the one half that already worked. It clamps a real
+ * posted value, writes it with the statement the Configuration page's save loop
+ * runs, reads it back the way an admin page load does, and hands THAT to the
+ * same gate the endpoint uses.
  */
 
 require_once dirname(__DIR__) . '/core/pocket-album-share-control.php';
@@ -52,103 +52,151 @@ $check('a site that never saved the control is OFF',
     snap_pocket_album_share_enabled($load()) === false);
 
 // ---------------------------------------------------------------------------
-// Reading the form.
+// The server-side clamp. The Configuration page stores every posted
+// settings[...] key as it stands, so anything this lets through gets stored.
 // ---------------------------------------------------------------------------
-$check('a ticked box reads as on',
-    snap_pocket_album_share_read(['save_pocket_album_share' => '1', 'pocket_album_share' => 'on']) === 'on');
-$check('an UNTICKED box on a submitted control reads as off',
-    snap_pocket_album_share_read(['save_pocket_album_share' => '1']) === 'off');
-$check('a form WITHOUT this control reads as NULL, not off',
-    snap_pocket_album_share_read(['album_name' => 'Summer', 'new_album' => '1']) === null);
-$check('an empty post reads as NULL', snap_pocket_album_share_read([]) === null);
+$check("the only value that survives the clamp as on is 'on'",
+    snap_pocket_album_share_sanitise('on') === 'on');
+foreach (['off', '1', 'true', 'yes', 'ON', 'On', 'on ', ' on', '', '0', 'enabled'] as $value) {
+    $check('the clamp turns ' . var_export($value, true) . ' into off',
+        snap_pocket_album_share_sanitise($value) === 'off');
+}
+foreach ([['on'], 1, 1.0, true, null, new stdClass()] as $value) {
+    $check('the clamp turns a non-string ' . gettype($value) . ' into off',
+        snap_pocket_album_share_sanitise($value) === 'off');
+}
 
 // ---------------------------------------------------------------------------
-// The complete path: admin save -> stored value -> fresh load -> the gate.
+// The complete path: posted value -> clamp -> stored -> fresh load -> the gate.
+// The write is the statement the Configuration page's save loop runs.
 // ---------------------------------------------------------------------------
-snap_pocket_album_share_save($pdo, (string)snap_pocket_album_share_read(
-    ['save_pocket_album_share' => '1', 'pocket_album_share' => 'on']));
+$store = static function ($posted) use ($pdo): void {
+    $value = snap_pocket_album_share_sanitise($posted);
+    $key = snap_pocket_album_share_key();
+    $sel = $pdo->prepare("SELECT 1 FROM snap_settings WHERE setting_key = ? LIMIT 1");
+    $sel->execute([$key]);
+    if ($sel->fetchColumn()) {
+        $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?")
+            ->execute([$value, $key]);
+    } else {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)")
+            ->execute([$key, $value]);
+    }
+};
 
+$store('on');
 $stored = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'pocket_album_share'")
     ->fetchColumn();
 $check('saving ON stores the string the gate tests for', $stored === 'on');
 $check('a FRESH load of settings reaches the gate as enabled',
     snap_pocket_album_share_enabled($load()) === true);
 
-// Saving again must update the existing row, not fail on the primary key and
-// not leave a second one behind.
-snap_pocket_album_share_save($pdo, 'off');
+$store('off');
 $rows = (int)$pdo->query("SELECT COUNT(*) FROM snap_settings WHERE setting_key = 'pocket_album_share'")
     ->fetchColumn();
 $check('saving a second time updates the row instead of duplicating it', $rows === 1);
 $check('saving OFF switches the gate back off',
     snap_pocket_album_share_enabled($load()) === false);
+
+$store("on'; DROP TABLE snap_settings; --");
+$check('a crafted value lands as off and the table is still there',
+    $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'pocket_album_share'")
+        ->fetchColumn() === 'off');
 $check('saving did not disturb the other settings',
     ($load()['site_url'] ?? '') === 'https://example.test');
 
 // ---------------------------------------------------------------------------
-// Only 'on' opens it. This widens what the site hands to strangers.
+// Only 'on' opens the gate, whatever is in the row. This widens what the site
+// hands to strangers, so a stray value must not open it.
 // ---------------------------------------------------------------------------
 foreach (['1', 'true', 'yes', 'ON', 'on ', '', 'off'] as $value) {
     $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = 'pocket_album_share'")
         ->execute([$value]);
-    $check("a stored " . var_export($value, true) . " does NOT enable sharing",
+    $check('a stored ' . var_export($value, true) . ' does NOT enable sharing',
         snap_pocket_album_share_enabled($load()) === false);
 }
-$refused = false;
-try { snap_pocket_album_share_save($pdo, '1'); } catch (InvalidArgumentException $e) { $refused = true; }
-$check('the save path refuses a value that is neither on nor off', $refused);
 
 // ---------------------------------------------------------------------------
-// The rendered control and the reader must agree, in both states.
+// The rendered control, in both states.
 // ---------------------------------------------------------------------------
-snap_pocket_album_share_save($pdo, 'on');
+$store('on');
 ob_start(); snap_pocket_album_share_render($load()); $html_on = (string)ob_get_clean();
-snap_pocket_album_share_save($pdo, 'off');
+$store('off');
 ob_start(); snap_pocket_album_share_render($load()); $html_off = (string)ob_get_clean();
 
-$check('the control posts the presence marker the reader needs',
-    str_contains($html_on, 'name="save_pocket_album_share"'));
-$check('the control posts the field name the reader looks for',
-    str_contains($html_on, 'name="pocket_album_share"'));
-$check('a stored ON renders the box ticked',  str_contains($html_on, 'value="on" checked'));
-$check('a stored OFF renders the box unticked', !str_contains($html_off, 'checked'));
+$check('the control posts into the settings array the Configuration page saves',
+    str_contains($html_on, 'name="settings[pocket_album_share]"'));
+$check('IT IS NOT A CHECKBOX: an unticked box posts nothing and cannot say off',
+    !str_contains($html_on, 'type="checkbox"') && str_contains($html_on, '<select'));
+$check('it offers exactly two values',
+    preg_match_all('~<option value="(on|off)"~', $html_on) === 2);
+$check('a stored ON preselects on', (bool)preg_match('~<option value="on" selected~', $html_on));
+$check('a stored OFF preselects off', (bool)preg_match('~<option value="off" selected~', $html_off));
+$check('exactly one option is selected at a time',
+    preg_match_all('~ selected~', $html_on) === 1
+    && preg_match_all('~ selected~', $html_off) === 1);
 $check('the control carries no static style attribute', !str_contains($html_on, 'style="'));
 $check('the control states that off is the default', stripos($html_on, 'Off by default') !== false);
+$check('the control says plainly that this is about OTHER sites',
+    stripos($html_on, 'other') !== false);
 
-// What the rendered form would actually post, ticked and unticked, parsed back
-// through the reader -- the two halves meeting without a hand-written array.
-preg_match_all('~name="([a-z_]+)"~', $html_on, $m);
-$posts_on = [];
-foreach ($m[1] as $field) { $posts_on[$field] = 'on'; }
-$check('the ticked form round-trips to on', snap_pocket_album_share_read($posts_on) === 'on');
-unset($posts_on['pocket_album_share']);
-$check('the same form with the box unticked round-trips to off',
-    snap_pocket_album_share_read($posts_on) === 'off');
+// Every value the rendered control can post must survive its own clamp, or the
+// page would store something the gate does not recognise.
+preg_match_all('~<option value="([^"]+)"~', $html_on, $options);
+$check('the control offers something at all', $options[1] !== []);
+foreach ($options[1] as $value) {
+    $check('the control\'s own value ' . var_export($value, true) . ' survives the clamp',
+        snap_pocket_album_share_sanitise($value) === $value);
+}
 
 // ---------------------------------------------------------------------------
-// The admin page and the endpoint must both go through this component. A
-// second spelling of the key anywhere is the fault returning.
+// Where the control lives, and who may reach it. A second spelling of the key
+// anywhere is the fault returning.
 // ---------------------------------------------------------------------------
-$root  = dirname(__DIR__);
-$page  = (string)file_get_contents($root . '/smack-albums.php');
-$api   = (string)file_get_contents($root . '/core/pocket-album-api.php');
+$root   = dirname(__DIR__);
+$config = (string)file_get_contents($root . '/smack-settings.php');
+$api    = (string)file_get_contents($root . '/core/pocket-album-api.php');
+$albums = (string)file_get_contents($root . '/smack-albums.php');
+$cron   = (string)file_get_contents($root . '/smack-cron.php');
+$auth   = (string)file_get_contents($root . '/core/auth-smack.php');
 
-$check('the albums page requires the component',
-    str_contains($page, "require_once 'core/pocket-album-share-control.php';"));
-$check('the albums page reads the control from the component',
-    str_contains($page, 'snap_pocket_album_share_read($_POST)'));
-$check('the albums page saves through the component',
-    str_contains($page, 'snap_pocket_album_share_save($pdo'));
-$check('the albums page renders the control',
-    str_contains($page, 'snap_pocket_album_share_render($settings)'));
-$check('the save is CSRF-verified', (bool)preg_match(
-    '~snap_pocket_album_share_read\(\$_POST\);.*?csrf_verify\(\);.*?snap_pocket_album_share_save~s', $page));
+$check('Configuration requires the component',
+    str_contains($config, "require_once 'core/pocket-album-share-control.php';"));
+$check('Configuration renders the control',
+    str_contains($config, 'snap_pocket_album_share_render($settings)'));
+$check('Configuration clamps the posted value server-side',
+    str_contains($config, 'snap_pocket_album_share_sanitise('));
+$check('the clamp is administrator-only', (bool)preg_match(
+    '~snap_pocket_album_share_key\(\)\]\)\)\s*\{\s*smack_require_admin\(\);~s', $config));
+$check('Configuration itself is administrator-only', str_contains($auth, "'smack-settings.php'"));
+$check('the switch is NOT on the albums page, which an editor can open',
+    !str_contains($albums, 'pocket_album_share'));
 $check('the endpoint gate uses the shared helper',
     str_contains($api, 'snap_pocket_album_share_enabled($pa_settings)'));
 
+// CRON & JOBS: the refresh must be operable, and only by an administrator.
+$check('CRON & JOBS lists the POCKET ALBUM refresh',
+    str_contains($cron, "'key' => 'pocket_album'"));
+$check('its RUN NOW is behind CSRF',
+    str_contains($cron, 'csrf_check();') && str_contains($cron, 'value="run_now"'));
+$check('CRON & JOBS has an administrator check of its own',
+    str_contains($cron, 'smack_require_admin();'));
+$check('CRON & JOBS is administrator-only in the central denylist too',
+    str_contains($auth, "'smack-cron.php'"));
+
+// The post-deploy refresh must cover every job in the catalogue. A job missing
+// from it keeps a stale absolute script path after a deploy and stops firing,
+// silently -- which is what had happened to this one.
+require_once $root . '/core/cron-register.php';
+$catalogue = cron_job_catalogue();
+$check('the catalogue holds the POCKET ALBUM job', isset($catalogue['pocket_album']));
+$register = (string)file_get_contents($root . '/core/cron-register.php');
+$check('the post-deploy refresh is DERIVED from the catalogue, not a second copy',
+    (bool)preg_match('~\$jobs = \[\];\s*foreach \(cron_job_catalogue\(\)~s', $register));
+
 $others = [];
-foreach (['smack-albums.php', 'core/pocket-album-api.php', 'core/pocket-album-display.php',
-          'core/pocket-album-feed.php', 'api.php'] as $rel) {
+foreach (['smack-albums.php', 'smack-settings.php', 'core/pocket-album-api.php',
+          'core/pocket-album-display.php', 'core/pocket-album-feed.php', 'api.php'] as $rel) {
     $src = (string)file_get_contents($root . '/' . $rel);
     // The literal key may appear in prose; a comparison against it may not.
     if (preg_match('~[\'"]pocket_album_share[\'"]\s*\]?\s*(\?\?|===|==)~', $src) === 1) {
@@ -167,9 +215,8 @@ if ($fails) {
 }
 echo "ALL PASS\n";
 
-// NOT CHECKED, and not checkable here: the rendered admin page in a browser,
-// and one live site actually reading another's album with the switch on. Both
-// need a real install; this proves the control saves, survives a reload and
-// moves the gate.
+// NOT CHECKED, and not checkable here: the Configuration page in a browser, an
+// HTTP save through it, and one live site actually reading another's album with
+// the switch on. All three need a real install.
 
 // ===== SNAPSMACK EOF =====

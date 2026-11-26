@@ -18,14 +18,18 @@ declare(strict_types=1);
  * four-controls-that-did-nothing fault class (SS-1013 / 1017 / 1086) with the
  * control missing outright rather than merely inert.
  *
- * It lives here rather than inline in smack-albums.php for two reasons: an
- * inline save path cannot be executed by a test, which is how the original gap
- * got past one, and the reader and the writer must agree on the spelling of
- * the key. Both sides of the switch now come from this one file.
+ * It lives here, not inline in a page, so the key's spelling, the gate the
+ * endpoint reads and the clamp the admin save applies all come from one file
+ * and can be executed by a test. An inline save path nobody could run is how
+ * the original gap got past the suite.
+ *
+ * The control sits on the Configuration page (smack-settings.php), which is
+ * administrator-only through the SECAUDIT 047 denylist, because this widens
+ * what the site hands to other sites. It is not a content setting.
  */
 
 /**
- * The setting key. One spelling, in one place, used by both sides.
+ * The setting key. One spelling, in one place, used by every side.
  */
 function snap_pocket_album_share_key(): string
 {
@@ -45,72 +49,46 @@ function snap_pocket_album_share_enabled(array $settings): bool
 }
 
 /**
- * Read the control out of a submitted form.
+ * Server-side check on a submitted value. Returns 'on' or 'off', never
+ * anything else, whatever arrived.
  *
- * Returns 'on' or 'off' when the form carried this control, and NULL when it
- * did not. NULL means "leave the stored value alone": an unticked checkbox and
- * a form that never had the checkbox look identical in $_POST, so the rendered
- * form posts a presence marker. Without it, saving any other admin form would
- * silently switch sharing off.
+ * The Configuration page writes every posted settings[...] key to the database
+ * as it stands, so a control whose value is not clamped here is a control that
+ * stores whatever a crafted POST sends. This is that clamp, and it sits beside
+ * the gate that reads the value so the two cannot disagree.
  */
-function snap_pocket_album_share_read(array $post): ?string
+function snap_pocket_album_share_sanitise($posted): string
 {
-    if (!isset($post['save_pocket_album_share'])) {
-        return null;
-    }
-    return isset($post[snap_pocket_album_share_key()]) ? 'on' : 'off';
+    return (is_string($posted) && $posted === 'on') ? 'on' : 'off';
 }
 
 /**
- * Store the value. Refuses anything but the two it defined.
- */
-function snap_pocket_album_share_save(PDO $pdo, string $value): void
-{
-    if ($value !== 'on' && $value !== 'off') {
-        throw new InvalidArgumentException('pocket album sharing is on or off');
-    }
-    // Written as SELECT-then-UPDATE-or-INSERT rather than MySQL's ON DUPLICATE
-    // KEY UPDATE so the save path can be executed by a test against a real
-    // database. An inline save nobody could run is how the missing control got
-    // past the suite in the first place.
-    $key = snap_pocket_album_share_key();
-    $sel = $pdo->prepare("SELECT 1 FROM snap_settings WHERE setting_key = ? LIMIT 1");
-    $sel->execute([$key]);
-    if ($sel->fetchColumn()) {
-        $pdo->prepare("UPDATE snap_settings SET setting_val = ? WHERE setting_key = ?")
-            ->execute([$value, $key]);
-    } else {
-        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)")
-            ->execute([$key, $value]);
-    }
-}
-
-/**
- * The control itself. Prints the box; the caller owns the <form> and the CSRF
- * field, because this sits inside an existing admin form on its own page.
+ * The control, for the Configuration page's main settings form.
+ *
+ * A two-value SELECT, deliberately not a checkbox: an unticked box sends
+ * nothing at all, so a checkbox needs a hidden presence marker to tell "off"
+ * apart from "this form did not carry the control", and any other admin form
+ * that lacked the marker would switch sharing off just by being saved. A
+ * select always posts exactly one of its two values.
  */
 function snap_pocket_album_share_render(array $settings): void
 {
-    $on = snap_pocket_album_share_enabled($settings);
-    echo '<div class="box">' . "\n"
-       . '    <h3>ALBUM SHARING</h3>' . "\n"
-       . '    <input type="hidden" name="save_pocket_album_share" value="1">' . "\n"
-       . '    <div class="option-group">' . "\n"
-       . '        <label class="toggle-row">' . "\n"
-       . '            <div>' . "\n"
-       . '                <div class="toggle-label">LET OTHER SNAPSMACK SITES READ THIS SITE&rsquo;S ALBUMS</div>' . "\n"
-       . '                <div class="toggle-desc">Off by default. Your own albums show on your own'
-       . ' site either way &mdash; this only governs another site pulling an album of yours in with'
-       . ' the POCKET ALBUM shortcode. With it off, that request gets a 404.</div>' . "\n"
-       . '            </div>' . "\n"
-       . '            <input type="checkbox" name="' . snap_pocket_album_share_key() . '" value="on"'
-       . ($on ? ' checked' : '') . '>' . "\n"
-       . '        </label>' . "\n"
-       . '    </div>' . "\n"
-       . '    <div class="lens-input-wrapper mt-20">' . "\n"
-       . '        <button type="submit" class="master-update-btn">SAVE SHARING</button>' . "\n"
-       . '    </div>' . "\n"
-       . '</div>' . "\n";
+    $on  = snap_pocket_album_share_enabled($settings);
+    $key = snap_pocket_album_share_key();
+    $nl  = "\n";
+    echo '<div class="lens-input-wrapper">' . $nl
+       . '    <label>ALBUM SHARING <span class="field-tip" data-tip="Lets another SnapSmack'
+       . ' site show one of your albums inside a page of its own, with the POCKET ALBUM'
+       . ' shortcode. Your own albums show on your own site either way.">&#9432;</span></label>' . $nl
+       . '    <select name="settings[' . $key . ']">' . $nl
+       . '        <option value="off"' . ($on ? '' : ' selected')
+       . '>OFF &mdash; no other site may read this site&rsquo;s albums</option>' . $nl
+       . '        <option value="on"' . ($on ? ' selected' : '')
+       . '>ON &mdash; other SnapSmack sites may read this site&rsquo;s albums</option>' . $nl
+       . '    </select>' . $nl
+       . '    <p class="field-hint">Off by default. With it off, a request from another site'
+       . ' gets a 404. This does not affect albums shown on this site.</p>' . $nl
+       . '</div>' . $nl;
 }
 
 // ===== SNAPSMACK EOF =====

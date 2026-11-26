@@ -347,11 +347,17 @@ function cron_register_job(string $schedule, string $script_abs, string $tag): a
  * @return array<int,array{tag:string,ok:bool,message:string}>
  */
 function cron_refresh_enabled_jobs(string $root): array {
-    $jobs = [
-        ['*/10 * * * *', 'cron-fediverse.php',   '# snapsmack-fediverse'],
-        ['0 * * * *',    'cron-rss-fetch.php',   '# snapsmack-rss-fetch'],
-        ['0 */6 * * *',  'cron-version-check.php','# snapsmack-version-check'],
-    ];
+    // Derived from cron_job_catalogue() rather than written out again. The
+    // hand-copied list held only the first three jobs, so POCKET ALBUM's
+    // refresh (registered since SS-1575) was never adopted after a deploy: its
+    // crontab line kept yesterday's absolute script path, the line stopped
+    // working, and nothing said so -- OPAUDIT 011 happening a second time to
+    // the one job that was missing from this copy. A second list of the same
+    // jobs is the fault, so there is now one list.
+    $jobs = [];
+    foreach (cron_job_catalogue() as [$tag, $schedule, $script, $interval]) {
+        $jobs[] = [$schedule, $script, $tag];
+    }
     $results = [];
     $listing = [];
     if (function_exists('exec')) { $lc = 1; @exec('crontab -l 2>&1', $listing, $lc); if ($lc !== 0) $listing = []; }

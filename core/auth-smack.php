@@ -326,6 +326,9 @@ if (isset($_SESSION['user_login']) && !smack_is_admin()) {
         // 2026-08-15: these were editor-reachable (missing from denylist) and each
         // writes snap_settings and/or snap_images with no internal admin check.
         'smack-audit.php', 'smack-backfill.php', 'smack-stats.php',
+        // Writes the server's crontab and launches CLI jobs: system state, not
+        // content. Was editor-reachable with no check of its own.
+        'smack-cron.php',
         // Multisite / fleet
         'smack-multisite.php', 'smack-multisite-breaches.php', 'smack-multisite-blogroll.php', 'smack-multisite-comments.php',
         'smack-multisite-crosspost.php', 'smack-multisite-posts.php',

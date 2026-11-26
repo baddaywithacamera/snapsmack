@@ -11,6 +11,23 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1007D — opened
+
+- **Find album sharing in Configuration, under SECURITY.** It moved off the
+  Albums page, because it decides what other sites may read from this one and
+  that is an administrator's setting, not a content one. It is a plain OFF /
+  ON choice and it still starts off.
+- **Keep the POCKET ALBUM refresh running after an update.** A site that
+  shows an album from another site had its hourly refresh registered, and an
+  update could leave that scheduled line pointing at the old location, where
+  it quietly stopped. Updates now carry it forward with the other jobs.
+- **Run the POCKET ALBUM refresh from CRON & JOBS.** It appears with the
+  other scheduled jobs, with RUN NOW, REGISTER and UNREGISTER. On a site that
+  shows no album from another site it says there is nothing to do, rather
+  than reporting a job that is not running.
+- **CRON & JOBS is now administrator-only.** It writes the server's scheduled
+  tasks, and any logged-in editor could open it and change them.
+
 ## 0.7.1006D — opened
 
 - **Switch POCKET ALBUM sharing on from the Albums page.** Sharing starts

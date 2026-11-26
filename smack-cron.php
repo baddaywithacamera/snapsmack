@@ -19,6 +19,14 @@
  */
 require_once 'core/auth-smack.php';
 require_once 'core/cron-register.php';
+require_once 'core/pocket-album-display.php';
+
+// ADMIN ONLY. This page writes the server's crontab and launches CLI jobs, so
+// it is site-wide system state, not content. It was reachable by any logged-in
+// editor: absent from the SECAUDIT 047 denylist in core/auth-smack.php (now
+// added) and with no check of its own. Both are in place now -- the gate here
+// holds even if the denylist is edited.
+smack_require_admin();
 
 /* The scheduled jobs EVERY site runs. Tag/schedule/script match the existing
    registrations in fediverse-admin-shared.php, smack-admin.php, smack-update.php. */
@@ -44,7 +52,26 @@ $CRON_JOBS = [
         'last_key' => 'last_update_check', 'status_key' => 'version_check_last_status',
         'blurb' => 'Checks SMACK CENTRAL for a newer SnapSmack build and available skin updates.',
     ],
+    [
+        'key' => 'pocket_album', 'verdict' => 'pocket_album', 'label' => 'POCKET ALBUM refresh',
+        'tag' => '# snapsmack-pocket-album', 'schedule' => '0 * * * *',
+        'human' => 'hourly', 'script' => 'cron-pocket-album.php',
+        'last_key' => 'pocket_album_last_run', 'status_key' => 'pocket_album_last_status',
+        'blurb' => 'Refreshes the cache behind every album this site shows FROM ANOTHER SITE, so no visitor waits on that site to answer.',
+        // Not a job every site needs: a site showing only its own albums reads
+        // them from its own database at render time. Listing it unconditionally
+        // and painting it red would report a fault on every site in the fleet.
+        'only_when_used' => true,
+    ],
 ];
+
+// How many remote albums this site actually displays. Zero means this job has
+// nothing to do here, which is not the same as a broken job.
+try {
+    $pocket_album_remote_count = count(pocket_album_remote_sources($pdo));
+} catch (Throwable $e) {
+    $pocket_album_remote_count = 0;
+}
 
 list($cron_supported, $php_cli) = cron_capability();
 
@@ -153,12 +180,16 @@ include 'core/sidebar.php';
         $command_ok = (bool)$inspection['valid'];
         $ever_ran   = $last !== '';
         $last_epoch = $ever_ran ? (strtotime($last) ?: 0) : 0;
-        $stale_after = $job['key'] === 'fediverse' ? 1200 : ($job['key'] === 'rss' ? 7200 : 46800);
+        $stale_after = $job['key'] === 'fediverse' ? 1200
+            : (in_array($job['key'], ['rss', 'pocket_album'], true) ? 7200 : 46800);
         $stale = !$last_epoch || (time() - $last_epoch) > $stale_after;
         $wedged = $job['key'] === 'fediverse' && $status === 'running' && $stale;
         // The scheduler heartbeat: the only row that answers "is cron running".
         [$sched_state, $sched_fire, $sched_age, $deploy_at] = cron_job_verdict($settings, $job['verdict']);
         $sched_ok = $sched_state === 'firing';
+        // An optional job with nothing to refresh is idle, not broken.
+        $job_idle = !empty($job['only_when_used']) && $pocket_album_remote_count === 0;
+        if ($job_idle) { $sched_ok = true; }
     ?>
     <div class="box mb-20">
         <h3><?php echo htmlspecialchars($job['label']); ?></h3>
@@ -168,7 +199,12 @@ include 'core/sidebar.php';
                 <tr class="<?php echo $sched_ok ? 'cron-sched-ok' : 'cron-sched-bad'; ?>">
                     <th>Scheduler</th>
                     <td>
-                        <?php if ($sched_state === 'firing'): ?>
+                        <?php if ($job_idle): ?>
+                            <strong>NOTHING TO DO ON THIS SITE</strong> &mdash; this site displays no album
+                            from another site, so there is nothing to refresh and this job does not need to
+                            be scheduled. It becomes necessary the moment a page here uses
+                            <code>[pocket_album src=&hellip;]</code>.
+                        <?php elseif ($sched_state === 'firing'): ?>
                             &#10003; <strong>FIRING</strong> &mdash; last launched by the scheduler <?php echo htmlspecialchars(cron_age_text($sched_fire)); ?>
                             <span class="dim">(<?php echo htmlspecialchars($sched_fire); ?>)</span>
                         <?php elseif ($sched_state === 'not-since-deploy'): ?>

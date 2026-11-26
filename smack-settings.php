@@ -17,6 +17,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/ste-client.php';
 require_once 'core/client-ip.php';
+require_once 'core/pocket-album-share-control.php';
 
 // Separate POST action: test saved settings without saving the main form.
 $brevo_test_flash = (string)($_SESSION['brevo_test_flash'] ?? '');
@@ -255,6 +256,15 @@ if (isset($_POST['save_settings'])) {
     // api_site_scope: off | enforce | require (mutual-auth A1, SECAUDIT 054). Anything else → off.
     if (isset($_POST['settings']['api_site_scope']) && !in_array($_POST['settings']['api_site_scope'], ['off', 'enforce', 'require'], true)) {
         $_POST['settings']['api_site_scope'] = 'off';
+    }
+    // pocket_album_share: 'on' or 'off', nothing else. This widens what the site
+    // hands to OTHER sites, and the loop below stores posted values as they
+    // stand, so the clamp is not optional. The gate that reads it lives in the
+    // same file as this clamp (core/pocket-album-share-control.php).
+    if (isset($_POST['settings'][snap_pocket_album_share_key()])) {
+        smack_require_admin();
+        $_POST['settings'][snap_pocket_album_share_key()] =
+            snap_pocket_album_share_sanitise($_POST['settings'][snap_pocket_album_share_key()]);
     }
     // update_track: only 'stable' or 'dev' are valid; anything else silently collapses to 'stable'.
     if (isset($_POST['settings']['update_track']) && !in_array($_POST['settings']['update_track'], ['stable', 'dev'], true)) {
@@ -706,6 +716,7 @@ include 'core/sidebar.php';
                     <input type="text" name="settings[trusted_proxies]" value="<?php echo htmlspecialchars($settings['trusted_proxies'] ?? '127.0.0.1,::1'); ?>" placeholder="127.0.0.1,::1">
                     <span class="dim text-0-75 mt-4 d-block">The loopback default suits a same-host Cloudflare Tunnel or reverse proxy.</span>
                 </div>
+                <?php snap_pocket_album_share_render($settings); ?>
                 <div class="lens-input-wrapper">
                     <label>CLIENT-IP DIAGNOSTIC</label>
                     <div class="read-only-display client-ip-diagnostic">

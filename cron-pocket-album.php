@@ -43,6 +43,18 @@ if (($_SERVER['SNAPSMACK_LAUNCH'] ?? getenv('SNAPSMACK_LAUNCH') ?: '') !== 'manu
 
 $reports = pocket_album_refresh($pdo, $say);
 
+// Stamp the launcher-agnostic last run + status that CRON & JOBS reads. Unlike
+// the scheduler heartbeat above, this one moves for RUN NOW too: it answers
+// "did this job run at all", which is the question a RUN NOW is asking.
+$pocket_stamp = static function (PDO $pdo, string $key, string $value): void {
+    try {
+        $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?)
+            ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)")->execute([$key, $value]);
+    } catch (Throwable $e) {
+        // A stamp that cannot be written must not fail the refresh that worked.
+    }
+};
+
 $failed = 0;
 foreach ($reports as $report) {
     if (empty($report['ok'])) {
@@ -54,6 +66,11 @@ foreach ($reports as $report) {
 // A FAILURE IS REPORTED, NOT SWALLOWED, but it is not fatal: the cache the
 // pages read is untouched by a failed refresh, so the site keeps showing the
 // album it last had. Exit 1 so a monitor can see it.
+$pocket_stamp($pdo, 'pocket_album_last_run', date('Y-m-d H:i:s'));
+$pocket_stamp($pdo, 'pocket_album_last_status', $failed > 0
+    ? ($failed . ' of ' . count($reports) . ' failed')
+    : (count($reports) === 0 ? 'no remote albums on this site' : 'ok'));
+
 $say(count($reports) - $failed . ' of ' . count($reports) . ' remote album(s) refreshed.');
 exit($failed > 0 ? 1 : 0);
 
