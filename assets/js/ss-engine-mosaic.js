@@ -469,7 +469,7 @@
         };
     }
 
-    function computeLayout(images, containerWidth, gap, emphasis, template) {
+    function computeLayout(images, containerWidth, gap, emphasis, template, mirroredSections) {
         gap = Math.max(0, Math.min(20, Number(gap) || 0));
         containerWidth = Math.max(0, Number(containerWidth) || 0);
         emphasis = ['natural', 'balanced', 'landscape', 'portrait'].indexOf(emphasis) >= 0 ? emphasis : 'natural';
@@ -477,6 +477,7 @@
             return { items: [], sections: [], height: 0 };
         }
 
+        var mirrored = new Set(Array.isArray(mirroredSections) ? mirroredSections : []);
         var sections = [];
         var items = [];
         var index = 0;
@@ -519,12 +520,21 @@
                 }
                 var sectionItems = solved.items;
                 var sectionHeight = solved.height;
+                var sectionX = solved.x || 0;
+                var sectionWidth = solved.width || containerWidth;
+                // A mirror belongs to the exact contiguous group that was solved.
+                // If a narrower layout splits the group, leave its new sections alone.
+                if (count > 1 && mirrored.has(index + ':' + count)) {
+                    sectionItems.forEach(function (item) {
+                        item.x = sectionX + sectionWidth - (item.x - sectionX) - item.width;
+                    });
+                }
                 sectionItems.sort(function (a, b) { return a.order - b.order; });
                 Array.prototype.push.apply(items, sectionItems);
                 sections.push({
-                    x: solved.x || 0,
+                    x: sectionX,
                     y: y,
-                    width: solved.width || containerWidth,
+                    width: sectionWidth,
                     height: sectionHeight
                 });
                 y += sectionHeight + gap;
@@ -568,7 +578,8 @@
         // installed rendering of any existing unweighted mosaic.
         var referenceWidth = adjusted && images.length >= 5 && width > MOBILE_BREAKPOINT ? 1200 : width;
         var scale = width / referenceWidth;
-        var layout = computeLayout(images, referenceWidth, gap, emphasis, template);
+        var mirroredSections = (container.getAttribute('data-mirror-sections') || '').split(',');
+        var layout = computeLayout(images, referenceWidth, gap, emphasis, template, mirroredSections);
         var fragment = document.createDocumentFragment();
 
         layout.items.forEach(function (tile) {
@@ -614,6 +625,7 @@
         if (images.some(function (image) { return !!image.lazy; }) && window.ssLazyScan) {
             window.ssLazyScan(container);
         }
+        return layout;
     }
 
     function promoteInlineImageRuns(scope) {
@@ -680,6 +692,7 @@
             });
 
             function wallKind(element) {
+                if (element.hasAttribute('data-mirror-sections')) return '';
                 if (element.matches('.snap-mosaic[data-mosaic]')) return 'asymmetric';
                 if (element.matches('.snap-mosaic-wall.ss-masonry')) return 'columns';
                 if (element.matches('.snap-mosaic-wall.ss-scroll-wall')) return 'rows';
