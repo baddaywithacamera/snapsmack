@@ -106,12 +106,33 @@ php tools/release-flow.php gate-note --security=pass --parity=pass \
 refuses a dirty tree, a missing/mismatched `D` tag, a non-fast-forward master,
 or an already-used stable tag.
 
-The exact-commit release-gate note must record `skin_render_parity: "pass"` and
-`skin_render_changes`. The latter is an array and is normally empty. Every
-intentional rendering change must name the skin, state the reason, and identify
-the approved pre-strip reference used for comparison. Missing evidence, an
-undeclared difference, or a claim that the replacement rendering is newly
-"authoritative" fails the release.
+## Development and stable evidence
+
+For a D-build, the independent reviewer writes a note against the exact commit.
+Cite the full suite result, the review covering every change, and a demo of
+each changed feature from an exact-commit localhost install. Use the latest
+prior development tag as the skin baseline. Include one evidence reference
+for every changed skin and each changed CSS file outside a skin. With no
+skin or CSS changes, leave the evidence options empty.
+
+```text
+php tools/release-flow.php gate-note --tier=dev --security=pass --authority=approved \
+  --tests=pass --test-reference=ROOM-TEST-MESSAGE --code-review=pass \
+  --reviewer=Muse --review-reference=ROOM-REVIEW-MESSAGE \
+  --demo-parity-record=C:/evidence/release-demo-parity.json
+```
+
+For example, add `--skin-evidence=skins/tilez:tilez-review` if TILEZ changed.
+The D-build tag command runs the full suite and checks the signed note. The
+pre-push hook selects the tier from the tag suffix and checks it again.
+
+Stable promotion remains Sean's. Use the full gate-note command in the
+Commands section to add the full evidence to the existing development note
+before promotion. Stable requires the 17-site/102-surface fleet BEFORE,
+all packaged skins, browser and demo parity, and separate approval.
+Record `skin_render_parity: "pass"` and `skin_render_changes` in the full
+note. Document each intentional render difference with its skin, reason and
+approved pre-strip reference. A D-build note alone does not qualify.
 
 The JSON supplied with `--demo-parity-record` must have this shape and must
 name the exact `HEAD` commit:

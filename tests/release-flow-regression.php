@@ -83,7 +83,7 @@ foreach (['tag-dev', 'promote-stable'] as $rel_gated) {
         rel_expect(str_contains($rel_block, 'rf_require_release_gate($gate_commit)'),
             'promote-stable no longer passes the dev tag commit to the gate check');
     } else {
-        rel_expect(str_contains($rel_block, 'rf_require_release_gate();'),
+        rel_expect(str_contains($rel_block, "rf_require_release_gate(null, 'dev');"),
             "{$rel_gated} no longer asks about the commit in hand");
     }
     rel_expect(str_contains($rel_block, 'rf_tests();'),
