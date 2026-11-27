@@ -1,0 +1,49 @@
+[
+  {
+    "ticket": "SS-1600",
+    "acceptance": "Configuration, under SECURITY, shows ALBUM SHARING as a two-value select reading OFF on a site that has never saved it. Choosing ON and saving stores it; a fresh load of Configuration still shows ON. With it OFF the cross-site POCKET ALBUM endpoint answers 404 with an album-sharing-not-enabled body; with it ON the same request returns the album payload. The control is not a checkbox, and it is not reachable by a non-administrator account.",
+    "site": "http://127.0.0.1:49334/",
+    "room_message_id": "Mr47kmh7RAsouZJ44Q0zHmpR",
+    "result": "pass",
+    "captures": [
+      "opaudits/evidence/1007D/album-sharing-off.png",
+      "opaudits/evidence/1007D/album-sharing-on-after-reload.png",
+      "opaudits/evidence/1007D/endpoint-404-with-sharing-off.png",
+      "opaudits/evidence/1007D/endpoint-payload-with-sharing-on.png"
+    ]
+  },
+  {
+    "ticket": "SS-1600",
+    "acceptance": "CRON & JOBS lists POCKET ALBUM refresh beside the other three jobs, with RUN NOW, and with REGISTER or UNREGISTER according to whether this site's crontab line is present. On a site that displays no album from another site the Scheduler row says there is nothing to do, rather than showing a red NEVER FIRED for a job that site does not need. The page is not reachable by a non-administrator account.",
+    "site": "http://127.0.0.1:49334/",
+    "room_message_id": "Mr47kmh7RAsouZJ44Q0zHmpR",
+    "result": "pass",
+    "captures": [
+      "opaudits/evidence/1007D/cron-jobs-pocket-album-entry.png",
+      "opaudits/evidence/1007D/cron-jobs-nothing-to-do.png"
+    ]
+  },
+  {
+    "ticket": "SS-1600",
+    "acceptance": "THE VERSION EPOCH, which is the change in this build that can stop a site taking updates at all. On a site holding a skin at a 2.x number, SMACK CENTRAL offers the re-baselined 0.7.x build as NEWER rather than refusing it as older, and installing it leaves the skin working and reporting the new number. A skin whose manifest carries no epoch is compared exactly as before, so nothing that was offered stops being offered. Core's own update check still offers the next core build on a site running the current one. Nothing on the page changes for a reader.",
+    "site": "http://127.0.0.1:49334/",
+    "room_message_id": "Mr47kmh7RAsouZJ44Q0zHmpR",
+    "result": "pass",
+    "captures": [
+      "opaudits/evidence/1007D/epoch-skin-offered-as-newer.png",
+      "opaudits/evidence/1007D/epoch-skin-installed-reports-new-number.png",
+      "opaudits/evidence/1007D/epoch-absent-manifest-unchanged.png",
+      "opaudits/evidence/1007D/epoch-skin-public-render.png"
+    ]
+  },
+  {
+    "ticket": "SS-1627",
+    "acceptance": "The version-check job answers HTTP 403 when requested through the site. The response says CLI only.",
+    "site": "http://127.0.0.1:49334/",
+    "room_message_id": "Mr47kmh7RAsouZJ44Q0zHmpR",
+    "result": "pass",
+    "captures": [
+      "opaudits/evidence/1007D/cron-version-check-http-denied.png"
+    ]
+  }
+]
