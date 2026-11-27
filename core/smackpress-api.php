@@ -970,7 +970,20 @@ if (preg_match('#^posts/(\d+)$#', $sub, $m) && $method === 'GET') {
     $post = array_merge($post, snap_signature_response($post));
     // And the client is told plainly that inherit resolves to nothing yet,
     // rather than being left to wonder why a signature never appears.
-    $post['signature_inherit_resolvable'] = snap_signature_inherit_is_resolvable();
+    // Whether "inherit" can resolve depends on THIS blog's settings, so they
+    // are read rather than assumed. A client that is told inherit resolves
+    // when it does not would show the author a choice that silently does
+    // nothing.
+    $sig_settings = [];
+    try {
+        $sig_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                            ->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+    } catch (Throwable $e) {
+        $sig_settings = [];   // no settings table on an older install: not resolvable
+    }
+    $post['signature_inherit_resolvable'] = snap_signature_inherit_is_resolvable($sig_settings);
+    $post['signature_default_light_image_id'] = snap_signature_default_for($sig_settings, 'light');
+    $post['signature_default_dark_image_id']  = snap_signature_default_for($sig_settings, 'dark');
     $post['url'] = $base_url . 'post/' . $post['slug'];
     smackpress_ok(['post' => $post]);
 }

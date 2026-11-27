@@ -65,15 +65,150 @@ const SNAP_SIGNATURE_VARIANT_FIELDS = [
     'signature_dark_image_id',
 ];
 
+/** The blog-level default for each surface, as settings keys. */
+const SNAP_SIGNATURE_DEFAULT_KEYS = [
+    'light' => 'signature_default_light_image_id',
+    'dark'  => 'signature_default_dark_image_id',
+];
+
 /**
- * Can "inherit" resolve to anything yet?
+ * The blog's default signature for one surface, or 0 when the owner has not
+ * chosen one.
  *
- * False, and it will stay false until a per-blog signature exists. Kept as a
- * function rather than a comment so a caller can say so to a client instead of
- * quietly returning no signature.
+ * A BLANK DEFAULT STAYS BLANK. Every site starts with both pickers empty, so
+ * inherit resolves to no signature exactly as it did before this existed and
+ * nothing already published changes. The vendor does not seed this on anybody's
+ * site: a signature is the author's own mark, and one chosen for them would
+ * arrive on sites that never asked for it.
  */
-function snap_signature_inherit_is_resolvable(): bool {
+function snap_signature_default_for(array $settings, string $surface): int {
+    $key = SNAP_SIGNATURE_DEFAULT_KEYS[$surface] ?? '';
+    if ($key === '') { return 0; }
+    $raw = $settings[$key] ?? '';
+    if (!is_int($raw) && !(is_string($raw) && ctype_digit(trim($raw)))) { return 0; }
+    $id = (int)$raw;
+    return $id > 0 ? $id : 0;
+}
+
+/**
+ * Can "inherit" resolve to anything?
+ *
+ * Only once the owner has set at least one default. Before that an author
+ * choosing "use this blog's signature" would get nothing and no explanation,
+ * which is the dead-control fault, so callers can say so instead.
+ *
+ * The settings array is required rather than optional on purpose: a default
+ * argument here would let a caller that has not loaded the settings report
+ * "not resolvable" on a site where it is, and be wrong in the quiet direction.
+ */
+function snap_signature_inherit_is_resolvable(array $settings): bool {
+    foreach (array_keys(SNAP_SIGNATURE_DEFAULT_KEYS) as $surface) {
+        if (snap_signature_default_for($settings, $surface) > 0) { return true; }
+    }
     return false;
+}
+
+/**
+ * Clamp a posted blog-default value. Blank is a real choice -- it means the
+ * owner wants no blog signature -- so it is stored as '' rather than refused,
+ * and anything that is not a positive integer becomes blank rather than a
+ * number this code invented.
+ */
+function snap_signature_default_sanitise($posted): string {
+    if (is_int($posted)) { return $posted > 0 ? (string)$posted : ''; }
+    $raw = trim((string)$posted);
+    if ($raw === '' || !ctype_digit($raw) || (int)$raw <= 0) { return ''; }
+    return (string)(int)$raw;
+}
+
+/**
+ * The two blog-default pickers, for the admin Configuration page.
+ *
+ * Choices come from snap_images, which is where every signature any post can
+ * use already lives. An id that is no longer in the table is shown as a
+ * missing-image warning rather than silently dropped, so an owner who deletes
+ * the photograph their signature pointed at is told, not left wondering why it
+ * stopped appearing.
+ *
+ * No static style attributes: the markup leans on the page's own classes.
+ */
+function snap_signature_default_control(PDO $pdo, array $settings): void {
+    try {
+        $images = $pdo->query(
+            "SELECT id, img_title, img_file FROM snap_images
+             WHERE post_id IS NULL AND img_status = 'published'
+             ORDER BY img_date DESC, id DESC LIMIT 500"
+        )->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        $images = [];
+    }
+    $labels = ['light' => 'LIGHT', 'dark' => 'DARK'];
+    foreach (SNAP_SIGNATURE_DEFAULT_KEYS as $surface => $key) {
+        $current = snap_signature_default_for($settings, $surface);
+        $known   = false;
+        echo '<label>THIS BLOG&rsquo;S SIGNATURE &mdash; ' . $labels[$surface]
+           . ' SURFACE <span class="field-tip" data-tip="Used by any post set to '
+           . 'inherit this blog&rsquo;s signature. Leave blank for no blog signature; '
+           . 'posts that choose their own are unaffected either way.">&#9432;</span></label>'
+           . PHP_EOL;
+        echo '<select name="settings[' . htmlspecialchars($key, ENT_QUOTES) . ']">' . PHP_EOL;
+        echo '<option value=""' . ($current === 0 ? ' selected' : '')
+           . '>&mdash; NONE &mdash;</option>' . PHP_EOL;
+        foreach ($images as $image) {
+            $id = (int)$image['id'];
+            if ($id === $current) { $known = true; }
+            $name = trim((string)($image['img_title'] ?? ''));
+            if ($name === '') { $name = basename((string)($image['img_file'] ?? '')); }
+            echo '<option value="' . $id . '"' . ($id === $current ? ' selected' : '') . '>'
+               . htmlspecialchars('#' . $id . ' ' . $name) . '</option>' . PHP_EOL;
+        }
+        if ($current > 0 && !$known) {
+            // Keep the stored id selectable so saving the form does not quietly
+            // discard it, and say plainly that the image is not there.
+            echo '<option value="' . $current . '" selected>#' . $current
+               . ' &mdash; IMAGE NOT FOUND</option>' . PHP_EOL;
+        }
+        echo '</select>' . PHP_EOL;
+        if ($current > 0 && !$known) {
+            echo '<span class="dim text-0-75 mt-4 d-block">&#9888; IMAGE #' . $current
+               . ' IS NO LONGER IN THE GALLERY &mdash; POSTS INHERITING IT SHOW NO '
+               . 'SIGNATURE</span>' . PHP_EOL;
+        }
+    }
+}
+
+/**
+ * Which image a post actually shows on one surface, or 0 for none.
+ *
+ * The four states, resolved:
+ *   an id in the surface column   that image
+ *   0 in the surface column       no signature, the author said so
+ *   NULL in the surface column    the blog default for this surface, or none
+ *   the column is absent          the LEGACY field, with today's meaning
+ *
+ * THE LEGACY FALLBACK IS NOT A NULL-MEANS-INHERIT. On an install that has not
+ * taken the two new columns yet, and on every post written before them, the
+ * only thing stored is signature_image_id, where NULL has always meant "no
+ * signature on this post". Reading that as inherit would give every post ever
+ * written a signature the moment an owner set a default. So the legacy field
+ * resolves to itself or to nothing, and never to the blog's.
+ */
+function snap_signature_resolve(array $post, array $settings, string $surface): int {
+    $key = 'signature_' . $surface . '_image_id';
+    // An unknown surface, or a row from an install that has not taken the two
+    // columns yet, falls through to the legacy field below. That is the
+    // conservative answer -- what the product showed before surfaces existed --
+    // rather than a plausible-looking guess.
+    if (in_array($key, SNAP_SIGNATURE_VARIANT_FIELDS, true) && array_key_exists($key, $post)) {
+        $stored = $post[$key];
+        if ($stored !== null) {
+            $chosen = (int)$stored;
+            return $chosen > 0 ? $chosen : 0;       // an id, or a deliberate opt-out
+        }
+        return snap_signature_default_for($settings, $surface);   // inherit
+    }
+    $legacy = $post[SNAP_SIGNATURE_LEGACY_FIELD] ?? null;
+    return ($legacy === null) ? 0 : max(0, (int)$legacy);
 }
 
 /**

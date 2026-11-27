@@ -2423,14 +2423,20 @@
         "thresholds": []
     },
     "signature-contract-four-states-regression.php": {
-        "assertions": 41,
-        "predicates": 10,
+        "assertions": 72,
+        "predicates": 22,
         "thresholds": [
+            2,
             9,
             9,
             11,
             42,
-            42
+            42,
+            77,
+            99,
+            413,
+            413,
+            414
         ]
     },
     "site-mode-guard-regression.php": {

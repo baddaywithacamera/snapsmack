@@ -263,7 +263,7 @@ foreach ([null, 0, 42] as $stored) {
 // INHERIT RESOLVES TO NOTHING, AND SAYS SO. There is no per-blog signature
 // anywhere in the product, so a resolver would be a control that does nothing.
 // ---------------------------------------------------------------------------
-check(snap_signature_inherit_is_resolvable() === false,
+check(snap_signature_inherit_is_resolvable([]) === false,
     'inherit is reported as NOT resolvable while no blog default exists');
 // NO TREE GREP HERE. The first version searched the repository for a
 // blog-level signature setting and failed, because the search terms are IN
@@ -271,6 +271,125 @@ check(snap_signature_inherit_is_resolvable() === false,
 // product has no per-blog signature was measured by hand across the tree and
 // is recorded in the contract file's header; it is not something this check
 // can honestly establish about itself.
+
+// ---------------------------------------------------------------------------
+// THE BLOG DEFAULT, so "inherit" can resolve to something. Until this existed,
+// an author choosing "use this blog's signature" got nothing and no
+// explanation -- the dead-control fault this whole contract came out of.
+// ---------------------------------------------------------------------------
+check(snap_signature_inherit_is_resolvable([]) === false,
+    'with NO settings at all, inherit cannot resolve');
+check(snap_signature_inherit_is_resolvable([
+        'signature_default_light_image_id' => '',
+        'signature_default_dark_image_id'  => '',
+    ]) === false,
+    'A BLANK DEFAULT STAYS BLANK: both pickers empty is still not resolvable');
+check(snap_signature_inherit_is_resolvable(
+        ['signature_default_light_image_id' => '413']) === true,
+    'one default set makes inherit resolvable');
+check(snap_signature_default_for(['signature_default_light_image_id' => '413'], 'light') === 413,
+    'and the default reads back as that id');
+check(snap_signature_default_for([], 'light') === 0, 'an unset default is 0');
+check(snap_signature_default_for(['signature_default_light_image_id' => 'latest'], 'light') === 0,
+    'a non-numeric default is 0, not a guess');
+check(snap_signature_default_for(['signature_default_light_image_id' => '-5'], 'light') === 0,
+    'a negative default is 0');
+check(snap_signature_default_for(['signature_default_light_image_id' => '413'], 'sepia') === 0,
+    'an unknown surface has no default');
+
+// The clamp on the way IN. Blank is a real choice and must survive as blank.
+foreach ([['413', '413'], [413, '413'], ['', ''], ['  ', ''], ['0', ''], [0, ''],
+          ['-5', ''], ['latest', ''], ['12abc', ''], [null, '']] as [$posted, $want]) {
+    check(snap_signature_default_sanitise($posted) === $want,
+        'clamp ' . var_export($posted, true) . ' -> ' . var_export($want, true));
+}
+
+// ---------------------------------------------------------------------------
+// RESOLUTION. The four states, turned into the one image a post shows.
+// ---------------------------------------------------------------------------
+$blog = ['signature_default_light_image_id' => '413',
+         'signature_default_dark_image_id'  => '414'];
+
+check(snap_signature_resolve(['signature_light_image_id' => 99], $blog, 'light') === 99,
+    'an id on the post wins over the blog default');
+check(snap_signature_resolve(['signature_light_image_id' => 0], $blog, 'light') === 0,
+    'AN OPT-OUT BEATS THE BLOG DEFAULT -- the author said no signature');
+check(snap_signature_resolve(['signature_light_image_id' => null], $blog, 'light') === 413,
+    'INHERIT resolves to the blog default');
+check(snap_signature_resolve(['signature_dark_image_id' => null], $blog, 'dark') === 414,
+    'and each surface resolves to its own default');
+check(snap_signature_resolve(['signature_light_image_id' => null], [], 'light') === 0,
+    'inherit with no blog default is no signature, exactly as before');
+
+// THE LEGACY FALLBACK MUST NOT INHERIT. This is the whole of finding 2: every
+// post written before the two columns holds NULL in the legacy field, and that
+// has always meant "no signature". Reading it as inherit would give every post
+// ever written a signature the moment an owner set a default.
+check(snap_signature_resolve(['signature_image_id' => null], $blog, 'light') === 0,
+    'A ROW WITH ONLY THE LEGACY FIELD DOES NOT INHERIT, even with a default set');
+check(snap_signature_resolve(['signature_image_id' => 77], $blog, 'light') === 77,
+    'and a legacy id still renders');
+check(snap_signature_resolve(['signature_image_id' => 0], $blog, 'light') === 0,
+    'a legacy 0 is no signature');
+check(snap_signature_resolve([], $blog, 'light') === 0,
+    'a row with no signature columns at all shows nothing');
+// An un-synced install: the columns are absent from the row, so the legacy
+// meaning applies even though the blog has a default.
+check(snap_signature_resolve(
+        ['signature_image_id' => null, 'colophon' => 'x'], $blog, 'light') === 0,
+    'an install without the two columns keeps today behaviour');
+
+// ---------------------------------------------------------------------------
+// THE ADMIN CONTROL EXISTS AND RENDERS, driven rather than grepped. It must
+// offer NONE, mark the stored choice, and say so when the stored image is gone.
+// ---------------------------------------------------------------------------
+function sig_images_db(): PDO {
+    $pdo = (class_exists('Pdo\Sqlite'))
+        ? Pdo\Sqlite::connect('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION])
+        : new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    $pdo->exec("CREATE TABLE snap_images (id INTEGER PRIMARY KEY, img_title TEXT DEFAULT '',
+        img_file TEXT DEFAULT '', img_date TEXT DEFAULT '', img_status TEXT DEFAULT 'published',
+        post_id INTEGER DEFAULT NULL)");
+    $pdo->exec("INSERT INTO snap_images (id,img_title,img_file,img_date) VALUES
+        (413,'Sean signature','sig.png','2026-01-01'),
+        (500,'','untitled-sig.png','2026-01-02')");
+    return $pdo;
+}
+
+$pdo = sig_images_db();
+ob_start();
+snap_signature_default_control($pdo, []);
+$control = (string)ob_get_clean();
+
+check(substr_count($control, '<select name="settings[signature_default_light_image_id]">') === 1,
+    'the control renders the LIGHT picker');
+check(substr_count($control, '<select name="settings[signature_default_dark_image_id]">') === 1,
+    'and the DARK picker');
+check(substr_count($control, 'NONE') === 2, 'each picker offers NONE');
+check(str_contains($control, 'value=""' . ' selected'),
+    'with nothing chosen, NONE is the selected option');
+check(str_contains($control, '#413 Sean signature'),
+    'a titled image is offered by id and title');
+check(str_contains($control, '#500 untitled-sig.png'),
+    'an untitled one falls back to its filename');
+check(!str_contains($control, 'style="'),
+    'NO STATIC STYLE ATTRIBUTES in the generated control');
+
+ob_start();
+snap_signature_default_control($pdo, ['signature_default_light_image_id' => '413']);
+$chosen = (string)ob_get_clean();
+check(str_contains($chosen, 'value="413" selected'), 'a stored choice comes back selected');
+check(substr_count($chosen, 'IMAGE NOT FOUND') === 0,
+    'and is not reported missing when it is there');
+
+ob_start();
+snap_signature_default_control($pdo, ['signature_default_light_image_id' => '9999']);
+$missing = (string)ob_get_clean();
+check(str_contains($missing, 'value="9999" selected'),
+    'A DELETED IMAGE STAYS SELECTED, so saving the form does not silently drop it');
+check(str_contains($missing, 'IMAGE NOT FOUND'), 'and it is named as missing in the list');
+check(str_contains($missing, 'NO LONGER IN THE GALLERY'),
+    'with a warning that posts inheriting it show nothing');
 
 // ---------------------------------------------------------------------------
 // ONE COPY OF THE RULES. The API must not hold its own.

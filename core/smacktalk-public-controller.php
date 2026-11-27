@@ -343,8 +343,33 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
             $stmt->execute([(int)$post['user_id']]);
             $author = trim((string)($stmt->fetchColumn() ?: $author));
         }
-        if (!empty($post['signature_image_id'])) {
-            $image = $repository->photographById((int)$post['signature_image_id']);
+        // THE SIGNATURE, THROUGH THE CONTRACT. The two surface columns are read
+        // HERE rather than added to the repository's SELECT on purpose: a core
+        // update can reach a site before schema-sync has added them, and a
+        // SELECT naming a missing column would fatal on every post page on that
+        // site. This block already exists to tolerate exactly that, and
+        // snap_signature_resolve() falls back to the legacy field when the
+        // columns are absent, so an un-synced site behaves as it does today.
+        require_once __DIR__ . '/signature-contract.php';
+        $signature_row = $post;
+        try {
+            $sig_q = $pdo->prepare("SELECT signature_light_image_id, signature_dark_image_id
+                                    FROM snap_posts WHERE id=? LIMIT 1");
+            $sig_q->execute([(int)$post['id']]);
+            $signature_row = array_merge($post, $sig_q->fetch(PDO::FETCH_ASSOC) ?: []);
+        } catch (Throwable $e) {
+            $signature_row = $post;   // columns not added yet: legacy meaning
+        }
+        // The server renders the LIGHT surface. Which surface a reader is on is
+        // a skin-side question and there is no signal for it yet, so the dark
+        // id travels alongside for whoever builds that; it is not guessed at
+        // here. A site with only one default set uses it for both.
+        $signature_ids = [
+            'light' => snap_signature_resolve($signature_row, $settings, 'light'),
+            'dark'  => snap_signature_resolve($signature_row, $settings, 'dark'),
+        ];
+        if ($signature_ids['light'] > 0) {
+            $image = $repository->photographById($signature_ids['light']);
             if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
                 'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
         }
