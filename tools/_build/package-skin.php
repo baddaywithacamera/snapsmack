@@ -153,7 +153,20 @@ foreach ($slugs as $slug) {
             $errors++;
             continue;
         }
-        if ($expected !== null && $version !== $expected) {
+        if ($expected === null) {
+            // FAIL CLOSED on a from-value this code cannot read. Muse found
+            // this open on f94cbb26: with the epoch present and a nonsense
+            // rebaselined_from, the wrong-number check was skipped because the
+            // expected version was null, so the package went through unchecked.
+            // A claim about where a version came from is either readable or it
+            // is not evidence.
+            echo "  BLOCK {$slug} — rebaselined_from is '{$from}', which cannot be read as a "
+               . "version, so the number it should carry cannot be derived
+";
+            $errors++;
+            continue;
+        }
+        if ($version !== $expected) {
             echo "  BLOCK {$slug} — re-baselined from {$from}, so its version must be "
                . "{$expected}, not {$version}\n";
             $errors++;

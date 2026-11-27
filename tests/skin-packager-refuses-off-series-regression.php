@@ -122,6 +122,17 @@ try {
         }
     }
 
+    // Muse's note (a) on f94cbb26: a rebaselined_from this code cannot read,
+    // with the epoch present, used to pass — the wrong-number check was
+    // skipped because the expected version was null. Fail OPEN, which is the
+    // wrong direction for a claim about where a version came from.
+    $withFields(['version' => '0.7.31', 'rebaselined_from' => 'nonsense', 'version_epoch' => 1]);
+    [$code, $output] = $pack('tilez');
+    $check('an unreadable rebaselined_from is REFUSED, not waved through',
+        str_contains($output, 'BLOCK tilez'));
+    $check('and the refusal quotes the value it could not read',
+        str_contains($output, "'nonsense'"));
+
     // Re-baselined to the wrong number: refused, and told the right one.
     $withFields(['version' => '0.7.99', 'rebaselined_from' => '2.1.30', 'version_epoch' => 1]);
     [$code, $output] = $pack('tilez');
