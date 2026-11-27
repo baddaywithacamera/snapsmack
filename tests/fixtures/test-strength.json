@@ -464,6 +464,14 @@
             2
         ]
     },
+    "cron-scripts-refuse-web-requests-regression.php": {
+        "assertions": 12,
+        "predicates": 3,
+        "thresholds": [
+            2,
+            5
+        ]
+    },
     "cron-update-path-refresh-regression.php": {
         "assertions": 1,
         "predicates": 13,

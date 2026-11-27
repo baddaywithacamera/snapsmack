@@ -28,6 +28,22 @@
  * Missing or different = truncated/corrupted. Restore before saving.
  */
 
+// SS-1627. This is the only one of the five cron scripts at the web root that
+// did not refuse a web request, and it was missing on dev too. The other four
+// carry this exact line; it is copied, not reinvented.
+//
+// Visiting the address made the site contact the update registry and write
+// update_check_result and last_update_check. No password, no key, no session.
+// Nothing in the product calls this over HTTP -- the documented fallback is
+// smack-admin.php doing its own check, not fetching this file -- so refusing
+// web requests takes nothing away.
+//
+// The cost of leaving it was not a way in: it writes those two values and runs
+// no other code. It was an unauthenticated TRIGGER, and a fleet of sites that
+// can be made to fetch from the registry on demand is how the fleet's address
+// got blocked once already.
+if (PHP_SAPI !== 'cli') { http_response_code(403); exit("CLI only.\n"); }
+
 // --- BOOTSTRAP (CLI-safe, no session needed) ---
 $root = __DIR__;
 
