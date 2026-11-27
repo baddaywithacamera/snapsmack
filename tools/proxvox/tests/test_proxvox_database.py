@@ -160,10 +160,11 @@ throw new RuntimeException('must never execute PHP');
     with pytest.raises(UnsafeDatabaseUpdate, match="does not match"):
         with connect_site_database(php, "other", container=True, connect=unavailable):
             pytest.fail("Unexpected site/database pairing")
-    with pytest.raises(UnsafeDatabaseUpdate, match="local connector"):
-        with connect_site_database(php.replace(b"maria.internal", b"localhost"), "fixture",
-                                   container=True, connect=unavailable):
-            pytest.fail("Container localhost cannot be routed from the host")
+    for local_host in (b"localhost", b"localhost.localdomain", b"LOCALHOST.LOCALDOMAIN.", b"127.0.0.2"):
+        with pytest.raises(UnsafeDatabaseUpdate, match="local connector"):
+            with connect_site_database(php.replace(b"maria.internal", local_host), "fixture",
+                                       container=True, connect=unavailable):
+                pytest.fail("Container localhost cannot be routed from the host")
     assert len(opened) == 1
 
 

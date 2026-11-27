@@ -55,7 +55,8 @@ def connect_site_database(content, database, *, container, connect=None):
     """Use the site's existing login in memory and suppress driver diagnostics."""
     host, user, password = _site_login(content, database)
     del content
-    if container and host.lower() in {"localhost", "127.0.0.1"}:
+    endpoint = host.lower().rstrip(".")
+    if container and (endpoint in {"localhost", "localhost.localdomain"} or endpoint.startswith("127.")):
         raise UnsafeDatabaseUpdate("This site's container-local database needs a local connector.")
     if connect is None:
         try:
