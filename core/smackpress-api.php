@@ -1167,24 +1167,62 @@ if ($sub === 'mosaics' && $method === 'POST') {
 //
 // AND IT NEVER INSERTS. An id that does not exist is a 404. Creating a row here
 // is how a save turns into a duplicate mosaic nobody asked for.
+// ONE TRANSACTION, AND THE COMPARISON TRAVELS IN THE WRITE. My first version
+// read the row, compared its token, counted the references and then updated, as
+// four separate statements with gaps between them. The PM put it in one line:
+// check-then-write outside a transaction does not guard anything. Every gap is
+// a window in which the thing just checked stops being true, and a guard that
+// can be overtaken is decoration. So the share re-count happens inside the
+// transaction, and the revision comparison is a WHERE on the UPDATE itself --
+// a write that matches nothing affects zero rows and is refused 409.
+//
+// WHAT THIS STILL DOES NOT GUARANTEE, stated rather than implied: the reference
+// count reads other tables, and another request could add a reference to this
+// mosaic after the count and commit before this one does. Locking every post
+// body to close that is not worth what it would cost. The window is now one
+// transaction wide instead of four statements wide, and the next read sees the
+// truth.
 if (preg_match('#^mosaics/(\d+)$#', $sub, $m) && $method === 'PUT') {
     $mosaic_id = (int)$m[1];
     $body = json_decode(file_get_contents('php://input'), true);
     if (!is_array($body)) smackpress_error(400, 'Invalid JSON body.');
+
+    // Every refusal below unwinds the transaction before it answers. Without
+    // this, a 422 from the validator would leave a transaction open and the
+    // connection would decide the outcome.
+    $in_transaction = false;
+    $refuse = function (int $code, string $message) use ($pdo, &$in_transaction): void {
+        if ($in_transaction && $pdo->inTransaction()) {
+            try { $pdo->rollBack(); } catch (PDOException $e) { /* answering matters more */ }
+            $in_transaction = false;
+        }
+        smackpress_error($code, $message);
+    };
+
+    try {
+        $pdo->beginTransaction();
+        $in_transaction = true;
+    } catch (PDOException $e) {
+        smackpress_error(500, 'Could not start the save.');
+    }
 
     try {
         $stmt = $pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
         $stmt->execute([$mosaic_id]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
-        smackpress_error(500, 'Could not read the mosaic.');
+        $refuse(500, 'Could not read the mosaic.');
     }
-    if (!$existing) smackpress_error(404, 'Mosaic not found.');
+    if (!$existing) $refuse(404, 'Mosaic not found.');
 
     $sent_revision = (string)($body['revision'] ?? '');
-    if ($sent_revision === '') smackpress_error(422, 'revision required: read the mosaic first.');
+    if ($sent_revision === '') $refuse(422, 'revision required: read the mosaic first.');
+    // THE CLIENT'S TOKEN AGAINST WHAT WE JUST READ. This is not the same check
+    // as the one in the UPDATE and neither replaces the other: this one says
+    // the client is working from a current definition, the one in the UPDATE
+    // says the row has not moved since this request read it.
     if (!hash_equals(smackpress_mosaic_revision($existing), $sent_revision)) {
-        smackpress_error(409, 'This mosaic changed on the site since you opened it. '
+        $refuse(409, 'This mosaic changed on the site since you opened it. '
             . 'Reopen it to see the current arrangement.');
     }
 
@@ -1192,22 +1230,22 @@ if (preg_match('#^mosaics/(\d+)$#', $sub, $m) && $method === 'PUT') {
     // reference from ANY OTHER post or page means this mosaic is shared and
     // must be copied instead of changed.
     $post_id = (int)($body['post_id'] ?? 0);
-    if ($post_id < 1) smackpress_error(422, 'post_id required: an update must say which post it edits from.');
+    if ($post_id < 1) $refuse(422, 'post_id required: an update must say which post it edits from.');
     $refs = smackpress_mosaic_references($pdo, $mosaic_id);
     $others = array_values(array_diff($refs['posts'], [$post_id]));
     if ($others || $refs['pages']) {
-        smackpress_error(409, 'This mosaic is now used by ' . (count($others) + count($refs['pages']))
+        $refuse(409, 'This mosaic is now used by ' . (count($others) + count($refs['pages']))
             . ' other place(s). Save it as a new mosaic instead of changing this one.');
     }
 
-    $def = smackpress_mosaic_validate($body, $pdo, function (int $code, string $message): void {
-        smackpress_error($code, $message);
-    });
+    // THE STORED ROW IS PASSED IN, so a field the body does not mention keeps
+    // what the site has rather than being overwritten with a create default.
+    $def = smackpress_mosaic_validate($body, $pdo, $refuse, $existing);
     if ($def['mirrors'] && !smackpress_mosaic_mirrors_available($pdo)) {
-        smackpress_error(409, 'Update the site schema before publishing mirrored mosaic blocks.');
+        $refuse(409, 'Update the site schema before publishing mirrored mosaic blocks.');
     }
     if ($def['weights'] && !smackpress_mosaic_weights_available($pdo)) {
-        smackpress_error(409, 'Update the site schema before publishing resized mosaic tiles.');
+        $refuse(409, 'Update the site schema before publishing resized mosaic tiles.');
     }
 
     // gallery_shuffle IS ABSENT FROM THIS LIST ON PURPOSE. Shuffle is
@@ -1221,18 +1259,61 @@ if (preg_match('#^mosaics/(\d+)$#', $sub, $m) && $method === 'PUT') {
               ['mosaic_weights', $def['weights'] ? json_encode((object)$def['weights'], JSON_THROW_ON_ERROR) : null],
               ['focus_positions', $def['focus'] ? json_encode((object)$def['focus'], JSON_THROW_ON_ERROR) : null],
               ['emphasis', $def['emphasis']]] as [$col, $val]) {
-        // Only touch a column this install HAS, and only when the body spoke
-        // about it. An absent key leaves the stored value alone; an explicitly
-        // empty one clears it, which is how [] clears the mirrors.
-        if (!array_key_exists($col === 'emphasis' ? 'emphasis' : $col, $body)) continue;
+        // Only touch a column this install HAS. The body no longer decides
+        // whether the column is written, because the validator has already put
+        // the stored value back for anything the body left out -- so writing it
+        // is writing what is there.
         if (!array_key_exists($col, $existing)) continue;
         $sets[]   = $col . ' = ?';
         $values[] = $val;
     }
+
+    [$cas_sql, $cas_values] = smackpress_mosaic_cas($existing);
     $values[] = $mosaic_id;
+    foreach ($cas_values as $cv) $values[] = $cv;
     try {
-        $stmt = $pdo->prepare('UPDATE snap_mosaics SET ' . implode(', ', $sets) . ' WHERE id = ?');
+        $stmt = $pdo->prepare('UPDATE snap_mosaics SET ' . implode(', ', $sets)
+            . ' WHERE id = ? AND ' . $cas_sql);
         $stmt->execute($values);
+        $changed = $stmt->rowCount();
+    } catch (PDOException $e) {
+        $refuse(500, 'Could not save the mosaic.');
+    }
+
+    // ZERO ROWS DOES NOT MEAN CONFLICT ON ITS OWN, and reading it that way
+    // would have refused good saves on the live fleet.
+    //
+    // rowCount() AFTER AN UPDATE DOES NOT MEAN THE SAME THING ON BOTH ENGINES.
+    // MySQL reports rows CHANGED, so saving a mosaic without altering a single
+    // field reports 0 -- the WHERE matched, the row was found, nothing needed
+    // writing. sqlite reports rows MATCHED, so the same save reports 1. Reading
+    // 0 as "somebody overtook me" would therefore turn every no-op save into a
+    // 409 on MySQL, which is every live site, while the suite stayed green on
+    // sqlite and showed me nothing. PDO::MYSQL_ATTR_FOUND_ROWS would settle it
+    // at the connection, but the connection is not this route's to reconfigure.
+    //
+    // So 0 rows asks the row itself. If the definition still hashes to the
+    // token the client sent, nothing has moved and there was simply nothing to
+    // change: that is a success. If it hashes to something else, the row was
+    // overtaken between this request's read and its write, and that is the
+    // conflict the guard exists for.
+    if ($changed < 1) {
+        try {
+            $stmt = $pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
+            $stmt->execute([$mosaic_id]);
+            $after = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $refuse(500, 'Could not confirm the save.');
+        }
+        if (!$after || !hash_equals(smackpress_mosaic_revision($after), $sent_revision)) {
+            $refuse(409, 'This mosaic changed on the site since you opened it. '
+                . 'Reopen it to see the current arrangement.');
+        }
+    }
+
+    try {
+        $pdo->commit();
+        $in_transaction = false;
     } catch (PDOException $e) {
         smackpress_error(500, 'Could not save the mosaic.');
     }

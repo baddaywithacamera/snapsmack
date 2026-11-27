@@ -247,9 +247,180 @@ $check('SOURCE: exactly one statement in the API inserts a mosaic',
     substr_count($api, 'INSERT INTO snap_mosaics') === 1);
 $check('SOURCE: exactly one updates a mosaic, and only ever by id',
     substr_count($api, 'UPDATE snap_mosaics SET') === 1
-    && str_contains($api, "WHERE id = ?'"));
+    && str_contains($api, "' WHERE id = ? AND '"));
 $check('SOURCE: no statement anywhere sets gallery_shuffle on an update',
     !str_contains($api, 'gallery_shuffle = ?'));
+// THIS ONE CAUGHT THE CHANGE IT WAS WRITTEN FOR. It required WHERE id = ? and
+// nothing else, so making the update a compare-and-swap broke it, which is
+// correct: the shape of the only writing statement in this API changed, and a
+// check over that shape should not have stayed quiet. It now requires the
+// guard to be IN the statement, which is the thing that must not regress.
+$check('SOURCE: the single update is guarded, not a bare write by id',
+    !str_contains($api, "UPDATE snap_mosaics SET ' . implode(', ', \$sets) . ' WHERE id = ?'"));
+$check('SOURCE: the update, the share re-count and the refusals share one transaction',
+    str_contains($api, '$pdo->beginTransaction();') && str_contains($api, '$pdo->commit();')
+    && str_contains($api, '$pdo->rollBack();'));
+
+// ---------------------------------------------------------------------------
+// FIX 1 OF 2 (PM 8820, found by Codex 8819): THE TOKEN COVERS THE WHOLE
+// DEFINITION, AND THE COMPARISON TRAVELS IN THE WRITE.
+//
+// My first token hashed id, updated_at and asset_ids. Nine other fields could
+// change without moving it, so two clients editing the gap, the layout, the
+// weights or the framing in the same second would both be told their token was
+// current and the second would overwrite the first. Swept per field below
+// rather than spot-checked, because a token that covers nine of ten fields
+// passes every example you happen to think of and loses the tenth.
+// ---------------------------------------------------------------------------
+echo "\n-- the token covers every field of the definition --\n";
+$pdo->exec('INSERT INTO snap_mosaics (id, title, asset_ids, focus_positions, mosaic_weights,
+    mosaic_mirrors, gap, emphasis, layout, gallery_shuffle, updated_at) VALUES
+    (754, "Ray on the pier", "[11,22]", \'{"11":{"x":10,"y":90}}\', \'{"11":2}\',
+     NULL, 13, "landscape", "rows", 0, "2026-11-27 10:00:00")');
+$stmt = $pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
+$stmt->execute([754]);
+$stored754 = $stmt->fetch(PDO::FETCH_ASSOC);
+$base754   = smackpress_mosaic_revision($stored754);
+
+$otherValue = [
+    'title'           => 'Changed',
+    'asset_ids'       => '[11]',
+    'gap'             => 9,
+    'layout'          => 'columns',
+    'emphasis'        => 'balanced',
+    'gallery_shuffle' => 1,
+    'focus_positions' => '{"11":{"x":1,"y":2}}',
+    'mosaic_weights'  => '{"11":1}',
+    'mosaic_mirrors'  => '[[11,22]]',
+    'updated_at'      => '2026-11-27 11:00:00',
+];
+$check('the sweep covers every column the token claims to cover',
+    array_keys($otherValue) === SMACKPRESS_MOSAIC_DEFINITION_COLUMNS);
+$blind = [];
+foreach ($otherValue as $col => $val) {
+    $mutated = $stored754;
+    $mutated[$col] = $val;
+    if (smackpress_mosaic_revision($mutated) === $base754) { $blind[] = $col; }
+}
+$check('changing ANY ONE field moves the token (' . count($otherValue) . ' fields swept)',
+    $blind === []);
+if ($blind) { echo '    blind to: ' . implode(', ', $blind) . "\n"; }
+$check('and an untouched row keeps its token', smackpress_mosaic_revision($stored754) === $base754);
+// The old token must not still be derivable: proof the fix replaced the
+// derivation rather than adding to it.
+$check('a gap-only change moves the token, which the old three-field hash could not see',
+    smackpress_mosaic_revision(array_merge($stored754, ['gap' => 9])) !== $base754);
+
+echo "\n-- the compare-and-swap, executed against a real table --\n";
+// EXECUTED, not read. smackpress_mosaic_cas() returns the WHERE tail and its
+// values, and the only way to know it guards anything is to run two updates
+// through it: one from a current snapshot and one from a snapshot the row has
+// moved past.
+[$cas_sql, $cas_vals] = smackpress_mosaic_cas($stored754);
+$check('the guard names every definition column present on the row',
+    substr_count($cas_sql, ' = ?') === count(SMACKPRESS_MOSAIC_DEFINITION_COLUMNS));
+$check('and compares the nullable JSON columns null-safely rather than with plain equality',
+    substr_count($cas_sql, "COALESCE(") === 3 && str_contains($cas_sql, "COALESCE(mosaic_mirrors, '') = ?"));
+
+$upd = $pdo->prepare("UPDATE snap_mosaics SET title = ? WHERE id = ? AND {$cas_sql}");
+$upd->execute(array_merge(['First writer wins'], [754], $cas_vals));
+$check('a write from a CURRENT snapshot lands', $upd->rowCount() === 1);
+
+// The row has now moved. The same snapshot is stale, and this is the overtaking
+// write: in production it is a second desktop that read the mosaic before the
+// first one saved.
+$upd2 = $pdo->prepare("UPDATE snap_mosaics SET title = ? WHERE id = ? AND {$cas_sql}");
+$upd2->execute(array_merge(['Second writer must not'], [754], $cas_vals));
+$check('a write from a STALE snapshot affects nothing, which is the 409',
+    $upd2->rowCount() === 0);
+$stmt->execute([754]);
+$after754 = $stmt->fetch(PDO::FETCH_ASSOC);
+$check('and the first writer\'s value is still there, not overwritten',
+    $after754['title'] === 'First writer wins');
+
+// A stale snapshot of ANY single field must be enough to stop the write, for
+// the same reason the token sweep exists.
+$blindCas = [];
+foreach ($otherValue as $col => $val) {
+    $pretend = $after754;
+    $pretend[$col] = $val;              // a snapshot that disagrees in one field
+    [$sql2, $vals2] = smackpress_mosaic_cas($pretend);
+    $u = $pdo->prepare("UPDATE snap_mosaics SET gap = gap WHERE id = ? AND {$sql2}");
+    $u->execute(array_merge([754], $vals2));
+    if ($u->rowCount() !== 0) { $blindCas[] = $col; }
+}
+$check('a snapshot wrong in ANY ONE field is refused by the guard ('
+    . count($otherValue) . ' fields swept)', $blindCas === []);
+if ($blindCas) { echo '    guard blind to: ' . implode(', ', $blindCas) . "\n"; }
+
+// ---------------------------------------------------------------------------
+// FIX 2 OF 2 (PM 8820): AN OMITTED FIELD KEEPS ITS STORED VALUE. NEVER A
+// CREATE DEFAULT.
+//
+// The PM offered two ways: omitted preserves, or refuse a partial body with
+// 422. Omitted preserves is the one taken, stated in core/mosaic-contract.php,
+// and it is the convention portfolio_post, colophon, signature_image_id and
+// gallery_shuffle already follow.
+// ---------------------------------------------------------------------------
+echo "\n-- an update never defaults what it was not told --\n";
+$stmt->execute([754]);
+$stored754 = $stmt->fetch(PDO::FETCH_ASSOC);   // re-read: the row moved above
+$partial = ['asset_ids' => [11, 22]];          // a client that changes only the order
+
+$kept = $try(static fn() => smackpress_mosaic_validate($partial, $pdo, $refuse, $stored754));
+$check('a partial update is accepted rather than refused', is_array($kept));
+$check('THE TITLE IS NOT REPLACED WITH "Untitled Mosaic"',
+    ($kept['title'] ?? null) === 'First writer wins');
+$check('the owner\'s gap is not reset to the create default of 4', ($kept['gap'] ?? null) === 13);
+$check('a deliberate rows layout is not turned back into asymmetric',
+    ($kept['layout'] ?? null) === 'rows');
+$check('emphasis is not reset either', ($kept['emphasis'] ?? null) === 'landscape');
+$check('the per-photograph framing survives an update that never mentions it',
+    ($kept['focus'][11]['x'] ?? null) == 10 && ($kept['focus'][11]['y'] ?? null) == 90);
+$check('and so do the tile sizes', ($kept['weights'][11] ?? null) === 2);
+
+// THE CONTROL. Without the stored row this is a CREATE, and the defaults are
+// right there -- which is what proves the preservation above is doing the work
+// and not reading values that happen to match.
+$created = $try(static fn() => smackpress_mosaic_validate($partial, $pdo, $refuse, null));
+$check('CONTROL: the same body with no stored row is a create, and defaults apply',
+    is_array($created) && $created['title'] === 'Untitled Mosaic'
+    && $created['gap'] === 4 && $created['layout'] === 'asymmetric');
+$check('CONTROL: a create carries no framing or tile sizes it was not given',
+    ($created['focus'] ?? null) === [] && ($created['weights'] ?? null) === []);
+
+// PRESENT STILL WINS, including the falsy values that an ?? default would eat.
+$explicit = $try(static fn() => smackpress_mosaic_validate(
+    ['asset_ids' => [11, 22], 'title' => 'Renamed', 'gap' => 0, 'layout' => 'columns'],
+    $pdo, $refuse, $stored754));
+$check('a sent title replaces the stored one', ($explicit['title'] ?? null) === 'Renamed');
+$check('A SENT GAP OF 0 IS OBEYED, not read as absent and replaced',
+    ($explicit['gap'] ?? null) === 0);
+$check('a sent layout is obeyed', ($explicit['layout'] ?? null) === 'columns');
+$cleared = $try(static fn() => smackpress_mosaic_validate(
+    ['asset_ids' => [11, 22], 'mosaic_weights' => [], 'focus_positions' => []],
+    $pdo, $refuse, $stored754));
+$check('an explicitly EMPTY field clears rather than preserves',
+    is_array($cleared) && $cleared['weights'] === [] && $cleared['focus'] === []);
+
+// A PRESERVED VALUE IS VALIDATED, NOT WAVED THROUGH. If the body sends a new
+// order that no longer holds image 11, the stored weight and focus for 11 are
+// references to a photograph the mosaic does not contain, and keeping them
+// quietly is the corruption this guard is against.
+$refusals = [];
+$shrunk = $try(static fn() => smackpress_mosaic_validate(
+    ['asset_ids' => [22]], $pdo, $refuse, $stored754));
+$check('a stored weight that the NEW order no longer holds is refused, not kept',
+    $shrunk === null && ($lastRefusal()['code'] ?? null) === 422);
+// And it can be resolved the honest way: say what the framing should now be.
+$resolved = $try(static fn() => smackpress_mosaic_validate(
+    ['asset_ids' => [22], 'mosaic_weights' => [], 'focus_positions' => []],
+    $pdo, $refuse, $stored754));
+$check('and the client can resolve it by sending the new framing explicitly',
+    is_array($resolved) && $resolved['asset_ids'] === [22]);
+
+$check('SOURCE: the update route passes the stored row to the validator',
+    (bool)preg_match('/smackpress_mosaic_validate\(\$body,\s*\$pdo,\s*\$refuse,\s*\$existing\)/', $api));
 
 echo "\n";
 if ($fails) {

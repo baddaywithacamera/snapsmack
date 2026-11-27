@@ -160,10 +160,75 @@ function smackpress_mosaic_read(PDO $pdo, int $mosaic_id): ?array {
     return $mosaic;
 }
 
-/** The opaque conflict token for a mosaic row. */
+/**
+ * The columns that ARE the definition. The conflict token covers all of them.
+ *
+ * updated_at is in here too, so an edit that puts a field back to its previous
+ * value still moves the token: a client that read the row in between has seen
+ * something that is no longer current even if it looks identical.
+ */
+const SMACKPRESS_MOSAIC_DEFINITION_COLUMNS = [
+    'title', 'asset_ids', 'gap', 'layout', 'emphasis', 'gallery_shuffle',
+    'focus_positions', 'mosaic_weights', 'mosaic_mirrors', 'updated_at',
+];
+
+/**
+ * The opaque conflict token for a mosaic row: a hash of the WHOLE definition.
+ *
+ * MY FIRST VERSION HASHED id, updated_at AND asset_ids ONLY, which is not a
+ * conflict token, it is a token for three of ten fields. Two clients could each
+ * change the gap, or the layout, or the weights, or the framing, in the same
+ * second, and the second write would sail through with the first client's token
+ * still matching -- because nothing it changed was in the hash. The owner would
+ * lose an edit and nothing would say so. Codex found it; it is the same shape of
+ * fault as the focus-positions loss, a guard that looks present and covers less
+ * than it appears to.
+ *
+ * Only columns the row ACTUALLY HAS are hashed, so an un-migrated site gets a
+ * stable token over its smaller definition rather than a token over nulls.
+ */
 function smackpress_mosaic_revision(array $row): string {
-    return substr(hash('sha256', (string)($row['id'] ?? '') . '|' . (string)($row['updated_at'] ?? '')
-        . '|' . (string)($row['asset_ids'] ?? '')), 0, 16);
+    $parts = [(string)($row['id'] ?? '')];
+    foreach (SMACKPRESS_MOSAIC_DEFINITION_COLUMNS as $col) {
+        if (!array_key_exists($col, $row)) continue;
+        $parts[] = $col . '=' . (string)($row[$col] ?? '');
+    }
+    return substr(hash('sha256', implode('|', $parts)), 0, 16);
+}
+
+/**
+ * The compare-and-swap tail for an update, and its parameters.
+ *
+ * WHY THIS EXISTS RATHER THAN A CHECK BEFORE THE WRITE. Reading the row,
+ * comparing its token, and then updating is three statements with gaps between
+ * them, and anything may happen in a gap -- which means the guard guards
+ * nothing. The PM put it plainly: check-then-write outside a transaction does
+ * not guard anything. So the comparison travels IN the UPDATE, as a WHERE over
+ * the values that were read, and a write that matches nothing affects zero rows
+ * and is refused. One statement, no window.
+ *
+ * NULL-SAFE AND PORTABLE. The three JSON columns are nullable, and `col = ?`
+ * never matches a NULL in either MySQL or sqlite, so a row with no weights
+ * would be unguardable. COALESCE to an empty string makes absence comparable
+ * without needing MySQL's <=> or sqlite's IS, which are not the same operator.
+ *
+ * @return array{0: string, 1: array} the SQL fragment and its bound values
+ */
+function smackpress_mosaic_cas(array $existing): array {
+    $nullable = ['focus_positions' => true, 'mosaic_weights' => true, 'mosaic_mirrors' => true];
+    $sql = [];
+    $params = [];
+    foreach (SMACKPRESS_MOSAIC_DEFINITION_COLUMNS as $col) {
+        if (!array_key_exists($col, $existing)) continue;
+        if (isset($nullable[$col])) {
+            $sql[]    = "COALESCE({$col}, '') = ?";
+            $params[] = (string)($existing[$col] ?? '');
+        } else {
+            $sql[]    = "{$col} = ?";
+            $params[] = $existing[$col];
+        }
+    }
+    return [implode(' AND ', $sql), $params];
 }
 
 /**
@@ -188,7 +253,54 @@ function smackpress_mosaic_revision(array $row): string {
  * @return array{title:string,asset_ids:int[],gap:int,layout:string,gallery_shuffle:int,
  *               weights:array,mirrors:array,focus:array,emphasis:?string}
  */
-function smackpress_mosaic_validate(array $body, PDO $pdo, callable $refuse): array {
+function smackpress_mosaic_validate(array $body, PDO $pdo, callable $refuse, ?array $stored = null): array {
+    // ── OMITTED MEANS UNCHANGED, AND IT IS THE STORED VALUE THAT FILLS IN ──
+    //
+    // WITHOUT THIS, AN UPDATE DESTROYS WHAT IT DOES NOT MENTION. The defaults
+    // below exist for a CREATE, where there is nothing to keep: a mosaic made
+    // with no title is 'Untitled Mosaic', no gap is 4, no layout is asymmetric.
+    // On an UPDATE those same defaults are silent data loss -- a client that
+    // sends a new asset order and nothing else would have the owner's title
+    // replaced with 'Untitled Mosaic', their chosen gap reset to 4 and a
+    // deliberate rows layout turned back into asymmetric, with a 200 OK and
+    // nothing anywhere to say a thing was lost. That is the SAME fault as the
+    // focus-positions drop, and I shipped it a second time in the same file.
+    //
+    // THE RULE, and it is the one the rest of the product already follows:
+    // A KEY THAT IS ABSENT KEEPS THE STORED VALUE; a key that is PRESENT is
+    // obeyed, including when it is empty, which is how [] clears the mirrors.
+    // portfolio_post, colophon, signature_image_id and gallery_shuffle are all
+    // received this way. Refusing a partial body with 422 was the other option
+    // the PM offered; this one is chosen because the alternative would make
+    // this one function contradict its own convention, and because a client
+    // that wants a field left alone should not have to echo it back correctly
+    // to avoid wrecking it.
+    //
+    // THE STORED VALUE IS VALIDATED, NOT WAVED THROUGH. It is injected into the
+    // body and travels the same path a sent value does, so a stored weight or
+    // mirror that no longer fits a NEWLY SENT asset order is refused rather
+    // than kept as a reference to a photograph the mosaic no longer holds.
+    // Keeping it would be the quiet corruption this whole guard is against.
+    if ($stored !== null) {
+        $keep = [
+            'title'           => fn($v) => (string)$v,
+            'asset_ids'       => fn($v) => is_array($d = json_decode((string)$v, true)) ? $d : [],
+            'gap'             => fn($v) => (int)$v,
+            'layout'          => fn($v) => (string)$v,
+            'emphasis'        => fn($v) => (string)$v,
+            'gallery_shuffle' => fn($v) => (int)$v ? 1 : 0,
+            'focus_positions' => fn($v) => is_array($d = json_decode((string)$v, true)) ? $d : [],
+            'mosaic_weights'  => fn($v) => is_array($d = json_decode((string)$v, true)) ? $d : [],
+            'mosaic_mirrors'  => fn($v) => is_array($d = json_decode((string)$v, true)) ? $d : [],
+        ];
+        foreach ($keep as $col => $decode) {
+            if (array_key_exists($col, $body)) continue;        // the body spoke: obey it
+            if (!array_key_exists($col, $stored)) continue;     // this install has no such column
+            if ($stored[$col] === null) continue;               // nobody has ever set it
+            $body[$col] = $decode($stored[$col]);
+        }
+    }
+
     $title     = trim((string)($body['title'] ?? 'Untitled Mosaic'));
     $asset_ids = array_map('intval', $body['asset_ids'] ?? []);
     $gap       = max(0, min(20, (int)($body['gap'] ?? 4)));
