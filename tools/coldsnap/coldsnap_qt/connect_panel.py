@@ -31,8 +31,11 @@ class _ModeProbeBridge(QObject):
 
 
 class _SitesLoadBridge(QObject):
-    loaded = Signal(dict)
-    failed = Signal(str)
+    finished = Signal(int, dict, str)
+
+
+SITE_LOAD_TIMEOUT_MS = 15_000
+MAX_SITE_LOAD_WORKERS = 2
 
 
 def verify_site_mode(parent, conn, expected_mode: str, mode_label: str) -> bool:
@@ -116,8 +119,12 @@ class ConnectPanel(QWidget):
         self._mode_bridge = _ModeProbeBridge(self)
         self._mode_bridge.finished.connect(self._apply_discovered_modes)
         self._sites_bridge = _SitesLoadBridge(self)
-        self._sites_bridge.loaded.connect(self._apply_loaded_sites)
-        self._sites_bridge.failed.connect(self._apply_load_failed)
+        self._sites_bridge.finished.connect(self._finish_site_load)
+        self._site_load_generation = 0
+        self._site_load_workers = []
+        self._site_load_watchdog = QTimer(self)
+        self._site_load_watchdog.setSingleShot(True)
+        self._site_load_watchdog.timeout.connect(self._site_load_timed_out)
         self.setObjectName("AppHeader")
 
         col = QVBoxLayout(self)
@@ -190,6 +197,14 @@ class ConnectPanel(QWidget):
         QTimer.singleShot(0, self._begin_async_load)
 
     def _begin_async_load(self):
+        self._site_load_workers = [worker for worker in self._site_load_workers
+                                   if worker.is_alive()]
+        if len(self._site_load_workers) >= MAX_SITE_LOAD_WORKERS:
+            self._apply_load_failed("The saved site profile store is still busy. "
+                                    "Close and reopen COLD SNAP if it stays busy.")
+            return
+        self._site_load_generation += 1
+        generation = self._site_load_generation
         self._load_error = ""
         self.retry_btn.setVisible(False)
         self.profile_combo.blockSignals(True)
@@ -213,12 +228,35 @@ class ConnectPanel(QWidget):
                     if not mode and url:
                         mode = str(snap_library.site_mode(url) or "").strip().lower()
                     cache[name] = {"url": url, "api_key": api_key, "mode": mode}
-                self._sites_bridge.loaded.emit({"config": cfg, "cache": cache})
             except Exception as exc:  # noqa: BLE001
-                msg = str(exc).strip() or type(exc).__name__
-                self._sites_bridge.failed.emit(msg)
+                payload = {}
+                reason = str(exc).strip() or type(exc).__name__
+            else:
+                payload = {"config": cfg, "cache": cache}
+                reason = ""
+            try:
+                self._sites_bridge.finished.emit(generation, payload, reason)
+            except RuntimeError:
+                # The window can close while the profile store is still busy.
+                return
 
-        threading.Thread(target=_load, daemon=True, name="coldsnap-sites-load").start()
+        worker = threading.Thread(target=_load, daemon=True, name="coldsnap-sites-load")
+        self._site_load_workers.append(worker)
+        self._site_load_watchdog.start(SITE_LOAD_TIMEOUT_MS)
+        worker.start()
+
+    def _site_load_timed_out(self):
+        self._site_load_generation += 1
+        self._apply_load_failed("Reading saved site profiles timed out. Click Retry.")
+
+    def _finish_site_load(self, generation, payload, reason):
+        if generation != self._site_load_generation:
+            return
+        self._site_load_watchdog.stop()
+        if reason:
+            self._apply_load_failed(reason)
+        else:
+            self._apply_loaded_sites(payload)
 
     def _apply_load_failed(self, reason: str):
         self._load_error = str(reason or "Unknown error")
