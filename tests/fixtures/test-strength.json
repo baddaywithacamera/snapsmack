@@ -3577,6 +3577,11 @@
         "predicates": 1,
         "thresholds": []
     },
+    "version-epoch-survives-the-local-scan-regression.php": {
+        "assertions": 15,
+        "predicates": 4,
+        "thresholds": []
+    },
     "version-series-gate-regression.php": {
         "assertions": 55,
         "predicates": 8,
