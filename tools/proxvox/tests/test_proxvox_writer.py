@@ -1157,4 +1157,81 @@ def test_host_proxmox_context_keeps_chain_verification_for_legacy_ca(w, monkeypa
     assert context.check_hostname is False
 
 
+def test_host_tls_accepts_chain_from_ca_without_key_usage(w, monkeypatch, tmp_path):
+    import shutil
+    import ssl
+    import subprocess
+
+    openssl = shutil.which("openssl")
+    if not openssl:
+        pytest.skip("OpenSSL is required to issue a disposable Proxmox-style chain")
+    ca_config = tmp_path / "ca.cnf"
+    ca_config.write_text(
+        "[req]\nprompt=no\ndistinguished_name=dn\nx509_extensions=ca\n"
+        "[dn]\nCN=Proxmox fixture CA\n"
+        "[ca]\nbasicConstraints=critical,CA:TRUE\nsubjectKeyIdentifier=hash\n"
+        "authorityKeyIdentifier=keyid:always\n",
+        encoding="ascii",
+    )
+    leaf_config = tmp_path / "leaf.cnf"
+    leaf_config.write_text(
+        "basicConstraints=critical,CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\n"
+        "extendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\n"
+        "authorityKeyIdentifier=keyid:always\nsubjectAltName=DNS:proxmox.fixture\n",
+        encoding="ascii",
+    )
+
+    def issue(*args):
+        subprocess.run([openssl, *args], cwd=tmp_path, check=True, capture_output=True)
+
+    issue("req", "-new", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+          "-config", "ca.cnf", "-keyout", "ca.key", "-out", "ca.pem")
+    issue("req", "-new", "-newkey", "rsa:2048", "-nodes", "-subj", "/CN=proxmox.fixture",
+          "-keyout", "leaf.key", "-out", "leaf.csr")
+    issue("x509", "-req", "-in", "leaf.csr", "-CA", "ca.pem", "-CAkey", "ca.key",
+          "-CAcreateserial", "-days", "1", "-extfile", "leaf.cnf", "-out", "leaf.pem")
+
+    ca = str(tmp_path / "ca.pem")
+    server = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    server.load_cert_chain(tmp_path / "leaf.pem", tmp_path / "leaf.key")
+
+    def handshake(context):
+        from_client, to_client = ssl.MemoryBIO(), ssl.MemoryBIO()
+        from_server, to_server = ssl.MemoryBIO(), ssl.MemoryBIO()
+        client_conn = context.wrap_bio(to_client, from_client, server_hostname="proxmox.fixture")
+        server_conn = server.wrap_bio(to_server, from_server, server_side=True)
+        complete = set()
+        for _ in range(12):
+            for name, conn, output, peer in (
+                ("client", client_conn, from_client, to_server),
+                ("server", server_conn, from_server, to_client),
+            ):
+                if name not in complete:
+                    try:
+                        conn.do_handshake()
+                        complete.add(name)
+                    except ssl.SSLWantReadError:
+                        pass
+                if output.pending:
+                    peer.write(output.read())
+            if len(complete) == 2:
+                return
+        pytest.fail("disposable TLS handshake did not finish")
+
+    if ssl.OPENSSL_VERSION_INFO >= (3, 0):
+        strict = ssl.create_default_context(cafile=ca)
+        strict.verify_flags |= ssl.VERIFY_X509_STRICT
+        with pytest.raises(ssl.SSLCertVerificationError) as rejected:
+            handshake(strict)
+        assert rejected.value.verify_code == 92
+
+
+    monkeypatch.setattr(w, "PVE_CA_CANDIDATES", (ca,))
+    fixed = w._pve_ssl_context()
+    handshake(fixed)
+    untrusted = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    with pytest.raises(ssl.SSLCertVerificationError):
+        handshake(untrusted)
+
+
 # ===== SNAPSMACK EOF =====
