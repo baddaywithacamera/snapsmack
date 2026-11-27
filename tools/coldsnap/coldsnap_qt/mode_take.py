@@ -17,6 +17,7 @@ import tempfile
 import traceback
 import threading
 import uuid
+from pathlib import Path
 
 import requests
 
@@ -35,6 +36,7 @@ from shiboken6 import isValid
 
 import sumna_offline as O
 import published_photo_cache
+import published_post_cache
 import snap_library
 from snap_home import site_key
 from sumna_post import AuthorizationExpiredError, SmacktalkPoster
@@ -3134,6 +3136,7 @@ class TakeMode(QWidget):
         session = self.rail.ensure_session()
         self._start_published_load(
             poster, post_id, action, session, str(self._editing_id or ""),
+            revision=selected_row.get("updated_at"),
         )
 
     def _published_list_failed(self, error) -> None:
@@ -3146,7 +3149,7 @@ class TakeMode(QWidget):
         QMessageBox.critical(self, "Could not load posts", str(error))
 
     def _start_published_load(self, poster, post_id: int, action: str,
-                              session, active_id: str) -> None:
+                              session, active_id: str, *, revision=None) -> None:
         """Fetch one published post and its photos without blocking the GUI."""
         if self._published_load_active:
             return
@@ -3171,12 +3174,15 @@ class TakeMode(QWidget):
 
         def load():
             try:
-                post = poster.get_post(post_id)
+                cached = published_post_cache.load(site, post_id, revision) if action == "separate" else None
+                post, local_photos = cached if cached else (poster.get_post(post_id), {})
                 draft = None
                 if action != "attach" and not cancel.is_set():
+                    preview_options = {"local_photos": local_photos} if local_photos else {}
                     draft = self._draft_from_remote(
                         post, site=site, cancel=cancel, progress=lambda done, total:
                         self._published_bridge.progress.emit(cancel, done, total),
+                        **preview_options,
                     )
                 if draft is not None and draft.images and not cancel.is_set():
                     session._absorb_images(draft)
@@ -3274,7 +3280,7 @@ class TakeMode(QWidget):
             return
         QMessageBox.critical(self, "Could not open post", str(error))
 
-    def _draft_from_remote(self, post, *, site=None, cancel=None, progress=None):
+    def _draft_from_remote(self, post, *, site=None, cancel=None, progress=None, local_photos=None):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
                         mode=self.SUITE_MODE)
         draft.remote_post_id = int(post.get("id") or 0)
@@ -3303,6 +3309,7 @@ class TakeMode(QWidget):
         cover_id = int(post.get("featured_image_id") or 0)
         rows = list(post.get("bucket") or [])
         site = site or (self.app_config() or {}).get("url") or ""
+        local_photos = local_photos or {}
 
         def _fetch_one(item):
             if cancel is not None and cancel.is_set():
@@ -3317,8 +3324,14 @@ class TakeMode(QWidget):
                 response.raise_for_status()
                 return response.content if cancel is None or not cancel.is_set() else None
 
+            local = local_photos.get(str(image_id))
+            local = local if isinstance(local, dict) else {}
+            original = local.get("original")
+            retained = isinstance(original, str) and os.path.isfile(original)
             try:
-                target = published_photo_cache.get_full_size(site, image_id, source_url, fetch) if source_url else None
+                target = Path(original) if retained else None
+                if target is None and source_url:
+                    target = published_photo_cache.get_full_size(site, image_id, source_url, fetch)
             except requests.RequestException:
                 # A missing original must not prevent the post and its other
                 # photos from opening. Keep the existing site image identity.
@@ -3335,6 +3348,11 @@ class TakeMode(QWidget):
             if target is not None:
                 thumbs = target.parent / "thumbs"
                 square, aspect = thumbs / f"t_{target.name}", thumbs / f"a_{target.name}"
+                if retained:
+                    if isinstance(local.get("square"), str) and local["square"]:
+                        square = Path(local["square"])
+                    if isinstance(local.get("aspect"), str) and local["aspect"]:
+                        aspect = Path(local["aspect"])
                 if image.width > 0 and image.height > 0 and square.is_file() and aspect.is_file():
                     image.thumb_square, image.thumb_aspect = str(square), str(aspect)
                     image.thumb_params = O.thumb_signature(image)

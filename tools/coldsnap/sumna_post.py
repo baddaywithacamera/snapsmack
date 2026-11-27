@@ -44,6 +44,7 @@ from sumna_offline import (
     MODE_SOLO, MODE_GRAM, MODE_SMACKTALK, MODE_UNKNOWN,
 )
 import sumna_resize
+import published_post_cache
 
 
 def _gap_value(raw):
@@ -1319,6 +1320,35 @@ class SmacktalkPoster:
                       or (server_data or {}).get("url", ""),
             per_image=per_image)
 
+    def _cache_published_post(self, post_id, slug, images, image_ids):
+        if not published_post_cache.RETENTION_SECONDS or not slug:
+            return
+        try:
+            # Read the revision before the detail. If another edit lands in
+            # between, a later listing will invalidate this snapshot.
+            response = self.session.get(self._route("smackpress/posts"),
+                                        params={"slug": slug}, timeout=8)
+            response.raise_for_status()
+            listing = response.json() or {}
+            if not listing.get("exact"):
+                return
+            row = next((row for row in listing.get("posts", [])
+                        if int(row.get("id") or 0) == post_id), {})
+            revision = row.get("updated_at")
+            if not revision:
+                return
+            post = self.get_post(post_id)
+            if int(post.get("id") or 0) != post_id:
+                return
+            local_photos = {
+                str(image_id): {"original": image.local_path, "aspect": image.thumb_aspect,
+                                "square": image.thumb_square}
+                for image, image_id in zip(images, image_ids) if image_id and image.local_path
+            }
+            published_post_cache.save(self.base_url, post, revision, local_photos)
+        except (requests.RequestException, ValueError, TypeError, AttributeError):
+            _log.debug("Could not cache a verified published post", exc_info=True)
+
     @staticmethod
     def _long_slugify(text: str) -> str:
         s = re.sub(r"[^a-z0-9\s-]", "", (text or "").strip().lower())
@@ -1561,6 +1591,7 @@ class SmacktalkPoster:
         # no photo files copied — originals stay on disk).
         if not is_page:
             self._record_to_library(draft, post_id, content, data, image_ids)
+            self._cache_published_post(post_id, data.get("slug"), draft.images, image_ids)
         return SyncResult(True, remote_post_id=post_id,
                           message="Updated" if getattr(draft, "remote_post_id", 0) else "Posted")
 
