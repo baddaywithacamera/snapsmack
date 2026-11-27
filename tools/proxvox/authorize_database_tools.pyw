@@ -253,6 +253,7 @@ def main():
     form.columnconfigure(1, weight=1)
     status = tk.StringVar(value="Checking the installed host files…")
     remaining = tk.StringVar(value="No active session")
+    host_ready = False
     running = False
     publication_complete = False
     session = None
@@ -283,14 +284,13 @@ def main():
         threading.Thread(target=work, daemon=True).start()
 
     def poll():
-        nonlocal running, publication_complete, session
+        nonlocal host_ready, running, publication_complete, session
         while not events.empty():
             item = events.get()
             if isinstance(item, tuple) and item[0] == "ready":
+                host_ready = True
                 status.set("Ready for the owner to authorize.")
-                button.state(["!disabled"])
-                for entry in entries:
-                    entry.state(["!disabled"])
+                entries[0].state(["!disabled"])
                 entries[0].focus_set()
             elif isinstance(item, tuple) and item[0] == "session":
                 session = item[1]
@@ -306,10 +306,6 @@ def main():
                     return
             elif item is None:
                 running = False
-                if session is None:
-                    button.state(["!disabled"])
-                    for entry in entries:
-                        entry.state(["!disabled"])
             else:
                 status.set(item)
         seconds = session[0].seconds_remaining() if session else 0
@@ -320,6 +316,10 @@ def main():
             hours, remainder = divmod(seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
             remaining.set(f"Session remaining {hours:02}:{minutes:02}:{seconds:02}")
+        authorization_state = ["!disabled"] if host_ready and not running and not session else ["disabled"]
+        button.state(authorization_state)
+        for entry in entries:
+            entry.state(authorization_state)
         state = ["!disabled"] if session and not running else ["disabled"]
         preview_action.state(state)
         publish_action.state(state if publication_sha and not publication_complete else ["disabled"])

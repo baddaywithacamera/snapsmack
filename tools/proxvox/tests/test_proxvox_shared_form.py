@@ -50,8 +50,9 @@ class SynchronousThread:
         self.target()
 
 
-@pytest.mark.parametrize("valid_manifest", [True, False])
-def test_shared_form_preflights_then_reuses_and_revokes(monkeypatch, valid_manifest):
+@pytest.mark.parametrize("scenario", ["revoke", "expire", "invalid_manifest"])
+def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
+    valid_manifest = scenario != "invalid_manifest"
     source = Path(__file__).resolve().parents[1]
     monkeypatch.syspath_prepend(str(source))
     main = runpy.run_path(str(source / "authorize_database_tools.pyw"))["main"]
@@ -86,9 +87,15 @@ def test_shared_form_preflights_then_reuses_and_revokes(monkeypatch, valid_manif
             buttons["Publish SnapSmack.ca"].press()
             self.poll()
             assert buttons["Publish SnapSmack.ca"].disabled
-            buttons["End session"].press()
+            if scenario == "expire":
+                client.seconds_remaining.return_value = 0
+            else:
+                buttons["End session"].press()
             self.poll()
             assert buttons["Preview The Artist"].disabled
+            assert not buttons["Authorize"].disabled
+            if scenario == "expire":
+                assert variables[3].get() == "The PROX VOX session expired."
 
     kernel = SimpleNamespace(CreateMutexW=Mock(return_value=1), CloseHandle=Mock())
     client, reader, writer = Mock(), Mock(), Mock()
@@ -122,7 +129,10 @@ def test_shared_form_preflights_then_reuses_and_revokes(monkeypatch, valid_manif
         preview.assert_called_once_with(client)
         assert publish.call_args.args[:4] == (reader, writer, client, [("fixture",)])
         assert plan.call_count == 2
-        client.revoke.assert_called_once()
+        if scenario == "expire":
+            client.revoke.assert_not_called()
+        else:
+            client.revoke.assert_called_once()
     else:
         client.authorize.assert_not_called()
         preview.assert_not_called()
