@@ -51,44 +51,17 @@ function dpr_fail(string $message): void
  *
  * Reported to the room for the gate itself; this is the narrow fix in my lane.
  */
-const DPR_PLACEHOLDERS = ['FILL IN', 'FILLIN', 'TODO', 'TBD', 'TBC', 'XXX', 'PLACEHOLDER', 'FIXME'];
-
-/**
- * Text with every run of punctuation and whitespace flattened to one space.
- *
- * Muse's caveat on the first version (room 8417): it matched the exact
- * substring, so "FILL  IN", "FILL\tIN", "FILL-IN" and "FILL_IN" all slipped
- * past. Flattening first means one rule covers every spelling.
- */
-function dpr_normalise(string $text): string
-{
-    $flat = preg_replace('/[^A-Za-z0-9]+/', ' ', strtoupper($text));
-    return trim((string)$flat);
-}
-
-/**
- * Does this text still read as an unsupplied fact?
- *
- * A BARE "FILL" is only treated as a marker when it is the WHOLE field.
- * SnapSmack has a feature called Generative Fill, so a capture may legitimately
- * say "the Generative Fill panel" and must not be refused for it.
- *
- * This cannot catch plausible text somebody invented, and it is not meant to:
- * it catches a template nobody filled in. Fabricated evidence is a different
- * problem and no string check solves it.
- */
+// The placeholder rules live in the GATE now (release-demo-parity.php), so
+// the builder and the gate cannot disagree about what counts as unsupplied.
+// This file used to carry its own copy; one spelling is the point.
 function dpr_is_placeholder(string $text): bool
 {
-    $flat = dpr_normalise($text);
-    if ($flat === '' || $flat === 'FILL' || $flat === 'N A' || $flat === 'NA' || $flat === 'NONE') {
-        return true;
-    }
-    foreach (DPR_PLACEHOLDERS as $marker) {
-        if (str_contains($flat, dpr_normalise($marker))) {
-            return true;
-        }
-    }
-    return false;
+    return rf_demo_parity_is_placeholder($text);
+}
+
+function dpr_normalise(string $text): string
+{
+    return rf_demo_parity_normalise($text);
 }
 
 /**
@@ -107,7 +80,8 @@ function dpr_placeholders_left(array $record): array
             }
         }
         foreach (($feature['captures'] ?? []) as $position => $capture) {
-            if (dpr_is_placeholder((string)$capture)) {
+            $path = is_array($capture) ? (string)($capture['path'] ?? '') : (string)$capture;
+            if (dpr_is_placeholder($path)) {
                 $left[] = "feature {$index} capture {$position}";
             }
         }
@@ -131,16 +105,32 @@ function dpr_build_record(string $commit, string $checkedBy, string $checkedAt, 
         if (is_string($captures)) {
             $captures = [$captures];
         }
+        // A CAPTURE IS A FILE. The gate now requires {path, sha256} and checks
+        // the file is in the repository and hashes to the stated value, so a
+        // filename somebody typed is no longer evidence. A path given as a
+        // bare string is hashed here from the file on disk; a path that is not
+        // there is left alone so the gate reports it by name.
+        $captures = array_map(static function ($capture) {
+            if (is_array($capture)) {
+                return $capture;
+            }
+            $path = trim((string)$capture);
+            if ($path === '' || dpr_is_placeholder($path)) {
+                return ['path' => $path];
+            }
+            $full = rf_demo_parity_root() . DIRECTORY_SEPARATOR
+                . str_replace('/', DIRECTORY_SEPARATOR, $path);
+            return is_file($full)
+                ? ['path' => $path, 'sha256' => hash_file('sha256', $full)]
+                : ['path' => $path];
+        }, is_array($captures) ? $captures : []);
         $out[] = [
             'ticket' => trim((string)($feature['ticket'] ?? '')),
             'acceptance' => trim((string)($feature['acceptance'] ?? '')),
             'site' => trim((string)($feature['site'] ?? '')),
             'room_message_id' => trim((string)($feature['room_message_id'] ?? '')),
             'result' => (string)($feature['result'] ?? 'pass'),
-            'captures' => array_values(array_map(
-                static fn ($capture): string => trim((string)$capture),
-                is_array($captures) ? $captures : []
-            )),
+            'captures' => array_values($captures),
         ];
     }
     return [

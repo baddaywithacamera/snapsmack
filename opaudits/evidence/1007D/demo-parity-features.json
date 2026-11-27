@@ -6,10 +6,10 @@
         "room_message_id": "FILL IN: the room message that posted these captures",
         "result": "pass",
         "captures": [
-            "FILL IN: ALBUM SHARING in Configuration, reading OFF",
-            "FILL IN: the same control reading ON after a save and a fresh page load",
-            "FILL IN: the cross-site endpoint answering 404 with sharing OFF",
-            "FILL IN: the cross-site endpoint returning the album with sharing ON"
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/album-sharing-off.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/album-sharing-on-after-reload.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/endpoint-404-with-sharing-off.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/endpoint-payload-with-sharing-on.png"
         ]
     },
     {
@@ -19,8 +19,8 @@
         "room_message_id": "FILL IN: the room message that posted these captures",
         "result": "pass",
         "captures": [
-            "FILL IN: CRON & JOBS showing the POCKET ALBUM refresh entry",
-            "FILL IN: the Scheduler row saying there is nothing to do on a site with no remote album"
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/cron-jobs-pocket-album-entry.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/cron-jobs-nothing-to-do.png"
         ]
     }
 ]

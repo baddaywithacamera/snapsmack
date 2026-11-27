@@ -26,12 +26,21 @@ $check = static function (string $what, bool $ok) use (&$fails): void {
 };
 
 $sha = str_repeat('a', 40);
+// A capture is a FILE now, so the fixture names committed files and hashes
+// them at runtime. Two ordinary source files stand in for screenshots, which
+// keeps this test free of binaries and of writes into the tree.
+$captureA = 'tests/demo-parity-record-builder-regression.php';
+$captureB = 'tools/_build/make-demo-parity-record.php';
+$root = dirname(__DIR__);
 $good = [[
     'ticket' => 'SS-1600',
     'acceptance' => 'The control saves and the endpoint follows it.',
     'site' => 'http://127.0.0.1:56266/',
     'room_message_id' => 'abc123',
-    'captures' => ['the control off', 'the control on'],
+    'captures' => [
+        ['path' => $captureA, 'sha256' => hash_file('sha256', $root . '/' . $captureA)],
+        ['path' => $captureB, 'sha256' => hash_file('sha256', $root . '/' . $captureB)],
+    ],
 ]];
 
 // --- what the builder produces must satisfy the real gate -------------------
@@ -43,11 +52,18 @@ $check('its status is pass', $record['status'] === 'pass');
 $check('it carries the signer', $record['checked_by'] === 'claude');
 $check('checked_at is a time that parses', strtotime($record['checked_at']) !== false);
 $check('a feature defaults to result pass', $record['features'][0]['result'] === 'pass');
-$check('a single capture given as a string becomes a list',
-    dpr_build_record($sha, 'claude', date('c'),
+$oneString = dpr_build_record($sha, 'claude', date('c'),
+    [['ticket' => 'SS-1', 'acceptance' => 'a', 'site' => 'b',
+      'room_message_id' => 'c', 'captures' => $captureA]]
+)['features'][0]['captures'];
+$check('a capture path given as a bare string is turned into a path and a hash',
+    count($oneString) === 1 && ($oneString[0]['path'] ?? '') === $captureA
+    && ($oneString[0]['sha256'] ?? '') === hash_file('sha256', $root . '/' . $captureA));
+$check('a capture path that is not on disk is left for the gate to name',
+    !isset(dpr_build_record($sha, 'claude', date('c'),
         [['ticket' => 'SS-1', 'acceptance' => 'a', 'site' => 'b',
-          'room_message_id' => 'c', 'captures' => 'one capture']]
-    )['features'][0]['captures'] === ['one capture']);
+          'room_message_id' => 'c', 'captures' => 'tests/no-such-file.png']]
+    )['features'][0]['captures'][0]['sha256']));
 
 // --- the gate must refuse every incomplete record ---------------------------
 // Each of these is a field somebody would forget at one in the morning.
@@ -111,8 +127,12 @@ if (is_file($featuresPath)) {
     // room. My first version of this check hid it behind an `||`, which made
     // the check vacuous -- the third such of mine this month.
     $built = dpr_build_record($sha, 'nobody', date('c'), $features ?: []);
-    $check('THE GATE ITSELF ACCEPTS PLACEHOLDER TEXT (this is the hole, not a pass)',
-        rf_demo_parity_record_problem($built, $sha) === '');
+    // THE HOLE IS CLOSED. This check asserted the opposite until the PM moved
+    // the gate into my lane (room 8456): the gate used to ACCEPT this record.
+    // It now refuses it, and the builder refuses it too, so neither path can
+    // turn a template into evidence.
+    $check('THE GATE now refuses the unfilled template',
+        rf_demo_parity_record_problem($built, $sha) !== '');
     $check('the BUILDER refuses it instead, naming every unsupplied fact',
         dpr_placeholders_left($built) !== []);
     $check('it names the site, the room message and every capture as unsupplied',
@@ -188,7 +208,7 @@ $check('it writes NOTHING when it refuses', !is_file($outPath));
 // 2. A record the gate's own validator would reject: a bad ticket.
 $badPath = $writeJson($tmp . '/bad.json', [[
     'ticket' => 'POCKET-1', 'acceptance' => 'something', 'site' => 'http://127.0.0.1:1/',
-    'room_message_id' => 'abc', 'captures' => ['a capture'],
+    'room_message_id' => 'abc', 'captures' => [$captureA],
 ]]);
 [$code, $output] = $run([$badPath, $tmp . '/bad-out.json', '--checked-by=claude', '--commit=' . $sha]);
 $check('THE TOOL refuses what the gate would refuse', $code !== 0);
@@ -205,7 +225,7 @@ $goodPath = $writeJson($tmp . '/good.json', [[
     'acceptance' => 'ALBUM SHARING saves and the endpoint follows it.',
     'site' => 'http://127.0.0.1:56266/',
     'room_message_id' => 'room-message-1',
-    'captures' => ['the control reading OFF', 'the control reading ON'],
+    'captures' => [$captureA, $captureB],
 ]]);
 $writtenPath = $tmp . '/good-out.json';
 [$code, $output] = $run([$goodPath, $writtenPath, '--checked-by=claude', '--commit=' . $sha]);
