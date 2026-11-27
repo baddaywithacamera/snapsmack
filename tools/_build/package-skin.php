@@ -86,7 +86,19 @@ if ($default_output === null || trim($default_output) === '') {
     // repository's own internals, which is the scatter this change exists to
     // stop. Measured from this worktree, not reasoned about. git tells us
     // where the real repository is; without git we fall back to the sibling.
-    $common = @shell_exec('git -C ' . escapeshellarg($project_root) . ' rev-parse --git-common-dir 2>&1');
+    // THE GIT BINARY IS A CONFIG KNOB, not a hard-coded name, so the no-git
+    // path can be exercised. Muse's remaining condition on 78fbf0f2 was exact:
+    // every default-output test runs inside a checkout where git answers, so
+    // the fallback climb never executed and removing it left all 55 checks
+    // green. I had claimed that gap was written and it was not.
+    //
+    // This is not a test-only backdoor. A machine without git is a real
+    // condition -- a site owner unpacking a zip has no repository at all --
+    // and SNAPSMACK_GIT_BIN is how that machine is described to the tool.
+    $git_bin = getenv('SNAPSMACK_GIT_BIN');
+    if ($git_bin === false || trim((string)$git_bin) === '') { $git_bin = 'git'; }
+    $common = @shell_exec(escapeshellarg($git_bin) . ' -C ' . escapeshellarg($project_root)
+        . ' rev-parse --git-common-dir 2>&1');
     $main_root = null;
     if (is_string($common)) {
         $common = trim($common);

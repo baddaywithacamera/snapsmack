@@ -72,40 +72,68 @@ $check('an in-series skin with no epoch does not print one',
     !str_contains($output, 'epoch'));
 
 // ---------------------------------------------------------------------------
-// The re-baseline rules. These need a manifest that declares rebaselined_from
-// and no real skin has one, so TILEZ's manifest is edited in place and PUT
-// BACK, with the restoration checked. A skin invented from scratch cannot be
-// used: the skin security gate runs first and refuses it for missing
-// structure, so the version checks are never reached. Found by trying it.
+// The re-baseline rules, on a COPY of a real skin.
+//
+// The first version of this edited TILEZ's own manifest in place and restored
+// it. Muse warned that a kill mid-test would leave it dirty, and that is
+// exactly what happened: a mutation run of mine died between the edit and the
+// restore, the next run compared against the dirty file, and four checks
+// failed for the wrong reason. Then consecutive runs started failing outright
+// with "Permission denied" writing that manifest -- a lingering lock from the
+// previous run -- so the suite had become FLAKY, which is worse than the gap
+// it was covering.
+//
+// A skin invented from nothing cannot be used: the skin security gate runs
+// first and refuses it for missing structure. A COPY of a real skin has the
+// structure and passes, so the fixture is a copy with its own slug. Nothing
+// tracked is touched.
 // ---------------------------------------------------------------------------
-$manifestPath = $root . '/skins/tilez/manifest.json';
-$originalBytes = (string)file_get_contents($manifestPath);
-$original = json_decode($originalBytes, true);
-$check('TILEZ manifest read, and it declares no re-baseline today',
-    is_array($original) && !isset($original['rebaselined_from']));
+$fixtureSlug = 'zz-packager-fixture';
+$fixtureDir = $root . '/skins/' . $fixtureSlug;
+$check('the fixture skin does not already exist', !is_dir($fixtureDir));
 
-$withFields = static function (array $extra) use ($manifestPath, $original): void {
-    file_put_contents($manifestPath,
-        json_encode(array_merge($original, $extra), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "
-");
+$copyInto = static function (string $from, string $to): void {
+    @mkdir($to, 0777, true);
+    foreach (glob($from . '/*') ?: [] as $file) {
+        if (is_file($file)) { @copy($file, $to . '/' . basename($file)); }
+    }
+};
+$removeFixture = static function (string $dir): void {
+    foreach (glob($dir . '/*') ?: [] as $file) { @unlink($file); }
+    @rmdir($dir);
+};
+
+$copyInto($root . '/skins/tilez', $fixtureDir);
+$check('the fixture carries the files a real skin has',
+    is_file($fixtureDir . '/manifest.json') && is_file($fixtureDir . '/style.css')
+    && is_file($fixtureDir . '/layout.php'));
+
+$fixtureManifest = static function (array $extra) use ($fixtureDir, $fixtureSlug): void {
+    $base = json_decode((string)file_get_contents($fixtureDir . '/manifest.json'), true) ?: [];
+    $base['name'] = 'Packager fixture';
+    $base['status'] = 'development';
+    file_put_contents($fixtureDir . '/manifest.json',
+        json_encode(array_merge($base, $extra), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
 };
 
 try {
     // Re-baselined, epoch missing: refused, because without the epoch no site
     // holding 2.1.30 would ever take 0.7.31.
-    $withFields(['version' => '0.7.31', 'rebaselined_from' => '2.1.30']);
-    [$code, $output] = $pack('tilez');
-    $check('a re-baselined skin with NO epoch is refused', str_contains($output, 'BLOCK tilez'));
+    $fixtureManifest(['version' => '0.7.31', 'rebaselined_from' => '2.1.30']);
+    [$code, $output] = $pack($fixtureSlug);
+    $check('a re-baselined skin with NO epoch is refused',
+        str_contains($output, 'BLOCK ' . $fixtureSlug));
     $check('the refusal explains that no site holding the old number would take it',
         str_contains($output, 'will ever take it'));
 
     // Re-baselined properly: accepted, epoch printed, epoch in the package.
-    $withFields(['version' => '0.7.31', 'rebaselined_from' => '2.1.30', 'version_epoch' => 1]);
-    [$code, $output] = $pack('tilez');
-    $check('a re-baselined skin WITH its epoch packages', str_contains($output, 'PACK  tilez'));
+    $fixtureManifest(['version' => '0.7.31', 'rebaselined_from' => '2.1.30', 'version_epoch' => 1]);
+    [$code, $output] = $pack($fixtureSlug);
+    $check('a re-baselined skin WITH its epoch packages',
+        str_contains($output, 'PACK  ' . $fixtureSlug));
     $check('the epoch is printed so nobody has to guess', str_contains($output, 'epoch 1'));
 
-    $zips = glob($out . '/tilez-0.7.31.zip') ?: [];
+    $zips = glob($out . '/' . $fixtureSlug . '-0.7.31.zip') ?: [];
     $check('the re-baselined package was written', $zips !== []);
     if ($zips !== []) {
         $zip = new ZipArchive();
@@ -122,62 +150,44 @@ try {
         }
     }
 
-    // Muse's note (a) on f94cbb26: a rebaselined_from this code cannot read,
-    // with the epoch present, used to pass — the wrong-number check was
-    // skipped because the expected version was null. Fail OPEN, which is the
-    // wrong direction for a claim about where a version came from.
-    $withFields(['version' => '0.7.31', 'rebaselined_from' => 'nonsense', 'version_epoch' => 1]);
-    [$code, $output] = $pack('tilez');
+    // An unreadable rebaselined_from must fail CLOSED, with the right reason.
+    foreach (glob($out . '/' . $fixtureSlug . '-*.zip') ?: [] as $earlier) { @unlink($earlier); }
+    $fixtureManifest(['version' => '0.7.31', 'rebaselined_from' => 'nonsense', 'version_epoch' => 1]);
+    [$code, $output] = $pack($fixtureSlug);
     $check('an unreadable rebaselined_from is REFUSED, not waved through',
-        str_contains($output, 'BLOCK tilez'));
+        str_contains($output, 'BLOCK ' . $fixtureSlug));
     $check('and the refusal quotes the value it could not read',
         str_contains($output, "'nonsense'"));
-    // The REASON must be the right one. Collapsing the unreadable case into
-    // the already-in-series case left both tests passing, so the message is
-    // what separates them. Mutation found this.
     $check('an unreadable value is reported as unreadable',
         str_contains($output, 'cannot be read as a version'));
-    $check('and NOT as already under 0.8',
-        !str_contains($output, 'already under 0.8'));
-    // Muse's nit: asserting the message is not asserting the outcome. The
-    // earlier re-baseline case in this same run legitimately wrote
-    // tilez-0.7.31.zip, so it is cleared first -- otherwise this would fail on
-    // somebody else's package and tell me nothing about this one.
-    foreach (glob($out . '/tilez-*.zip') ?: [] as $earlier) { @unlink($earlier); }
-    [$code, $output] = $pack('tilez');
+    $check('and NOT as already under 0.8', !str_contains($output, 'already under 0.8'));
     $check('it exits non-zero', $code !== 0);
-    $check('and writes no package', glob($out . '/tilez-*.zip') === []);
+    $check('and writes no package', glob($out . '/' . $fixtureSlug . '-*.zip') === []);
 
-    // AND THE CASE I COLLAPSED INTO IT. snap_version_rebaseline() returns null
-    // both for a value it cannot read and for one already under 0.8, so a
-    // manifest claiming rebaselined_from 0.7.31 was refused as unreadable when
-    // it reads perfectly well. Two different wrongs, two different messages.
-    $withFields(['version' => '0.7.31', 'rebaselined_from' => '0.7.31', 'version_epoch' => 1]);
-    [$code, $output] = $pack('tilez');
+    // An IN-SERIES rebaselined_from reads fine; it simply needed no move. Two
+    // different wrongs, two different messages.
+    $fixtureManifest(['version' => '0.7.31', 'rebaselined_from' => '0.7.31', 'version_epoch' => 1]);
+    [$code, $output] = $pack($fixtureSlug);
     $check('an IN-SERIES rebaselined_from is refused for the right reason',
         str_contains($output, 'already under 0.8'));
     $check('and not reported as unreadable',
         !str_contains($output, 'cannot be read as a version'));
 
     // Re-baselined to the wrong number: refused, and told the right one.
-    $withFields(['version' => '0.7.99', 'rebaselined_from' => '2.1.30', 'version_epoch' => 1]);
-    [$code, $output] = $pack('tilez');
+    $fixtureManifest(['version' => '0.7.99', 'rebaselined_from' => '2.1.30', 'version_epoch' => 1]);
+    [$code, $output] = $pack($fixtureSlug);
     $check('a re-baselined skin with the WRONG number is refused',
-        str_contains($output, 'BLOCK tilez'));
+        str_contains($output, 'BLOCK ' . $fixtureSlug));
     $check('and it is told the number it should carry', str_contains($output, '0.7.31'));
 } finally {
-    // Put TILEZ back exactly as it was. An uncaught failure here edits a real
-    // skin's manifest in Sean's checkout, which is far worse than a failing
-    // test, so it is restored byte for byte and then checked.
-    file_put_contents($manifestPath, $originalBytes);
+    $removeFixture($fixtureDir);
 }
-$check('TILEZ manifest restored byte for byte',
-    (string)file_get_contents($manifestPath) === $originalBytes);
-
-foreach (glob($out . '/*') ?: [] as $leftover) { @unlink($leftover); }
-@rmdir($out);
-$check('the packages were written to a temporary directory, not the tree',
-    glob($root . '/*.zip') === []);
+$check('the fixture skin was removed from skins/', !is_dir($fixtureDir));
+$check('no tracked skin was modified',
+    trim((string)@shell_exec('git -C ' . escapeshellarg($root)
+        . ' status --porcelain -- skins/ 2>&1')) === '');
+$check('the build still has exactly 30 skins',
+    count(glob($root . '/skins/*/manifest.json') ?: []) === 30);
 
 // ---------------------------------------------------------------------------
 // WHERE THE PACKAGES GO. PM ruling, room 8472: outside the checkout, never the
@@ -310,6 +320,55 @@ if (preg_match('~Output directory: (.+)$~m', $output, $m) === 1) {
     $check('it reports where it wrote', false);
 }
 foreach ($newInTree as $stray) { @unlink($stray); }
+
+
+// ---------------------------------------------------------------------------
+// WITHOUT GIT. Muse's remaining condition on 78fbf0f2, and she was exactly
+// right: every default-output check above runs inside a checkout where git
+// answers, so $main_root is set and the fallback climb NEVER EXECUTES.
+// Removing the climb left all 55 checks green, and I had claimed that gap was
+// written when it was not.
+//
+// A machine without git is a real condition -- a site owner who unpacked a zip
+// has no repository at all -- so the packager takes the git binary from
+// SNAPSMACK_GIT_BIN, and pointing that at nothing exercises the real fallback
+// rather than a stub. Measured with the climb removed: the default becomes
+// .claude/worktrees/<name>-builds, inside the repository's own internals.
+// ---------------------------------------------------------------------------
+$withoutGit = static function (array $args) use ($root): array {
+    $cmd = 'set "SNAPSMACK_GIT_BIN=' . $root . '/no-such-git.exe" && '
+        . escapeshellarg(PHP_BINARY) . ' '
+        . escapeshellarg($root . '/tools/_build/package-skin.php');
+    foreach ($args as $arg) { $cmd .= ' ' . escapeshellarg($arg); }
+    $lines = [];
+    $code = 1;
+    exec($cmd . ' 2>&1', $lines, $code);
+    return [$code, implode("\n", $lines)];
+};
+
+[$code, $output] = $withoutGit(['tilez', '--output=' . $root]);
+$check('the packager still runs with no git available', $output !== '');
+if (preg_match('~default is (.+?)\.?$~m', $output, $m) === 1) {
+    $noGitDefault = str_replace(chr(92), '/', trim($m[1], " .\t\r\n"));
+    $rootNorm = str_replace(chr(92), '/', (string)realpath($root));
+    $check('WITHOUT GIT the default is still outside the checkout: ' . $noGitDefault,
+        $noGitDefault !== '' && strncmp($noGitDefault, $rootNorm, strlen($rootNorm)) !== 0);
+    $check('and carries no .claude segment', !str_contains($noGitDefault, '/.claude'));
+    $check('and no worktrees segment', !str_contains($noGitDefault, '/worktrees'));
+    $check('and no .git segment', !str_contains($noGitDefault, '/.git'));
+} else {
+    $check('the no-git run states its default output directory', false);
+}
+
+// And it must still WORK without git, not merely refuse: a real site owner
+// unpacking a zip has no repository and still needs to package a skin.
+$noGitOut = $out . '-nogit';
+@mkdir($noGitOut, 0777, true);
+[$code, $output] = $withoutGit(['tilez', '--output=' . $noGitOut]);
+$check('a skin still packages with no git available',
+    $code === 0 && glob($noGitOut . '/tilez-*.zip') !== []);
+foreach (glob($noGitOut . '/*') ?: [] as $leftover) { @unlink($leftover); }
+@rmdir($noGitOut);
 
 
 echo "\n";
