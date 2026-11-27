@@ -5,6 +5,14 @@
     assert.match(src, /panel\.getAttribute\('data-target'\)/);
 });
 
+test('smack-longform-image-blocks keeps handle inside stage (SS-1625) and re-derives ordinal bounds (SS-1626)', () => {
+    assert.match(src, /right:0;top:0;width:16px/);
+    assert.doesNotMatch(src, /right:-8px/);
+    assert.match(src, /ordinal:\s*blocks\.length/);
+    assert.match(src, /function currentBounds\(block\)/);
+    assert.match(src, /live\.id !== block\.id \|\| live\.gallery !== block\.gallery/);
+});
+
 // ===== SNAPSMACK EOF =====
 
 const test = require('node:test');
@@ -49,6 +57,14 @@ test('round-trip shortcode serialization preserves gallery, size, align, width, 
 test('smack-longform-image-blocks resolves library assets and multi-editor targets', () => {
     assert.match(src, /smack-media\.php\?ajax=1&ids=/);
     assert.match(src, /panel\.getAttribute\('data-target'\)/);
+});
+
+test('smack-longform-image-blocks keeps handle inside stage (SS-1625) and re-derives ordinal bounds (SS-1626)', () => {
+    assert.match(src, /right:0;top:0;width:16px/);
+    assert.doesNotMatch(src, /right:-8px/);
+    assert.match(src, /ordinal:\s*blocks\.length/);
+    assert.match(src, /function currentBounds\(block\)/);
+    assert.match(src, /live\.id !== block\.id \|\| live\.gallery !== block\.gallery/);
 });
 
 // ===== SNAPSMACK EOF =====

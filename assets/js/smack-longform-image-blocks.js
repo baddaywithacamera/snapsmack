@@ -50,6 +50,7 @@
         rx.lastIndex = 0;
         while ((match = rx.exec(ta.value)) !== null) {
             blocks.push({
+                ordinal: blocks.length,   // SS-1626: survives a rewrite; offsets do not
                 start: match.index,
                 end: rx.lastIndex,
                 gallery: !!match[1],
@@ -67,13 +68,26 @@
         return '[img:' + (block.gallery ? 'g' : '') + block.id + '|' + block.size + '|' + block.align + '|' + block.width + (block.decorative ? '|decorative' : '') + ']';
     }
 
+    function currentBounds(block) {
+        var blocks = parse();
+        var live = blocks[block.ordinal];
+        if (!live || live.id !== block.id || live.gallery !== block.gallery) {
+            return null;
+        }
+        return live;
+    }
+
     function replace(block, next) {
-        ta.value = ta.value.substring(0, block.start) + shortcode(next) + ta.value.substring(block.end);
+        var at = currentBounds(block);
+        if (!at) return;
+        ta.value = ta.value.substring(0, at.start) + shortcode(next) + ta.value.substring(at.end);
         ta.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function remove(block) {
-        ta.value = (ta.value.substring(0, block.start) + ta.value.substring(block.end))
+        var at = currentBounds(block);
+        if (!at) return;
+        ta.value = (ta.value.substring(0, at.start) + ta.value.substring(at.end))
             .replace(/\n{3,}/g, '\n\n');
         ta.dispatchEvent(new Event('input', { bubbles: true }));
     }
@@ -101,7 +115,8 @@
                 '<div data-stage style="position:relative;width:100%;min-height:90px;background:var(--input-bg,#111);overflow:hidden;">' +
                     '<div data-visual style="position:relative;width:' + block.width + '%;max-width:100%;margin:' + (block.align === 'left' ? '0 auto 0 0' : block.align === 'right' ? '0 0 0 auto' : '0 auto') + ';">' +
                         (imageUrl(image) ? '<img src="' + esc(imageUrl(image)) + '" alt="" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#111;">' : '<div style="height:110px;display:grid;place-items:center;color:var(--dim,#888);font-size:11px;">IMAGE #' + block.id + '</div>') +
-                        '<button type="button" data-handle title="Drag to resize" style="position:absolute;right:-8px;top:0;width:16px;height:100%;border:0;border-radius:3px;background:var(--accent,#64d94f);opacity:.88;cursor:ew-resize;touch-action:none;"></button>' +
+                        // SS-1625: keep the full 16px handle inside overflow:hidden [data-stage] at 100% width.
+                        '<button type="button" data-handle title="Drag to resize" style="position:absolute;right:0;top:0;width:16px;height:100%;border:0;border-radius:3px;background:var(--accent,#64d94f);opacity:.88;cursor:ew-resize;touch-action:none;"></button>' +
                     '</div>' +
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:minmax(150px,1fr) 72px 120px;gap:10px;align-items:center;margin-top:10px;">' +
