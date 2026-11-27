@@ -18,6 +18,7 @@
 require_once 'core/auth-smack.php';
 require_once 'core/reauth.php';   // step-up auth (password + 2FA) for the orphan purge
 require_once 'core/fediverse.php'; // retract federated Notes before local deletion
+require_once 'core/duplicate-detection.php'; // the one place two photos are called duplicates
 
 function snap_manage_federation_settings(PDO $pdo): array {
     try {
@@ -122,56 +123,10 @@ function snap_manage_delete_by_image(PDO $pdo, int $image_id): void {
     }
 }
 
-/**
- * Find sets of DUPLICATE solo images (photoblog units — post_id IS NULL).
- * A set is grouped by the strongest available identity, in priority order:
- *   1. img_checksum    — SHA-256 of the file; byte-identical = certain duplicate.
- *   2. img_source_file — the original upload filename; same source re-imported.
- *   3. img_title + img_date — the same titled capture posted more than once.
- * An image with none of those (no checksum, no source, no title) can't be safely
- * matched and is NEVER treated as a duplicate. Returns only sets of 2+, each with
- * a suggested "keeper" (the most complete copy — most categories/albums, then a
- * caption, then the oldest), so nothing carrying metadata is lost by default.
- *
- * @return array<int,array{key:string,keeper_id:int,items:array}>
- */
-function snap_manage_duplicate_groups(PDO $pdo): array {
-    $rows = $pdo->query(
-        "SELECT i.id, i.img_title, i.img_slug, i.img_date, i.img_file,
-                i.img_width, i.img_height, i.img_description,
-                CASE
-                  WHEN i.img_checksum    IS NOT NULL AND i.img_checksum    <> '' THEN CONCAT('c:', i.img_checksum)
-                  WHEN i.img_source_file IS NOT NULL AND i.img_source_file <> '' THEN CONCAT('s:', i.img_source_file)
-                  WHEN i.img_title <> '' THEN CONCAT('t:', i.img_title, '|', i.img_date)
-                  ELSE CONCAT('id:', i.id)
-                END AS dup_key,
-                (SELECT COUNT(*) FROM snap_image_cat_map   m WHERE m.image_id = i.id) AS cat_n,
-                (SELECT COUNT(*) FROM snap_image_album_map a WHERE a.image_id = i.id) AS alb_n
-         FROM snap_images i
-         WHERE i.post_id IS NULL
-         ORDER BY dup_key, i.id ASC"
-    )->fetchAll(PDO::FETCH_ASSOC);
-
-    $by_key = [];
-    foreach ($rows as $r) {
-        if (strncmp((string)$r['dup_key'], 'id:', 3) === 0) continue;  // ungroupable — never a dup
-        $by_key[$r['dup_key']][] = $r;
-    }
-
-    $groups = [];
-    foreach ($by_key as $k => $items) {
-        if (count($items) < 2) continue;
-        $keeper = $items[0];
-        $best   = -1;
-        foreach ($items as $it) {
-            $score = ((int)$it['cat_n'] + (int)$it['alb_n']) * 2
-                   + (trim((string)$it['img_description']) !== '' ? 1 : 0);
-            if ($score > $best) { $best = $score; $keeper = $it; }
-        }
-        $groups[] = ['key' => (string)$k, 'keeper_id' => (int)$keeper['id'], 'items' => $items];
-    }
-    return $groups;
-}
+// snap_manage_duplicate_groups() and snap_manage_duplicate_extra_count() now
+// live in core/duplicate-detection.php. The page held the identity rule twice
+// -- here and again in the banner count below -- and the filename arm flagged
+// unrelated photographs that merely shared a camera filename. See that file.
 
 // --- BATCH DELETE HANDLER ---
 // Routes each selected tile through the post-aware cascade so nothing is orphaned.
@@ -583,31 +538,26 @@ $orphan_count = (int)$pdo->query(
 
 // Duplicate solo posts — the same photo posted more than once (re-imports). The
 // cheap count drives a banner on the normal page; the full grouped review only
-// runs when the owner opens it (?find_dupes=1). The CASE mirrors
-// snap_manage_duplicate_groups() exactly so the banner and the review agree.
-// B1 (SQL audit): the GROUP BY is on a CASE expression, which no index can
-// serve, so it was a scan on EVERY Manage load. idx_images_post_id (989D) makes
-// the WHERE post_id IS NULL a seek, and this cheap existence pre-check skips the
-// grouped scan entirely on the common case -- a tidy library with nothing
-// unfiled, where the answer is always zero.
+// runs when the owner opens it (?find_dupes=1).
+//
+// THE BANNER NO LONGER CARRIES ITS OWN COPY OF THE RULE. It used to repeat the
+// CASE expression under a comment promising it "mirrors
+// snap_manage_duplicate_groups() exactly", which is exactly the arrangement
+// that lets two numbers drift apart. Both now call the same function, and the
+// corroboration the filename arm needs cannot be expressed as a GROUP BY at
+// all: it compares rows to each other, not each row to a key.
+//
+// B1 (SQL audit) still holds: the identity is a CASE expression, which no index
+// can serve, so it was a scan on EVERY Manage load. idx_images_post_id (989D)
+// makes the WHERE post_id IS NULL a seek, and this cheap existence pre-check
+// skips the scan entirely on the common case -- a tidy library with nothing
+// unfiled, where the answer is always zero. The count variant also leaves out
+// the two correlated subqueries per row that only the keeper choice needs.
 $dupe_extra_count = 0;
 $has_unfiled = (bool)$pdo->query(
     "SELECT 1 FROM snap_images WHERE post_id IS NULL LIMIT 1"
 )->fetchColumn();
-if ($has_unfiled) $dupe_extra_count = (int)$pdo->query(
-    "SELECT COALESCE(SUM(cnt - 1), 0) FROM (
-        SELECT COUNT(*) AS cnt
-        FROM snap_images
-        WHERE post_id IS NULL
-        GROUP BY CASE
-          WHEN img_checksum    IS NOT NULL AND img_checksum    <> '' THEN CONCAT('c:', img_checksum)
-          WHEN img_source_file IS NOT NULL AND img_source_file <> '' THEN CONCAT('s:', img_source_file)
-          WHEN img_title <> '' THEN CONCAT('t:', img_title, '|', img_date)
-          ELSE CONCAT('id:', id)
-        END
-        HAVING COUNT(*) > 1
-     ) d"
-)->fetchColumn();
+if ($has_unfiled) $dupe_extra_count = snap_manage_duplicate_extra_count($pdo);
 $show_dupes  = isset($_GET['find_dupes']);
 $dupe_groups = $show_dupes ? snap_manage_duplicate_groups($pdo) : [];
 
