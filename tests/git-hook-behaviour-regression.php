@@ -218,21 +218,21 @@ if ($python === null) {
 
     $refs = static fn (string $ref, string $sha): string => "{$ref} {$sha} {$ref} {$zero}\n";
 
-    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946D', $head));
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946', $head));
     $check($code !== 0, 'pre-push let a release tag out over a commit with no release-gate note'
-        . ' — this is exactly how v0.7.946D, v0.7.947D and v0.7.948D were cut');
-    $check(str_contains($out, 'v0.7.946D'), 'the refusal does not name the tag it refused');
+        . ' — this is exactly how v0.7.946, v0.7.947D and v0.7.948D were cut');
+    $check(str_contains($out, 'v0.7.946'), 'the refusal does not name the tag it refused');
 
     [$code] = hook_prepush($python, $hook, $tmp, $refs('refs/heads/dev', $head));
     $check($code === 0, 'pre-push blocked an ordinary branch push; it must gate tags, not work');
 
-    [$code] = hook_prepush($python, $hook, $tmp, "refs/tags/v0.7.946D {$zero} refs/tags/v0.7.946D {$head}\n");
+    [$code] = hook_prepush($python, $hook, $tmp, "refs/tags/v0.7.946 {$zero} refs/tags/v0.7.946 {$head}\n");
     $check($code === 0, 'pre-push blocked a tag deletion, which releases nothing');
 
     // A note that exists but does not pass.
     $failing = json_encode(['commit' => $head, 'security' => 'fail']);
     hook_note($tmp, $head, $failing);
-    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946D', $head));
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946', $head));
     $check($code !== 0, 'pre-push accepted a release-gate note that does not pass');
     $check(str_contains($out, 'security'),
         'the note was refused for the wrong reason — it must be read as JSON and fail on its'
@@ -267,13 +267,58 @@ if ($python === null) {
         if ($browserResult === 'missing') unset($badBrowser['browser_regressions']);
         else $badBrowser['browser_regressions'] = 'fail';
         hook_note($tmp, $head, json_encode($badBrowser));
-        [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946D', $head));
+        [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946', $head));
         $check($code !== 0 && str_contains($out, 'browser_regressions'),
             'pre-push accepted missing/failed browser evidence or refused for the wrong reason: ' . $out);
     }
     hook_note($tmp, $head, $passing);
-    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946D', $head));
-    $check($code === 0, 'pre-push refused a tag whose commit carries a passing gate note: ' . $out);
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946', $head));
+    $check($code === 0, 'pre-push refused a stable tag whose commit carries a passing full note: ' . $out);
+
+    hook_git(['tag', 'v0.7.945D', $base], $tmp);
+    $dev = [
+        'commit' => $head,
+        'security' => 'pass',
+        'tests' => 'pass',
+        'test_reference' => 'test-run',
+        'code_review' => 'pass',
+        'reviewer' => 'independent-reviewer',
+        'review_reference' => 'room-message',
+        'authority_review' => 'approved',
+        'demo_parity' => 'pass',
+        'demo_parity_record_sha256' => str_repeat('c', 64),
+        'demo_parity_features' => [['ticket' => 'SS-1508', 'site' => 'http://127.0.0.1:4422/', 'room_message_id' => 'demo-fixture', 'capture_count' => 1]],
+        'skin_baseline' => $base,
+        'skin_evidence' => [],
+    ];
+    $devRef = 'refs/tags/v0.7.946D';
+    hook_note($tmp, $head, json_encode(['dev_gate' => $dev]));
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs($devRef, $head));
+    $check($code === 0, 'the D-build required stable evidence on an unchanged skin/CSS scope: ' . $out);
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs('refs/tags/v0.7.946', $head));
+    $check($code !== 0, 'a D-only note unlocked a stable tag: ' . $out);
+    $unsigned = $dev;
+    unset($unsigned['review_reference']);
+    hook_note($tmp, $head, json_encode(['dev_gate' => $unsigned]));
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs($devRef, $head));
+    $check($code !== 0 && str_contains($out, 'review_reference'), 'D-build accepted a missing independent review reference: ' . $out);
+
+    hook_stage($tmp, 'assets/shared.css', 'body {}');
+    hook_stage($tmp, 'skins/testskin/layout.php', '<?php // fixture');
+    // Construct a commit object in the throwaway repo. Its toy skin cannot
+    // satisfy the real project's skin pre-commit hooks, which this is not testing.
+    [, $tree] = hook_git(['write-tree'], $tmp);
+    [$code, $changedHead] = hook_git(['commit-tree', $tree, '-p', $head, '-m', 'Changed render fixtures'], $tmp);
+    $check($code === 0, 'could not commit changed render fixtures: ' . $changedHead);
+    $dev['commit'] = $changedHead;
+    hook_note($tmp, $changedHead, json_encode(['dev_gate' => $dev]));
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs($devRef, $changedHead));
+    $check($code !== 0 && str_contains($out, 'assets/shared.css') && str_contains($out, 'skins/testskin'),
+        'D-build omitted changed CSS/skin evidence: ' . $out);
+    $dev['skin_evidence'] = ['assets/shared.css' => 'css-capture.png', 'skins/testskin' => 'skin-capture.png'];
+    hook_note($tmp, $changedHead, json_encode(['dev_gate' => $dev]));
+    [$code, $out] = hook_prepush($python, $hook, $tmp, $refs($devRef, $changedHead));
+    $check($code === 0, 'D-build refused exact changed CSS and skin evidence: ' . $out);
 }
 
 if ($failures !== []) {

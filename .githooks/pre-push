@@ -84,7 +84,8 @@ def main() -> int:
         commit = resolved.stdout.strip()
 
         gate = subprocess.run(
-            ['php', 'tools/release-flow.php', 'gate-check', commit],
+            ['php', 'tools/release-flow.php', 'gate-check', commit,
+             '--tier=dev' if tag.endswith('D') else '--tier=stable'],
             capture_output=True, text=True, cwd=root
         )
         if gate.returncode != 0:
