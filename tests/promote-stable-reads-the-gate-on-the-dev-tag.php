@@ -118,9 +118,22 @@ try {
         strpos($flow, 'rfc_promotion_gate_commit($version)') !== false,
         'promote-stable no longer derives its gate commit from the dev tag'
     );
+    // THIS PINNED ONE SPELLING OF A CORRECT THING AND BROKE ON DEV.
+    //
+    // It matched the literal 'function rf_require_release_gate(?string $commit
+    // = null)' -- with the closing bracket immediately after null. The D-build
+    // evidence tier (172ccc08) added a second parameter, so the signature is
+    // now (?string $commit = null, string $tier = 'stable') and the literal
+    // stopped appearing. The function still accepts a commit; nothing
+    // regressed. The assertion did.
+    //
+    // What this check EXISTS to catch is a revert to the no-argument form that
+    // forces HEAD. So it now requires the first parameter to be the nullable
+    // commit and allows anything after it, which is the thing it meant all
+    // along and does not break the next time a parameter is added.
     g_ok(
-        strpos($flow, 'function rf_require_release_gate(?string $commit = null)') !== false,
-        'rf_require_release_gate() no longer accepts a commit, so HEAD is forced again'
+        preg_match('/function rf_require_release_gate\(\s*\?string \$commit = null\s*[,)]/', $flow) === 1,
+        'rf_require_release_gate() no longer takes a nullable commit first, so HEAD is forced again'
     );
 } finally {
     $it = new RecursiveIteratorIterator(
