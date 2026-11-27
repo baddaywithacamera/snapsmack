@@ -13,6 +13,11 @@
 
 ## 0.7.1009D — opened
 
+- **Keep updates working on older installs.** Core and skin version checks can run with an older copy of the system constants. Signed updates can replace that copy even when the install has the obsolete protection rule.
+- **Require a valid release signature.** A signed update stops if its signature cannot be verified.
+- **Keep recovery files inside the site they belong to.** Restore and import reject paths outside the site.
+- **Keep a hub-side record of enrollment decisions.** The audit records approvals, refusals and revocations without storing enrollment tokens.
+
 ## 0.7.1008D — opened
 
 <!--
