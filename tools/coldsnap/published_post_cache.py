@@ -14,7 +14,7 @@ from snap_home import contained_local_path, site_dir
 
 
 # Set only after the owner chooses the published-post retention period.
-RETENTION_SECONDS = None
+RETENTION_SECONDS = 2_592_000  # 30 days
 
 
 def _path(site, post_id):
