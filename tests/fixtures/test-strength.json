@@ -3198,7 +3198,7 @@
     },
     "tilez-public-completion-regression.php": {
         "assertions": 22,
-        "predicates": 69,
+        "predicates": 70,
         "thresholds": [
             2
         ]
