@@ -475,6 +475,11 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
         $post['width'] = max(1, (int)($post['featured_width'] ?? 3));
         $post['height'] = max(1, (int)($post['featured_height'] ?? 2));
         $post['created_label'] = !empty($post['created_at']) ? date('M j, Y', strtotime((string)$post['created_at'])) : '';
+        $post['excerpt'] = snapsmack_smacktalk_excerpt(
+            (string)($post['description'] ?? ''),
+            (string)($post['content'] ?? '')
+        );
+        unset($post['content']);
         if ($post['image_url'] !== '') {
             $path = dirname(__DIR__) . '/' . ltrim((string)$post['featured_image_path'], '/');
             $size = @getimagesize($path);
@@ -506,6 +511,29 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
     return ['posts' => $posts, 'page' => $page, 'total_pages' => $totalPages,
         'next_page' => $page < $totalPages ? $page + 1 : 0,
         'show_titles' => ($settings['show_post_titles'] ?? '0') === '1'];
+}
+
+/**
+ * Build a plain-text feed excerpt from a post's description or body content,
+ * stripping shortcodes and HTML tags for strict skins.
+ */
+function snapsmack_smacktalk_excerpt(string $description, string $content, int $max_chars = 160): string {
+    $source = trim($description) !== '' ? $description : $content;
+    if ($source === '') {
+        return '';
+    }
+    $plain = preg_replace('/\[[^\]]+\]/', ' ', $source) ?? $source;
+    $plain = html_entity_decode(strip_tags($plain), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $plain = trim((string)(preg_replace('/\s+/u', ' ', $plain) ?? $plain));
+    if ($plain === '' || mb_strlen($plain, 'UTF-8') <= $max_chars) {
+        return $plain;
+    }
+    $slice = mb_substr($plain, 0, $max_chars, 'UTF-8');
+    $lastSpace = mb_strrpos($slice, ' ', 0, 'UTF-8');
+    if ($lastSpace !== false && $lastSpace > (int)($max_chars * 0.5)) {
+        $slice = mb_substr($slice, 0, $lastSpace, 'UTF-8');
+    }
+    return rtrim($slice, " \t\n\r\0\x0B.,;:") . "\xE2\x80\xA6";
 }
 
 // ===== SNAPSMACK EOF =====

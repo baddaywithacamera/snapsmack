@@ -582,7 +582,7 @@ final class SnapPublicRepository
     public function longformLanding(int $limit, int $offset = 0): array {
         $px = $this->postFilter('exclude_from_archive', 'p');
         return $this->all(
-            "SELECT p.id,p.title,p.slug,p.description,p.created_at,p.updated_at,p.featured_image_id,
+            "SELECT p.id,p.title,p.slug,p.description,p.content,p.created_at,p.updated_at,p.featured_image_id,
                     i.img_file AS featured_image_path,i.img_thumb_aspect AS featured_thumb,
                     i.img_width AS featured_width,i.img_height AS featured_height
              FROM snap_posts p LEFT JOIN snap_images i ON i.id=p.featured_image_id
