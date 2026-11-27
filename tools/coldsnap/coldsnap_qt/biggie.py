@@ -534,12 +534,27 @@ def site_blocks_are_untouched(blocks: list) -> bool:
 # should use, written once here rather than inferred at each call site.
 # ---------------------------------------------------------------------------
 
+# A SIGNATURE CANNOT ROUND-TRIP FROM A PUBLISHED BODY, and that is by design
+# rather than an omission. Muse raised it on 73fa2028: parse_body() and
+# parse_site_html() have no signature recognition, so opening a published post
+# produces no signature block. They cannot: the signature is not IN the body,
+# it is three fields on the post, and the body carries no trace of it. An
+# author opening a published post therefore sees no signature block and the
+# fields are left alone -- which is the "omitted means preserve" state and the
+# correct outcome. Adding a block on import would require reading the post
+# fields, which the import does not fetch; if that is ever wanted it is a
+# server-side change to what GET returns, not a parser change.
 SIGNATURE_MODES = ("inherit", "off", "custom")
 
 
 def signature_block_normalise(block: dict) -> dict:
     """A signature block with a valid mode and clean ids."""
-    mode = str((block or {}).get("mode") or "inherit").lower()
+    # STRIPPED as well as lower-cased. Muse's nit on 73fa2028, and it is not
+    # cosmetic: "OFF " with a trailing space fell through to inherit, so an
+    # author who said NO SIGNATURE silently got the blog's one. The direction
+    # is what makes it matter -- a stray space turned an opt-out into an
+    # opt-in. My own test had EXEMPTED that case instead of asserting it.
+    mode = str((block or {}).get("mode") or "inherit").strip().lower()
     if mode not in SIGNATURE_MODES:
         mode = "inherit"
 
@@ -699,6 +714,18 @@ class _BlockRow(QFrame):
             self.sig_dark.setPlaceholderText("image id")
             row.addWidget(self.sig_dark, 1)
             col.addLayout(row)
+
+            # Muse's nit: in "off" mode the id fields were still editable while
+            # signature_fields() ignored them, which is a control that does
+            # nothing -- the fault class this project has spent weeks on. They
+            # are enabled only when the author is actually choosing images, and
+            # follow the dropdown.
+            def _follow_mode():
+                choosing = self.sig_mode.currentData() == "custom"
+                self.sig_light.setEnabled(choosing)
+                self.sig_dark.setEnabled(choosing)
+            _follow_mode()
+            self.sig_mode.currentIndexChanged.connect(lambda _i: _follow_mode())
             col.addWidget(hint("Shows where your signature goes. It is not part of the "
                                "post's words, so this adds nothing to the text. Leave a "
                                "surface empty to keep the blog's choice for it."))
