@@ -393,6 +393,90 @@ class TheImportPathMustActuallyParse(unittest.TestCase):
         self.assertEqual(biggie.serialize_site_blocks(blocks), body)
 
 
+class AMediaShortcodeAnywhereIsItsOwnBlock(unittest.TestCase):
+    """Muse's second observation on 0e0e2314.
+
+    Only a LEADING mosaic or image was split out, so one in the middle of a
+    paragraph fell through to paragraph text with the markup showing -- the
+    exact thing this ticket exists to stop. The site does not store that shape
+    today, which is not the same as it being impossible.
+    """
+
+    def round(self, body):
+        blocks = biggie.parse_site_html(body)
+        self.assertEqual(biggie.serialize_site_blocks(blocks), body,
+                         "round trip changed: " + repr(body))
+        return blocks
+
+    def test_a_mosaic_in_the_middle_does_not_print_itself(self):
+        blocks = self.round("<p>Before it. [mosaic:9] After it.</p>")
+        self.assertEqual([b["type"] for b in blocks], ["para", "site_mosaic", "para"])
+        self.assertEqual(blocks[1]["mosaic_id"], 9)
+        for b in blocks:
+            if b["type"] == "para":
+                self.assertNotIn("[mosaic", b["text"])
+
+    def test_a_mosaic_at_the_very_end_does_not_print_itself(self):
+        blocks = self.round("<p>Words first. [mosaic:9]</p>")
+        self.assertEqual([b["type"] for b in blocks], ["para", "site_mosaic"])
+
+    def test_several_shortcodes_in_one_paragraph_each_become_a_block(self):
+        blocks = self.round("<p>[img:1]a[mosaic:2]b[img:3]</p>")
+        self.assertEqual([b["type"] for b in blocks],
+                         ["image", "para", "site_mosaic", "para", "image"])
+        groups = {(b.get("wrap") or {}).get("group") for b in blocks}
+        self.assertEqual(len(groups), 1, "all five came out of one <p>")
+
+    def test_two_adjacent_shortcodes_with_no_prose(self):
+        blocks = self.round("<p>[mosaic:1][mosaic:2]</p>")
+        self.assertEqual([b["type"] for b in blocks], ["site_mosaic", "site_mosaic"])
+
+    def test_the_wrapper_bytes_still_land_on_the_outer_pieces(self):
+        blocks = self.round("<p>a[mosaic:5]b</p>")
+        self.assertTrue(blocks[0]["src"].startswith("<p>"))
+        self.assertTrue(blocks[-1]["src"].endswith("</p>"))
+        self.assertNotIn("<p>", blocks[1]["src"])
+
+    def test_the_real_post_4_is_unchanged_by_this(self):
+        body = _load_post4()
+        if body is None:
+            self.skipTest("NOT CHECKED: post 4's body file is not on this machine")
+        blocks = biggie.parse_site_html(body)
+        self.assertEqual(biggie.serialize_site_blocks(blocks), body)
+        self.assertEqual(len(blocks), 19, "the real post still parses to 19 blocks")
+
+    def test_no_comment_in_biggie_names_a_function_that_does_not_exist(self):
+        """Muse's first observation: the comment cited _site_wellformed()."""
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "coldsnap_qt", "biggie.py")
+        source = io.open(path, encoding="utf-8").read()
+        defined = set()
+        for line in source.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("def "):
+                defined.add(stripped[4:].split("(")[0].strip())
+        # Written as plain text, not a regex. The first version of this check
+        # used one, matched nothing at all, and so could not fail -- which is
+        # the same vacuous-assertion fault Muse caught in my other test.
+        missing = []
+        for number, line in enumerate(source.splitlines(), 1):
+            if "#" not in line:
+                continue
+            for word in line.split("#", 1)[1].split():
+                # Trailing sentence punctuation first: the very comment this
+                # check exists for read "_site_wellformed()." with a full stop,
+                # so an endswith("()") test on the raw word was always false
+                # and this check silently passed. Parens are NOT stripped.
+                word = word.strip(".,;:!?'" + chr(34) + "`")
+                if not word.endswith("()"):
+                    continue
+                name = word[:-2].rsplit(".", 1)[-1]
+                if name.startswith("_") and name not in defined:
+                    missing.append(str(number) + ": " + name)
+        self.assertEqual(missing, [],
+                         "comments name private functions that do not exist here")
+
+
 class NativeCanvasImport(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
