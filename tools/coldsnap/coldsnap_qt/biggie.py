@@ -326,6 +326,194 @@ def parse_body(text: str) -> list:
     return blocks
 
 
+# ---------------------------------------------------------------------------
+# SS-1612: reading a PUBLISHED body back into blocks.
+#
+# parse_body() above reads AUTHORED text. A body that comes back from the site
+# is not that: the site wraps every paragraph in <p>…</p> and stores a mosaic
+# or an image shortcode INSIDE the paragraph it belongs to. Opening a published
+# post therefore produced one of two failures, and both reached Sean:
+#   - mode_take._draft_from_remote never called any parser at all; it put the
+#     whole HTML body in draft.caption and left body_blocks empty.
+#   - a segment like <p>[mosaic:752]prose…</p> matches no block pattern, and
+#     "mosaic" is a KNOWN shortcode so it does not fall through to RAW either,
+#     so it became a paragraph with the markup still in its text. BIGGIE then
+#     printed <p>[mosaic:752]prose…</p> on the canvas as literal characters.
+#
+# THE INVARIANT HERE, and it is the whole design: every block keeps the exact
+# bytes it came from in "src", and the exact bytes that followed it in "sep".
+# Concatenating src + sep over the blocks in order reproduces the published
+# body BYTE FOR BYTE. Nothing is reconstructed, so nothing can be lost by a
+# misread: a pattern this code fails to recognise becomes a labelled raw block
+# that still carries its own bytes.
+#
+# When the editor changes a block it DELETES that block's "src", which hands
+# that block back to serialize_block(). Byte-identity stops being the goal the
+# moment Sean changes something; it exists so that opening a post and sending
+# it again without editing cannot alter it.
+#
+# A site element that yields two blocks (the mosaic and the prose that shared
+# one <p>) marks both with "wrap": {"open","close","group"}, so the sender can
+# tell they came out of one element and re-wrap them if one half is edited.
+# The PM ruled (room 8293) that a mosaic is its own movable block, which is why
+# the split happens at all.
+# ---------------------------------------------------------------------------
+
+_RX_SITE = {
+    # One top-level site element. Non-greedy to its own closing tag; nested
+    # same-name elements are NOT handled, and _site_wellformed() below reports
+    # that rather than guessing.
+    "element": re.compile(
+        r"<(p|figure|h2|h3|ul|ol|blockquote)\b[^>]*>.*?</\1\s*>|<hr\s*/?>",
+        re.DOTALL | re.IGNORECASE),
+    # A <p>'s own tags, so the inner content can be read on its own.
+    "p_wrap": re.compile(r"^(<p\b[^>]*>)(.*)(</p\s*>)$", re.DOTALL | re.IGNORECASE),
+    # A leading mosaic or image shortcode, which is how the site stores them.
+    "lead_sc": re.compile(r"^\s*(\[(?:mosaic|img):[^\]]*\])", re.IGNORECASE),
+    "site_mosaic": re.compile(r"^\[mosaic:(\d+)\]$", re.IGNORECASE),
+}
+
+_SITE_GROUP = "__ss1612_group_"
+
+
+def _site_block_for(fragment: str) -> dict:
+    """One fragment of site content → one display block (no src/sep yet).
+
+    Falls back to a LABELLED raw block rather than to a paragraph, because a
+    paragraph is what printed the markup on the canvas in the first place.
+    """
+    fragment = fragment.strip()
+    if not fragment:
+        return {"type": "raw", "text": "", "label": "Empty"}
+    m = _RX_SITE["site_mosaic"].match(fragment)
+    if m:
+        # Points at a gallery that lives on the site. Not editable here, but it
+        # is a block of its own: movable, deletable, and shown as a placeholder.
+        return {"type": "site_mosaic", "mosaic_id": int(m.group(1)),
+                "text": fragment, "label": "Site mosaic " + m.group(1)}
+    block = _classify(fragment)
+    # _classify falls back to {"type": "para"} for anything it does not know.
+    # On this path that fallback is only acceptable when the fragment carries
+    # no markup of its own; otherwise it is the fault this function exists to
+    # prevent, so it becomes a labelled raw block instead.
+    if block.get("type") == "para" and re.search(r"<[a-z/!][^>]*>", fragment, re.IGNORECASE):
+        return {"type": "raw", "text": fragment, "label": "Kept exactly as the site stored it"}
+    return block
+
+
+def _split_site_element(inner: str) -> list:
+    """A <p>'s inner content → one block, or a leading shortcode plus prose."""
+    m = _RX_SITE["lead_sc"].match(inner)
+    if not m:
+        return [_site_block_for(inner)]
+    lead = m.group(1)
+    rest = inner[m.end():]
+    if rest.strip() == "":
+        return [_site_block_for(lead)]
+    return [_site_block_for(lead), _site_block_for(rest)]
+
+
+def parse_site_html(html: str) -> list:
+    """A published body → blocks that carry their own bytes.
+
+    Byte-exact: "".join(b["src"] + b["sep"] for b in parse_site_html(x)) == x
+    for any input, including one this parser does not understand.
+    """
+    text = html or ""
+    if text == "":
+        return []
+    blocks: list = []
+    pending_prefix = ""      # whitespace before the first block
+    pos = 0
+    group_n = 0
+
+    def _emit(parts: list, src_slices: list, wrap: tuple | None) -> None:
+        nonlocal pending_prefix, group_n
+        if not parts:
+            return
+        if wrap is not None and len(parts) > 1:
+            group_n += 1
+            gid = _SITE_GROUP + str(group_n)
+            for part in parts:
+                part["wrap"] = {"open": wrap[0], "close": wrap[1], "group": gid}
+        for part, slice_src in zip(parts, src_slices):
+            part["src"] = pending_prefix + slice_src
+            part["sep"] = ""
+            part["imported"] = True
+            pending_prefix = ""
+            blocks.append(part)
+
+    for m in _RX_SITE["element"].finditer(text):
+        gap = text[pos:m.start()]
+        if gap:
+            if gap.strip() == "" and blocks:
+                blocks[-1]["sep"] = blocks[-1].get("sep", "") + gap
+            elif gap.strip() == "":
+                pending_prefix += gap
+            else:
+                # Loose text between elements. Kept verbatim, labelled, never
+                # silently folded into a neighbour.
+                _emit([{"type": "raw", "text": gap.strip(),
+                        "label": "Content the site stored outside any element"}],
+                      [gap], None)
+        element = m.group(0)
+        pw = _RX_SITE["p_wrap"].match(element)
+        if pw:
+            open_tag, inner, close_tag = pw.group(1), pw.group(2), pw.group(3)
+            parts = _split_site_element(inner)
+            if len(parts) == 1:
+                _emit(parts, [element], None)
+            else:
+                lead_len = len(_RX_SITE["lead_sc"].match(inner).group(0))
+                # The wrapper bytes ride with the halves they touch, so the
+                # concatenation is still exact.
+                _emit(parts,
+                      [open_tag + inner[:lead_len], inner[lead_len:] + close_tag],
+                      (open_tag, close_tag))
+        else:
+            _emit([_site_block_for(element)], [element], None)
+        pos = m.end()
+
+    tail = text[pos:]
+    if tail:
+        if tail.strip() == "" and blocks:
+            blocks[-1]["sep"] = blocks[-1].get("sep", "") + tail
+        elif tail.strip() == "":
+            _emit([{"type": "raw", "text": "", "label": "Whitespace"}], [tail], None)
+        else:
+            _emit([{"type": "raw", "text": tail.strip(),
+                    "label": "Content the site stored outside any element"}], [tail], None)
+    if pending_prefix and blocks:
+        blocks[0]["src"] = pending_prefix + blocks[0]["src"]
+    elif pending_prefix:
+        blocks.append({"type": "raw", "text": "", "label": "Whitespace",
+                       "src": pending_prefix, "sep": "", "imported": True})
+    return blocks
+
+
+def serialize_site_blocks(blocks: list) -> str:
+    """Imported blocks → the bytes they came from.
+
+    Only meaningful while every block still carries its "src". A block the
+    editor has changed has had its "src" removed, and the sender serializes
+    that one through serialize_block() instead -- see the contract posted to
+    the room for SS-1612.
+    """
+    out = []
+    for b in (blocks or []):
+        if "src" in b:
+            out.append(str(b.get("src", "")) + str(b.get("sep", "")))
+        else:
+            out.append(serialize_block(b) + str(b.get("sep", "")))
+    return "".join(out)
+
+
+def site_blocks_are_untouched(blocks: list) -> bool:
+    """True when every block still carries the bytes it was imported with."""
+    blocks = blocks or []
+    return bool(blocks) and all("src" in b for b in blocks)
+
+
 def blocks_to_json(blocks: list) -> str:
     return json.dumps(blocks or [], ensure_ascii=False)
 
@@ -403,6 +591,20 @@ class _BlockRow(QFrame):
     # -- per-type editors ---------------------------------------------------
     def _build_body(self, col, b):
         t = self.btype
+        if t == "site_mosaic":
+            # A gallery that lives on the site. It is a BLOCK -- movable and
+            # deletable -- but nothing about it is editable here, and it must
+            # never render as the characters "[mosaic:752]", which is what
+            # Sean saw on the canvas.
+            mid = str(b.get("mosaic_id") or "").strip()
+            label = QLabel("▦  SITE MOSAIC" + (" " + mid if mid else ""))
+            label.setStyleSheet("padding:14px; border:1px dashed rgba(127,127,127,0.6);"
+                                " font-weight:600;")
+            label.setAlignment(Qt.AlignCenter)
+            col.addWidget(label)
+            col.addWidget(hint("A gallery stored on the site. Move or delete this block; "
+                               "its photographs are arranged on the site, not here."))
+            return
         if t in ("para", "raw", "quote", "pullquote"):
             self.text = QPlainTextEdit(b.get("text", ""))
             self.text.setPlaceholderText(
@@ -530,8 +732,40 @@ class _BlockRow(QFrame):
         return [editor.to_blocks() for editor in getattr(self, "_col_editors", [])]
 
     # -- read back ----------------------------------------------------------
+    # SS-1612. Keys an IMPORTED block carries that no widget owns. to_block()
+    # rebuilds a block from its widgets, so without this list the verbatim
+    # source bytes were dropped the moment the editor opened -- which would
+    # have destroyed the byte-identical round trip by merely looking at a post.
+    _IMPORT_KEYS = ("sep", "wrap", "imported", "mosaic_id", "label")
+
+    def _carry_import_keys(self, block: dict) -> dict:
+        """Re-attach the import bookkeeping, and the source bytes if and only
+        if this block's content is still exactly what was imported.
+
+        The source is what makes an untouched post send back byte for byte. It
+        must NOT survive an edit, or an edited block would be sent as its old
+        text."""
+        original = self._block or {}
+        for key in self._IMPORT_KEYS:
+            if key in original and key not in block:
+                block[key] = original[key]
+        if "src" in original:
+            strip = set(self._IMPORT_KEYS) | {"src"}
+            was = {k: v for k, v in original.items() if k not in strip}
+            now = {k: v for k, v in block.items() if k not in strip}
+            if was == now:
+                block["src"] = original["src"]
+        return block
+
     def to_block(self) -> dict:
+        return self._carry_import_keys(self._to_block_from_widgets())
+
+    def _to_block_from_widgets(self) -> dict:
         t = self.btype
+        if t == "site_mosaic":
+            # Nothing here is editable: it points at a gallery on the site.
+            # Rebuilt from what was imported so it cannot drift.
+            return {**(self._block or {}), "type": "site_mosaic"}
         if t in ("para", "raw", "quote", "pullquote"):
             block = {"type": t, "text": self.text.toPlainText()}
             if t == "para" and self.dropcap.isChecked():
@@ -544,8 +778,24 @@ class _BlockRow(QFrame):
             items = [ln.strip() for ln in self.text.toPlainText().split("\n") if ln.strip()]
             return {"type": t, "ordered": bool(self.ordered.currentData()), "items": items}
         if t == "image":
-            return {"type": t, "img_id": self.img_id.text().strip(),
-                    "size": self.size.currentText(), "align": self.align.currentText()}
+            # SS-1612, and a fault in its own right that predates it: this
+            # returned ONLY the three fields it has widgets for, so caption,
+            # show_caption, gallery, width and decorative were DISCARDED by
+            # displaying the block. Measured on Ray's post 4: the captioned
+            # photograph "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11"
+            # lost its caption on the way through, because BIGGIE has no
+            # caption widget for an image and nothing carried the stored value
+            # forward. An editor must not drop what it cannot show.
+            widget_fields = {"img_id": self.img_id.text().strip(),
+                             "size": self.size.currentText(),
+                             "align": self.align.currentText()}
+            block = {**(self._block or {}), "type": t, **widget_fields}
+            # "raw" is the verbatim shortcode and WINS in serialize_block, so
+            # it must not survive a change to the fields it contradicts.
+            original = self._block or {}
+            if any(str(original.get(k, "")) != str(v) for k, v in widget_fields.items()):
+                block.pop("raw", None)
+            return block
         if t == "columns":
             return {"type": t, "cols": self.col_blocks(),
                     "ratio": str(self.ratio.currentData() or "equal")}

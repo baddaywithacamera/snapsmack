@@ -3041,6 +3041,18 @@ class TakeMode(QWidget):
         draft.slug = str(post.get("slug") or "")
         draft.title = str(post.get("title") or "")
         draft.caption = str(post.get("content") or "")
+        # SS-1612. This used to stop at the line above: the site's whole HTML
+        # body went into draft.caption and body_blocks was left empty, so
+        # Open published never parsed anything. BIGGIE then had nothing but one
+        # blob of HTML to show and printed it as literal characters --
+        # <p>[mosaic:752]prose…</p> on the canvas, with no mosaic rendering.
+        #
+        # parse_site_html reads the PUBLISHED shape (prose wrapped in <p>, a
+        # mosaic or image shortcode stored inside the paragraph it belongs to)
+        # and keeps each block's exact bytes, so an untouched post sends back
+        # byte for byte. See the invariant in biggie.py.
+        draft.body_blocks = biggie.blocks_to_json(
+            biggie.parse_site_html(draft.caption))
         draft.colophon = str(post.get("colophon") or "")
         draft.img_status = str(post.get("status") or "draft")
         draft.post_date = str(post.get("created_at") or "")
