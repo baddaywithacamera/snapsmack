@@ -246,15 +246,27 @@ if (isset($_POST['register_spoke'])) {
     // `if (!isset($err))` guard, so a failed step-up never reaches the spoke
     // and never touches the table.
     require_once 'core/reauth.php';
+    require_once 'core/enrollment-grant.php';
     $_spoke_auth = reauth_verify($pdo,
         (string)($_POST['reauth_password'] ?? ''),
         (string)($_POST['reauth_totp'] ?? ''));
 
+    $_spoke_token_digest = ($spoke_token !== '') ? snap_enrollment_grant_digest($spoke_token) : '';
+    $_hub_origin         = defined('BASE_URL') ? rtrim((string)BASE_URL, '/') : '';
+    $_hub_admin_id       = (int)($_SESSION['user_id'] ?? 0);
+    $_hub_remote_addr    = (string)($_SERVER['REMOTE_ADDR'] ?? '');
+    $_hub_stepup_at      = 0;
+    $_reg_reject_reason  = '';
+
     if (!$_spoke_auth['ok']) {
         $err = 'Spoke registration blocked: ' . $_spoke_auth['error'];
+        $_reg_reject_reason = 'reauth_failed';
     } elseif (empty($spoke_url) || empty($spoke_token)) {
+        $_hub_stepup_at = time();
         $err = "Spoke URL and registration token are required.";
+        $_reg_reject_reason = 'missing_input';
     } else {
+        $_hub_stepup_at = time();
         // Normalize URL
         if (!preg_match('~^https?://~i', $spoke_url)) {
             $spoke_url = 'https://' . $spoke_url;
@@ -264,6 +276,7 @@ if (isset($_POST['register_spoke'])) {
         // SSRF guard — reject private/loopback addresses
         if (snap_is_private_url($spoke_url)) {
             $err = "Spoke URL must be a publicly accessible HTTPS address.";
+            $_reg_reject_reason = 'private_url';
         }
 
         if (!isset($err)) {
@@ -294,13 +307,16 @@ if (isset($_POST['register_spoke'])) {
 
         if ($http_code === 401) {
             $err = 'The spoke rejected the registration token. Generate a fresh token in Multisite Management on the spoke for this hub address.';
+            $_reg_reject_reason = 'spoke_rejected_401';
         } elseif (!$response || $http_code !== 200) {
             $err = "Failed to contact spoke: " . ($curl_err ?: "HTTP $http_code");
+            $_reg_reject_reason = 'spoke_unreachable';
         } else {
             $response_data = json_decode($response, true);
 
             if (empty($response_data['ok']) || empty($response_data['api_key'])) {
                 $err = "Handshake failed: " . ($response_data['error'] ?? 'Unknown error');
+                $_reg_reject_reason = 'handshake_failed';
             } else {
                 // api_key     = key hub presents when calling spoke (hub→spoke auth, FULL)
                 // api_key_outbound = key spoke presents when calling hub (spoke→hub auth)
@@ -331,13 +347,37 @@ if (isset($_POST['register_spoke'])) {
 
                 try {
                     $stmt->execute(['spoke', $spoke_url, $spoke_name, $api_key_local, $api_key_remote, $api_key_backup]);
+                    // SECAUDIT 061 (B + C): retain hub-side approval provenance
+                    // (grant digest, approving admin, step-up timestamp) alongside
+                    // the enrollment event.
+                    snap_enrollment_audit($pdo, 'consumed', [
+                        'grant_digest' => $_spoke_token_digest,
+                        'spoke_origin' => $spoke_url,
+                        'hub_origin'   => $_hub_origin,
+                        'admin_id'     => $_hub_admin_id,
+                        'stepup_at'    => $_hub_stepup_at,
+                        'remote_addr'  => $_hub_remote_addr,
+                    ]);
                     $msg = "Spoke registered successfully: {$spoke_name}";
                 } catch (PDOException $e) {
                     $err = "Database error: " . $e->getMessage();
+                    $_reg_reject_reason = 'db_error';
                 }
             }
         }
         } // end SSRF guard
+    }
+
+    if (isset($err)) {
+        snap_enrollment_audit($pdo, 'rejected', [
+            'reason'       => $_reg_reject_reason !== '' ? $_reg_reject_reason : 'register_failed',
+            'grant_digest' => $_spoke_token_digest,
+            'spoke_origin' => $spoke_url,
+            'hub_origin'   => $_hub_origin,
+            'admin_id'     => $_hub_admin_id,
+            'stepup_at'    => $_hub_stepup_at,
+            'remote_addr'  => $_hub_remote_addr,
+        ]);
     }
 }
 
@@ -470,6 +510,14 @@ if (isset($_POST['disconnect'])) {
             // Spoke confirmed: it deleted its record and cleared the keys. Safe
             // to delete our side — clean slate for re-registration.
             $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
+            require_once 'core/enrollment-grant.php';
+            snap_enrollment_audit($pdo, 'revoked', [
+                'reason'       => 'hub_disconnect',
+                'spoke_origin' => rtrim((string)$node['site_url'], '/'),
+                'hub_origin'   => defined('BASE_URL') ? rtrim((string)BASE_URL, '/') : '',
+                'admin_id'     => (int)($_SESSION['user_id'] ?? 0),
+                'remote_addr'  => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+            ]);
             $msg = "Spoke disconnected and removed. The spoke confirmed and revoked its key.";
         } else {
             // Do NOT delete: the spoke still holds a live api_key_local, and
@@ -485,11 +533,20 @@ if (isset($_POST['disconnect'])) {
 
 // Disconnect from hub
 if (isset($_POST['disconnect_hub'])) {
+    $_hub_row = $pdo->query("SELECT site_url FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
     $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE role = 'hub' LIMIT 1")->execute();
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute(['multisite_reg_token', '', '']);
     $pdo->prepare("INSERT INTO snap_settings (setting_key, setting_val) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_val = ?")
         ->execute(['multisite_reg_token_expires', '0', '0']);
+    require_once 'core/enrollment-grant.php';
+    snap_enrollment_audit($pdo, 'revoked', [
+        'reason'       => 'spoke_disconnect',
+        'spoke_origin' => defined('BASE_URL') ? rtrim((string)BASE_URL, '/') : '',
+        'hub_origin'   => rtrim((string)($_hub_row['site_url'] ?? ''), '/'),
+        'admin_id'     => (int)($_SESSION['user_id'] ?? 0),
+        'remote_addr'  => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+    ]);
     $msg = "Disconnected from hub.";
 }
 
