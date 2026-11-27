@@ -52,12 +52,76 @@ require_once __DIR__ . '/diaglog.php';
 // place is left untouched. Fail-safe: if the write can't happen (permissions),
 // behaviour falls back to the old SHA-only path — no regression.
 $_rpk_file = __DIR__ . '/release-pubkey.php';
+/**
+ * SECAUDIT 047 — the deferred updater fail-open, closed.
+ *
+ * BUZZERS has carried this since August: "the narrow updater fail-open edge
+ * case remains documented as a deferred low-risk item because changing the
+ * fleet's sole repair path requires a separate deliberate review." Sean asked
+ * for it on 2026-11-27: "i don't like holes left open." This is that review.
+ *
+ * WHAT THE HOLE ACTUALLY WAS, measured on dev before any change. The canonical
+ * public key is COMPILED INTO THIS FILE, a few lines below. So "no key is
+ * known" was never true. But the key the verifier used came from a CONSTANT,
+ * and a constant cannot be redefined:
+ *
+ *   release-pubkey.php exists holding the all-zero placeholder
+ *     -> require_once defines SNAPSMACK_RELEASE_PUBKEY as zeros
+ *     -> the self-heal below rewrites the FILE, but its
+ *        `if (!defined(...))` cannot correct the constant, which is defined
+ *     -> SNAPSMACK_SIGNING_ENFORCED is therefore false for this whole request
+ *     -> updater_verify_signature() returns TRUE for any signature, with
+ *        nothing but an error_log to show it
+ *
+ * TWO PATHS FOLLOWED FROM THAT, and the second is the sharper one:
+ *   1. an install whose release-pubkey.php holds the placeholder AND is not
+ *      writable never escapes the state, so every update it ever applies is
+ *      accepted unverified.
+ *   2. EVEN WHEN THE SELF-HEAL WRITE SUCCEEDS, the constant stays the
+ *      placeholder for the remainder of that request -- and that request is
+ *      the one applying the update. The key is only real from the NEXT request
+ *      onward. So the healing update itself went in unverified.
+ *
+ * THE FIX IS TO STOP READING THE KEY OFF A CONSTANT. updater_release_pubkey()
+ * prefers a real key on disk, so a ROTATED key still wins, and falls back to
+ * the canonical key compiled in here. A real key is therefore always
+ * available, both placeholder fail-open branches become unreachable, and
+ * verification always actually happens.
+ *
+ * ONE OPERATIONAL CONSEQUENCE, FLAGGED FOR SEAN RATHER THAN BURIED: with a
+ * real key now always present, a host whose PHP has NO libsodium goes from
+ * "updates apply, unverified" to "updates REFUSED". That is the secure answer
+ * and it is the standing rule, but it is a change to the fleet's only repair
+ * path and he should know it rather than discover it. Whether any live site
+ * lacks libsodium is NOT CHECKED -- it needs a running site.
+ */
+const SNAPSMACK_UPDATER_CANONICAL_PUBKEY =
+    'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e';
+
+/**
+ * The Ed25519 public key to verify releases with. Never the placeholder.
+ *
+ * A REAL KEY ON DISK WINS, so key rotation keeps working: the rotation path
+ * writes a new real key into release-pubkey.php and this returns it. Only a
+ * missing or placeholder key falls back to the compiled-in canonical one.
+ */
+function updater_release_pubkey(): string {
+    $placeholder = str_repeat('0', 64);
+    if (defined('SNAPSMACK_RELEASE_PUBKEY') && SNAPSMACK_RELEASE_PUBKEY !== $placeholder) {
+        return (string)SNAPSMACK_RELEASE_PUBKEY;
+    }
+    return SNAPSMACK_UPDATER_CANONICAL_PUBKEY;
+}
+
 if (file_exists($_rpk_file)) {
     require_once $_rpk_file;
 }
 if (!defined('SNAPSMACK_RELEASE_PUBKEY')
     || SNAPSMACK_RELEASE_PUBKEY === str_repeat('0', 64)) {
-    $_rpk_canonical = 'c72e35ffd5a6bcf7225f749b2a4320f21bde6f4c253023290710792d7bd5c33e';
+    // ONE SOURCE FOR THE KEY. This used to be a second hardcoded copy of the
+    // same 64 characters; two copies of a key is how one gets rotated and the
+    // other does not.
+    $_rpk_canonical = SNAPSMACK_UPDATER_CANONICAL_PUBKEY;
     $_rpk_written = @file_put_contents($_rpk_file,
           "<?php\n"
         // SECAUDIT 050-B: a self-healed copy keeps the direct-access guard too.
@@ -172,9 +236,18 @@ if (isset($GLOBALS['pdo']) && $GLOBALS['pdo'] instanceof PDO) {
     } catch (\Throwable $e) { /* settings table not ready / already clean */ }
 }
 
-// Signing is enforced only when a real (non-placeholder) pubkey is present.
+// Signing is enforced when a real (non-placeholder) pubkey is available.
+//
+// SECAUDIT 047: this used to read SNAPSMACK_RELEASE_PUBKEY directly, so an
+// install holding the placeholder on disk reported "not enforced" even though
+// the canonical key was compiled in a hundred lines above. It now asks
+// updater_release_pubkey(), which never returns a placeholder, so this is
+// always true and the two skip branches in updater_verify_signature() are
+// unreachable. An install may still OVERRIDE it by defining it earlier --
+// that is left deliberately, because a developer working offline needs it and
+// taking it away is a product decision, not a security repair.
 if (!defined('SNAPSMACK_SIGNING_ENFORCED')) {
-    define('SNAPSMACK_SIGNING_ENFORCED', SNAPSMACK_RELEASE_PUBKEY !== str_repeat('0', 64));
+    define('SNAPSMACK_SIGNING_ENFORCED', updater_release_pubkey() !== str_repeat('0', 64));
 }
 
 // Hardcoded root public key — used ONLY to verify key-rotation announcements.
@@ -680,21 +753,35 @@ function updater_verify_checksum(string $file_path, string $expected_sha256): bo
 
 /**
  * Verify the Ed25519 signature of a SHA-256 checksum string.
- * Returns true if valid, false if invalid or verification is skipped.
- * When SNAPSMACK_SIGNING_ENFORCED is false, returns true with a logged warning.
+ *
+ * RETURNS TRUE ONLY WHEN A SIGNATURE WAS CHECKED AND PASSED. The old docblock
+ * on this function said "false if invalid or verification is skipped" and the
+ * code did the opposite -- it returned TRUE when it skipped. A docblock that
+ * contradicts its function is worse than none, because it is what a reviewer
+ * reads instead of the code. (SECAUDIT 047.)
+ *
+ * Both skip branches below are now unreachable on any install that has not
+ * deliberately defined SNAPSMACK_SIGNING_ENFORCED false for itself, because
+ * updater_release_pubkey() never returns a placeholder. They are KEPT rather
+ * than deleted so that an install which does switch enforcement off still
+ * behaves predictably and still says so in the log.
  */
 function updater_verify_signature(string $checksum, string $signature_hex): bool {
-    // Check if libsodium is available
+    $pubkey_hex = updater_release_pubkey();
+
+    // No libsodium: nothing can be verified, so with signing enforced this
+    // REFUSES. It does not wave the package through.
     if (!function_exists('sodium_crypto_sign_verify_detached')) {
         if (SNAPSMACK_SIGNING_ENFORCED) {
+            error_log('SnapSmack Updater: libsodium not available and signing is enforced — '
+                . 'package REFUSED. Install the sodium extension to apply updates.');
             return false;
         }
         error_log('SnapSmack Updater: libsodium not available, signature check skipped.');
         return true;
     }
 
-    // Check if we have a real key
-    if (SNAPSMACK_RELEASE_PUBKEY === str_repeat('0', 64)) {
+    if ($pubkey_hex === str_repeat('0', 64)) {
         if (SNAPSMACK_SIGNING_ENFORCED) {
             return false;
         }
@@ -703,7 +790,7 @@ function updater_verify_signature(string $checksum, string $signature_hex): bool
     }
 
     try {
-        $pubkey    = sodium_hex2bin(SNAPSMACK_RELEASE_PUBKEY);
+        $pubkey    = sodium_hex2bin($pubkey_hex);
         $signature = sodium_hex2bin($signature_hex);
         return sodium_crypto_sign_verify_detached($signature, $checksum, $pubkey);
     } catch (\SodiumException $e) {
@@ -1959,10 +2046,19 @@ function updater_canonical_diff(PDO $pdo, string $canonical_url = '', string $ca
                 } else {
                     try {
                         $checksum = hash('sha256', $fetched);
+                        // SECAUDIT 047: through the accessor, like every other
+                        // verification in this file. Reading the constant here
+                        // meant that on an install holding the placeholder this
+                        // verified the canonical schema against THIRTY-TWO ZERO
+                        // BYTES -- a well-formed key nobody holds, so a genuine
+                        // signature was rejected and the fetch was wasted. My
+                        // own regression found this one after the first fix; it
+                        // is the second caller the "one implementation" rule
+                        // exists for.
                         $verified = sodium_crypto_sign_verify_detached(
                             sodium_hex2bin($sig_hex),
                             $checksum,
-                            sodium_hex2bin(SNAPSMACK_RELEASE_PUBKEY)
+                            sodium_hex2bin(updater_release_pubkey())
                         );
                         if ($verified) {
                             $accepted = true;

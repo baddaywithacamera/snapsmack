@@ -3366,7 +3366,7 @@
         ]
     },
     "telegram-mobile-feed-regression.php": {
-        "assertions": 13,
+        "assertions": 14,
         "predicates": 8,
         "thresholds": []
     },
@@ -3570,6 +3570,13 @@
     "updater-opcache-invalidation-regression.php": {
         "assertions": 1,
         "predicates": 4,
+        "thresholds": [
+            2
+        ]
+    },
+    "updater-signature-cannot-fail-open-regression.php": {
+        "assertions": 25,
+        "predicates": 5,
         "thresholds": [
             2
         ]
