@@ -309,9 +309,13 @@ def parse_body(text: str) -> list:
 # ---------------------------------------------------------------------------
 
 _RX_SITE = {
-    # One top-level site element. Non-greedy to its own closing tag; nested
-    # same-name elements are NOT handled, and _site_wellformed() below reports
-    # that rather than guessing.
+    # One top-level site element. Non-greedy, so it stops at the FIRST closing
+    # tag of the same name: a <div> inside a <div> is therefore cut at the
+    # inner close, and the remainder becomes a labelled raw block. That is a
+    # known limit, not a silent one, and the byte-exact invariant still holds
+    # because every piece keeps its own bytes -- the blocks are wrong, the
+    # content is not lost. The site stores <p> and <figure>, neither of which
+    # nests, so this does not arise on a SnapSmack body today.
     "element": re.compile(
         r"<(p|figure|h2|h3|ul|ol|blockquote)\b[^>]*>.*?</\1\s*>|<hr\s*/?>",
         re.DOTALL | re.IGNORECASE),
@@ -319,6 +323,9 @@ _RX_SITE = {
     "p_wrap": re.compile(r"^(<p\b[^>]*>)(.*)(</p\s*>)$", re.DOTALL | re.IGNORECASE),
     # A leading mosaic or image shortcode, which is how the site stores them.
     "lead_sc": re.compile(r"^\s*(\[(?:mosaic|img):[^\]]*\])", re.IGNORECASE),
+    # The same, anywhere in the paragraph. A mid-paragraph shortcode is not a
+    # shape the site produces, but it must not print itself if it ever appears.
+    "any_media_sc": re.compile(r"\[(?:mosaic|img):[^\]]*\]", re.IGNORECASE),
     "site_mosaic": re.compile(r"^\[mosaic:(\d+)\]$", re.IGNORECASE),
 }
 
@@ -351,15 +358,49 @@ def _site_block_for(fragment: str) -> dict:
 
 
 def _split_site_element(inner: str) -> list:
-    """A <p>'s inner content → one block, or a leading shortcode plus prose."""
-    m = _RX_SITE["lead_sc"].match(inner)
-    if not m:
-        return [_site_block_for(inner)]
-    lead = m.group(1)
-    rest = inner[m.end():]
-    if rest.strip() == "":
-        return [_site_block_for(lead)]
-    return [_site_block_for(lead), _site_block_for(rest)]
+    """A <p>'s inner content → its blocks, split at every media shortcode.
+
+    The site stores a mosaic or image at the START of the paragraph it belongs
+    to, which is the only shape a SnapSmack body contains today. A shortcode in
+    the MIDDLE used to fall through to paragraph text with the markup showing,
+    which is the very thing this ticket exists to stop. "The site does not do
+    that today" is not the same as "it cannot happen", so every media shortcode
+    splits, wherever it sits. Found by Muse reviewing 0e0e2314.
+
+    Returns the pieces in order; the caller slices the source bytes to match,
+    so the byte-exact invariant is unaffected by how many pieces there are.
+    """
+    pieces = _split_site_fragments(inner)
+    return [_site_block_for(piece) for piece in pieces]
+
+
+def _split_site_fragments(inner: str) -> list:
+    """The exact substrings _split_site_element turns into blocks.
+
+    Shared with the caller so the block list and the byte slices can never
+    disagree about where the boundaries are.
+    """
+    out = []
+    pos = 0
+    for m in _RX_SITE["any_media_sc"].finditer(inner):
+        before = inner[pos:m.start()]
+        if before.strip() != "":
+            out.append(before)
+        elif before != "" and out:
+            # Whitespace between two shortcodes rides with the previous piece.
+            out[-1] = out[-1] + before
+        elif before != "":
+            out.append(before)
+        out.append(m.group(0))
+        pos = m.end()
+    tail = inner[pos:]
+    if tail.strip() != "":
+        out.append(tail)
+    elif tail != "" and out:
+        out[-1] = out[-1] + tail
+    elif tail != "":
+        out.append(tail)
+    return out or [inner]
 
 
 def parse_site_html(html: str) -> list:
@@ -409,16 +450,18 @@ def parse_site_html(html: str) -> list:
         pw = _RX_SITE["p_wrap"].match(element)
         if pw:
             open_tag, inner, close_tag = pw.group(1), pw.group(2), pw.group(3)
-            parts = _split_site_element(inner)
+            fragments = _split_site_fragments(inner)
+            parts = [_site_block_for(fragment) for fragment in fragments]
             if len(parts) == 1:
                 _emit(parts, [element], None)
             else:
-                lead_len = len(_RX_SITE["lead_sc"].match(inner).group(0))
-                # The wrapper bytes ride with the halves they touch, so the
-                # concatenation is still exact.
-                _emit(parts,
-                      [open_tag + inner[:lead_len], inner[lead_len:] + close_tag],
-                      (open_tag, close_tag))
+                # The wrapper bytes ride with the pieces they touch -- the open
+                # tag with the first, the close tag with the last -- so the
+                # concatenation is still exact however many pieces there are.
+                slices = list(fragments)
+                slices[0] = open_tag + slices[0]
+                slices[-1] = slices[-1] + close_tag
+                _emit(parts, slices, (open_tag, close_tag))
         else:
             _emit([_site_block_for(element)], [element], None)
         pos = m.end()
