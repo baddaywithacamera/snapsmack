@@ -1,0 +1,944 @@
+{
+  "build": "0.7.71",
+  "checks": {
+    "ratio_badges": true,
+    "featured_photo_control": true,
+    "pixel_mirror_controls_absent": true,
+    "block_count": true,
+    "mosaic_maximizable": true,
+    "mosaic_wysiwyg": true,
+    "mosaic_photo_thumbnails": true,
+    "mosaic_thumbnail_count": 5,
+    "mosaic_move_controls": true,
+    "mosaic_move_inside_arrangement": true,
+    "mosaic_reverse_arrangement": true,
+    "mosaic_swap_to_other_side": true,
+    "mosaic_browser_geometry_ready": true,
+    "default_quilt_has_mixed_spans": true,
+    "larger_mosaic_tile_spans_two_by_two": true,
+    "larger_mosaic_reflows_neighbors": true,
+    "smaller_mosaic_returns_to_authored_size": true,
+    "mosaic_resize_preserves_picker_order": true,
+    "mosaic_sizes_survive_reopen": true,
+    "mosaic_sizes_reach_publish_marker": true,
+    "inline_original_group_is_2x2": true,
+    "inline_break_changes_target_size": true,
+    "inline_break_changed_saved_weight_with_no_dialog": true,
+    "inline_break_removes_original_cluster": true,
+    "inline_break_captures": true,
+    "inline_row_starts_with_four_equal_tiles": true,
+    "inline_row_break_clears_every_cluster": true,
+    "inline_row_break_captures": true,
+    "long_dialog_quad_becomes_a_span": true,
+    "long_dialog_full_preview_with_right_picker": true,
+    "long_dialog_keeps_14_photos_and_saves_both_weights": true,
+    "long_dialog_captures": true,
+    "long_dialog_mirrors_the_four_tile_group": true,
+    "long_dialog_undo_redo_and_zoom": true,
+    "post_body_photo_menu_mirror_and_undo": true,
+    "trailing_quad_actions_on_all_four_tiles": true,
+    "dialog_removes_photo_28_without_losing_photo_29": true,
+    "autosave_without_errno22": true,
+    "source_files_preserved": true,
+    "colophon_visible_with_details_closed": true,
+    "add_block_photo_from_tray": true,
+    "img_button": true,
+    "highlight_and_insert": true,
+    "drag_biggie": true,
+    "drag_twiggy": true,
+    "tray_set_featured": true,
+    "tray_remove_action_emitted": true,
+    "tray_remove_single_entry": true,
+    "tray_remove_correct_photo": true,
+    "tray_remove_original_preserved": true,
+    "queued": true,
+    "saved_photo_copy_paths_stay_stable": true,
+    "queued_link_options_0": true,
+    "queued_link_options_1": true,
+    "queued_link_options_2": true,
+    "queued_link_options_3": true,
+    "queued_colophon": true,
+    "draft_roundtrip": true,
+    "captioned_post_keeps_clickable_link": true,
+    "signature_control_visible": true,
+    "signature_default_is_site_specific": true,
+    "signature_reuses_existing_gallery_id": true,
+    "signature_opt_out_survives_save": true,
+    "save_and_queue_show_errors_without_clearing": true,
+    "renderer_failure_visible": true,
+    "send_error_visible_in_footer": true,
+    "send_error_details_open": true,
+    "failed_send_does_not_clear_draft": true,
+    "published_mosaics_are_placeholders": true,
+    "published_figure_retains_caption": true,
+    "published_unchanged_send_preserves_body": true,
+    "visual_image_resize": true,
+    "text_image_resize": true,
+    "one_mosaic_browser_at_a_time": true
+  },
+  "tile_badges": [
+    {
+      "index": 0,
+      "orientation": "L",
+      "ratio": ""
+    },
+    {
+      "index": 1,
+      "orientation": "P",
+      "ratio": ""
+    },
+    {
+      "index": 2,
+      "orientation": "SQ",
+      "ratio": ""
+    },
+    {
+      "index": 3,
+      "orientation": "L",
+      "ratio": ""
+    },
+    {
+      "index": 4,
+      "orientation": "P",
+      "ratio": ""
+    },
+    {
+      "index": 5,
+      "orientation": "L",
+      "ratio": ""
+    }
+  ],
+  "mosaic_resize": {
+    "order_before": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "before": [
+      [
+        0,
+        0,
+        300.797,
+        200.516
+      ],
+      [
+        304.797,
+        0,
+        455.188,
+        303.469
+      ],
+      [
+        0,
+        204.516,
+        148.391,
+        98.922
+      ],
+      [
+        152.391,
+        204.516,
+        148.391,
+        98.922
+      ]
+    ],
+    "order_after": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "larger": [
+      [
+        0,
+        0,
+        378,
+        252
+      ],
+      [
+        382,
+        0,
+        378,
+        252
+      ],
+      [
+        0,
+        256,
+        760,
+        506.656
+      ],
+      [
+        0,
+        766.656,
+        760,
+        506.656
+      ]
+    ],
+    "smaller": [
+      [
+        0,
+        0,
+        300.797,
+        200.516
+      ],
+      [
+        304.797,
+        0,
+        455.188,
+        303.469
+      ],
+      [
+        0,
+        204.516,
+        148.391,
+        98.922
+      ],
+      [
+        152.391,
+        204.516,
+        148.391,
+        98.922
+      ]
+    ],
+    "reopened_order": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "reopened": [
+      [
+        0,
+        0,
+        378,
+        252
+      ],
+      [
+        382,
+        0,
+        378,
+        252
+      ],
+      [
+        0,
+        256,
+        760,
+        506.656
+      ],
+      [
+        0,
+        766.656,
+        760,
+        506.656
+      ]
+    ]
+  },
+  "inline_break": {
+    "before": {
+      "1": [
+        20,
+        4,
+        116,
+        77
+      ],
+      "2": [
+        140,
+        4,
+        116,
+        77
+      ],
+      "3": [
+        20,
+        85,
+        116,
+        77
+      ],
+      "4": [
+        140,
+        85,
+        116,
+        77
+      ]
+    },
+    "before_capture": true,
+    "after": {
+      "1": [
+        20,
+        4,
+        236,
+        157
+      ],
+      "2": [
+        20,
+        165,
+        236,
+        157
+      ],
+      "3": [
+        20,
+        327,
+        236,
+        157
+      ],
+      "4": [
+        20,
+        488,
+        236,
+        157
+      ]
+    },
+    "after_capture": true,
+    "stored": {
+      "order": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "layout": "rows",
+      "weights": {
+        "1": 1,
+        "4": -1
+      }
+    },
+    "removed_original_cluster": true,
+    "opened_dialog": false
+  },
+  "inline_row_break": {
+    "before": {
+      "1": [
+        20,
+        4,
+        186,
+        124
+      ],
+      "2": [
+        210,
+        4,
+        186,
+        124
+      ],
+      "3": [
+        400,
+        4,
+        186,
+        124
+      ],
+      "4": [
+        590,
+        4,
+        186,
+        124
+      ]
+    },
+    "before_capture": true,
+    "after": {
+      "1": [
+        20,
+        4,
+        756,
+        504
+      ],
+      "2": [
+        20,
+        512,
+        503,
+        336
+      ],
+      "3": [
+        527,
+        512,
+        249,
+        166
+      ],
+      "4": [
+        527,
+        682,
+        249,
+        166
+      ]
+    },
+    "after_capture": true,
+    "stored": {
+      "order": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "layout": "columns",
+      "weights": {
+        "1": 1,
+        "4": -1
+      }
+    },
+    "removed_original_cluster": true,
+    "opened_dialog": false
+  },
+  "dialog_quilt": {
+    "picker_count": 53,
+    "before": {
+      "items": [
+        {
+          "id": 1,
+          "x": 0,
+          "y": 0,
+          "width": 386.578125,
+          "height": 289.9375
+        },
+        {
+          "id": 2,
+          "x": 0,
+          "y": 292.609375,
+          "width": 386.578125,
+          "height": 257.71875
+        },
+        {
+          "id": 3,
+          "x": 389.25,
+          "y": 0,
+          "width": 410.75,
+          "height": 273.828125
+        },
+        {
+          "id": 4,
+          "x": 389.25,
+          "y": 276.5,
+          "width": 410.75,
+          "height": 273.828125
+        },
+        {
+          "id": 5,
+          "x": 0,
+          "y": 553,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 6,
+          "x": 535.546875,
+          "y": 553,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 7,
+          "x": 535.546875,
+          "y": 731.953125,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 8,
+          "x": 0,
+          "y": 910.90625,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 9,
+          "x": 401.328125,
+          "y": 910.90625,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 10,
+          "x": 0,
+          "y": 1179.359375,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 11,
+          "x": 401.328125,
+          "y": 1179.359375,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 12,
+          "x": 0,
+          "y": 1447.796875,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 13,
+          "x": 535.546875,
+          "y": 1447.796875,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 14,
+          "x": 535.546875,
+          "y": 1626.765625,
+          "width": 264.4375,
+          "height": 176.296875
+        }
+      ],
+      "height": 1803.0625,
+      "sections": [
+        {
+          "start": 0,
+          "count": 4
+        },
+        {
+          "start": 4,
+          "count": 5
+        },
+        {
+          "start": 9,
+          "count": 5
+        }
+      ]
+    },
+    "before_capture": true,
+    "after": {
+      "items": [
+        {
+          "id": 1,
+          "x": 0,
+          "y": 0,
+          "width": 456.625,
+          "height": 342.46875
+        },
+        {
+          "id": 2,
+          "x": 459.296875,
+          "y": 0,
+          "width": 340.6875,
+          "height": 227.125
+        },
+        {
+          "id": 3,
+          "x": 459.296875,
+          "y": 229.796875,
+          "width": 169.015625,
+          "height": 112.671875
+        },
+        {
+          "id": 4,
+          "x": 630.96875,
+          "y": 229.796875,
+          "width": 169.015625,
+          "height": 112.671875
+        },
+        {
+          "id": 5,
+          "x": 0,
+          "y": 345.125,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 6,
+          "x": 535.546875,
+          "y": 345.125,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 7,
+          "x": 535.546875,
+          "y": 524.109375,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 8,
+          "x": 0,
+          "y": 703.0625,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 9,
+          "x": 401.328125,
+          "y": 703.0625,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 10,
+          "x": 0,
+          "y": 971.5,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 11,
+          "x": 401.328125,
+          "y": 971.5,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 12,
+          "x": 0,
+          "y": 1239.953125,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 13,
+          "x": 535.546875,
+          "y": 1239.953125,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 14,
+          "x": 535.546875,
+          "y": 1418.90625,
+          "width": 264.4375,
+          "height": 176.296875
+        }
+      ],
+      "height": 1595.21875,
+      "sections": [
+        {
+          "start": 0,
+          "count": 4
+        },
+        {
+          "start": 4,
+          "count": 5
+        },
+        {
+          "start": 9,
+          "count": 5
+        }
+      ]
+    },
+    "after_capture": true,
+    "weights": {
+      "1": 1,
+      "5": 1
+    },
+    "fit_scale": 0.3071679040883891,
+    "pane_widths": [
+      863,
+      143
+    ],
+    "right_picker": true,
+    "fits_preview": true,
+    "mirror_base": {
+      "items": [
+        {
+          "id": 1,
+          "x": 0,
+          "y": 0,
+          "width": 500,
+          "height": 600
+        },
+        {
+          "id": 2,
+          "x": 502.65625,
+          "y": 0,
+          "width": 297.328125,
+          "height": 198.21875
+        },
+        {
+          "id": 3,
+          "x": 502.65625,
+          "y": 200.875,
+          "width": 297.328125,
+          "height": 198.21875
+        },
+        {
+          "id": 4,
+          "x": 502.65625,
+          "y": 401.765625,
+          "width": 297.328125,
+          "height": 198.21875
+        },
+        {
+          "id": 5,
+          "x": 0,
+          "y": 602.65625,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 6,
+          "x": 535.546875,
+          "y": 602.65625,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 7,
+          "x": 535.546875,
+          "y": 781.625,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 8,
+          "x": 0,
+          "y": 960.578125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 9,
+          "x": 401.328125,
+          "y": 960.578125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 10,
+          "x": 0,
+          "y": 1229.03125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 11,
+          "x": 401.328125,
+          "y": 1229.03125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 12,
+          "x": 0,
+          "y": 1497.46875,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 13,
+          "x": 535.546875,
+          "y": 1497.46875,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 14,
+          "x": 535.546875,
+          "y": 1676.4375,
+          "width": 264.4375,
+          "height": 176.296875
+        }
+      ],
+      "height": 1852.734375,
+      "sections": [
+        {
+          "start": 0,
+          "count": 4
+        },
+        {
+          "start": 4,
+          "count": 5
+        },
+        {
+          "start": 9,
+          "count": 5
+        }
+      ]
+    },
+    "mirror_base_capture": true,
+    "photo_menu": [
+      "Move this image earlier",
+      "Move this image later",
+      "Swap this image to the other side",
+      "Make larger",
+      "Make smaller",
+      "Reverse arrangement",
+      "Break up",
+      "Include selected tray photos",
+      "Exclude this image"
+    ],
+    "menu_capture": true,
+    "mirrored": {
+      "items": [
+        {
+          "id": 1,
+          "x": 300,
+          "y": 0,
+          "width": 500,
+          "height": 600
+        },
+        {
+          "id": 2,
+          "x": 0,
+          "y": 0,
+          "width": 297.328125,
+          "height": 198.21875
+        },
+        {
+          "id": 3,
+          "x": 0,
+          "y": 200.875,
+          "width": 297.328125,
+          "height": 198.21875
+        },
+        {
+          "id": 4,
+          "x": 0,
+          "y": 401.765625,
+          "width": 297.328125,
+          "height": 198.21875
+        },
+        {
+          "id": 5,
+          "x": 0,
+          "y": 602.65625,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 6,
+          "x": 535.546875,
+          "y": 602.65625,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 7,
+          "x": 535.546875,
+          "y": 781.625,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 8,
+          "x": 0,
+          "y": 960.578125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 9,
+          "x": 401.328125,
+          "y": 960.578125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 10,
+          "x": 0,
+          "y": 1229.03125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 11,
+          "x": 401.328125,
+          "y": 1229.03125,
+          "width": 398.65625,
+          "height": 265.765625
+        },
+        {
+          "id": 12,
+          "x": 0,
+          "y": 1497.46875,
+          "width": 532.875,
+          "height": 355.25
+        },
+        {
+          "id": 13,
+          "x": 535.546875,
+          "y": 1497.46875,
+          "width": 264.4375,
+          "height": 176.296875
+        },
+        {
+          "id": 14,
+          "x": 535.546875,
+          "y": 1676.4375,
+          "width": 264.4375,
+          "height": 176.296875
+        }
+      ],
+      "height": 1852.734375,
+      "sections": [
+        {
+          "start": 0,
+          "count": 4
+        },
+        {
+          "start": 4,
+          "count": 5
+        },
+        {
+          "start": 9,
+          "count": 5
+        }
+      ]
+    },
+    "mirror_capture": true,
+    "undo": true,
+    "undo_capture": true,
+    "redo": true,
+    "zoom_hit": true,
+    "zoom_capture": true,
+    "fit_hit": true,
+    "confirmed_order_and_layout": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "asymmetric"
+    ],
+    "confirmed_weights": {
+      "1": 1,
+      "5": 1
+    },
+    "confirmed_mirrors": [
+      "0:4"
+    ]
+  },
+  "post_quilt": {
+    "before_capture": true,
+    "menu_matches": true,
+    "menu_capture": true,
+    "stored": true,
+    "after_capture": true,
+    "undo": true,
+    "redo": true
+  },
+  "trailing_mosaic_and_tray": {
+    "tile_actions": {
+      "Make larger 12": true,
+      "Make larger 13": true,
+      "Make larger 14": true,
+      "Make larger 15": true,
+      "Make smaller 12": true,
+      "Make smaller 13": true,
+      "Make smaller 14": true,
+      "Make smaller 15": true,
+      "Break up 12": true,
+      "Break up 13": true,
+      "Break up 14": true,
+      "Break up 15": true
+    },
+    "tray_choices": [
+      "Remove from tray"
+    ],
+    "before_capture": true,
+    "photo_28_hidden": true,
+    "mosaic_selection_preserved": true,
+    "tray_capture": true,
+    "photo_28_removed": true,
+    "photo_28_file_kept": true,
+    "photo_29_reference_kept": true
+  },
+  "browser_overlap_stacks": [],
+  "pass": true
+}

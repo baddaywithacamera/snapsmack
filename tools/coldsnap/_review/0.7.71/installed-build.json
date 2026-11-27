@@ -1,0 +1,11 @@
+{
+  "build": "0.7.71",
+  "source_commit": "b240e29680408609a52e56a80c7a95e665594143",
+  "executable_sha256": "7DF16F24754ECD21A610ED2E05405BAF8EDD8F488DA54E9A0317A6C93A932DDF",
+  "renderer_sha256": "0FE371CB37260EFA36442C1B940AA7F8A98528380D4DC2523C7C3C020C57CC47",
+  "assertions": 73,
+  "passed": 73,
+  "remaining_processes": 0,
+  "fixture": "Synthetic resize image and saved published body evaluated offscreen. Captures show fixture only.",
+  "owner_acceptance": "NOT CHECKED"
+}
