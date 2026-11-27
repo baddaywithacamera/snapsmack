@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import secrets
 import stat
+import sys
 
 
 class UnsafeDatabaseUpdate(ValueError):
@@ -50,6 +51,27 @@ def _site_login(content, database):
     return host, user, password
 
 
+def _database_connector():
+    runtime = Path(__file__).resolve().parent
+    if runtime == Path("/usr/local/sbin"):
+        wheel = runtime / "proxvox-pymysql.whl"
+        checksum = "e169bed906168fffd0088925f45b3df024c2775c6fd128da0df773d47c458840"
+        try:
+            metadata = wheel.lstat()
+            if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0
+                    or metadata.st_mode & 0o022 or metadata.st_size > 131072
+                    or hashlib.sha256(wheel.read_bytes()).hexdigest() != checksum):
+                raise OSError("invalid connector package")
+        except OSError:
+            raise UnsafeDatabaseUpdate("The pinned host MariaDB connector is missing or drifted.") from None
+        sys.path.insert(0, str(wheel))
+    try:
+        import pymysql
+    except ImportError:
+        raise UnsafeDatabaseUpdate("The host MariaDB connector is not installed.") from None
+    return pymysql.connect
+
+
 @contextmanager
 def connect_site_database(content, database, *, container, connect=None):
     """Use the site's existing login in memory and suppress driver diagnostics."""
@@ -59,11 +81,7 @@ def connect_site_database(content, database, *, container, connect=None):
     if container and (endpoint in {"localhost", "localhost.localdomain"} or endpoint.startswith("127.")):
         raise UnsafeDatabaseUpdate("This site's container-local database needs a local connector.")
     if connect is None:
-        try:
-            import pymysql
-        except ImportError:
-            raise UnsafeDatabaseUpdate("The host MariaDB connector is not installed.") from None
-        connect = pymysql.connect
+        connect = _database_connector()
 
     try:
         connection = connect(host=host, user=user, password=password, database=database,
