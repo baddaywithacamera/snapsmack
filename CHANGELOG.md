@@ -11,6 +11,8 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1009D — opened
+
 ## 0.7.1008D — opened
 
 <!--
