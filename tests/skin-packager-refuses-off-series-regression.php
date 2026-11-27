@@ -132,6 +132,32 @@ try {
         str_contains($output, 'BLOCK tilez'));
     $check('and the refusal quotes the value it could not read',
         str_contains($output, "'nonsense'"));
+    // The REASON must be the right one. Collapsing the unreadable case into
+    // the already-in-series case left both tests passing, so the message is
+    // what separates them. Mutation found this.
+    $check('an unreadable value is reported as unreadable',
+        str_contains($output, 'cannot be read as a version'));
+    $check('and NOT as already under 0.8',
+        !str_contains($output, 'already under 0.8'));
+    // Muse's nit: asserting the message is not asserting the outcome. The
+    // earlier re-baseline case in this same run legitimately wrote
+    // tilez-0.7.31.zip, so it is cleared first -- otherwise this would fail on
+    // somebody else's package and tell me nothing about this one.
+    foreach (glob($out . '/tilez-*.zip') ?: [] as $earlier) { @unlink($earlier); }
+    [$code, $output] = $pack('tilez');
+    $check('it exits non-zero', $code !== 0);
+    $check('and writes no package', glob($out . '/tilez-*.zip') === []);
+
+    // AND THE CASE I COLLAPSED INTO IT. snap_version_rebaseline() returns null
+    // both for a value it cannot read and for one already under 0.8, so a
+    // manifest claiming rebaselined_from 0.7.31 was refused as unreadable when
+    // it reads perfectly well. Two different wrongs, two different messages.
+    $withFields(['version' => '0.7.31', 'rebaselined_from' => '0.7.31', 'version_epoch' => 1]);
+    [$code, $output] = $pack('tilez');
+    $check('an IN-SERIES rebaselined_from is refused for the right reason',
+        str_contains($output, 'already under 0.8'));
+    $check('and not reported as unreadable',
+        !str_contains($output, 'cannot be read as a version'));
 
     // Re-baselined to the wrong number: refused, and told the right one.
     $withFields(['version' => '0.7.99', 'rebaselined_from' => '2.1.30', 'version_epoch' => 1]);
@@ -189,6 +215,39 @@ $check('and it names the environment variable that sets the default',
 [$code, $output] = $raw(['tilez', '--output=.']);
 $check('the checkout is refused however it is spelled', $code !== 0);
 
+// A SUBDIRECTORY of the checkout is still the checkout. The first version
+// compared for equality only, so --output=./packages wrote into the source
+// tree; mutation showed my tests did not cover it even after I fixed the code.
+// An EXISTING subdirectory, deliberately: a non-existent one is caught by the
+// walk-up to the nearest existing ancestor, which is the checkout root, so it
+// would pass even with the containment check removed. Mutation showed that --
+// the first version of this case used a directory that does not exist and the
+// mutant survived it. tests/ exists and is unambiguously inside the checkout.
+[$code, $output] = $raw(['tilez', '--output=' . $root . '/tests']);
+$check('an EXISTING subdirectory of the checkout is refused', $code !== 0);
+$check('and no package was written into it', glob($root . '/tests/tilez-*.zip') === []);
+
+[$code, $output] = $raw(['tilez', '--output=' . $root . '/packages']);
+$check('a non-existent subdirectory of the checkout is refused too', $code !== 0);
+$check('and nothing was created there', !is_dir($root . '/packages'));
+
+// A path that does NOT EXIST YET inside the checkout. realpath() returns false
+// for it, which skipped the check altogether, so the packager would have
+// created the directory and written into it.
+[$code, $output] = $raw(['tilez', '--output=' . $root . '/nope/deeper']);
+$check('a not-yet-existing path inside the checkout is refused', $code !== 0);
+$check('and it was not created on the way to refusing it', !is_dir($root . '/nope'));
+
+// And the other direction: a directory outside the checkout that does not
+// exist yet must still be accepted and created.
+$fresh = $out . '-fresh/deeper';
+[$code, $output] = $raw(['tilez', '--output=' . $fresh]);
+$check('a new directory OUTSIDE the checkout is accepted and created',
+    $code === 0 && glob($fresh . '/tilez-*.zip') !== []);
+foreach (glob($fresh . '/*') ?: [] as $f) { @unlink($f); }
+@rmdir($fresh);
+@rmdir(dirname($fresh));
+
 [$code, $output] = $raw(['tilez', '--oputput=' . $out]);
 $check('AN UNKNOWN OPTION IS AN ERROR, not silence', $code !== 0);
 $check('and it names the option it did not understand', str_contains($output, '--oputput'));
@@ -233,9 +292,20 @@ $check('and it still packaged the skin somewhere', $code === 0);
 if (preg_match('~Output directory: (.+)$~m', $output, $m) === 1) {
     $where = trim($m[1]);
     $check('it reports where it wrote', $where !== '');
-    $made = $where . DIRECTORY_SEPARATOR . 'tilez-0.2.79.zip';
+    // THE NAME IS DERIVED, not typed. Muse's condition: hard-coding
+    // tilez-0.2.79.zip means a version bump leaves the real zip behind while
+    // this check passes vacuously, because the file it looks for no longer
+    // exists. The version comes from the manifest, which is what the packager
+    // itself used to name the file.
+    $tilezManifest = json_decode(
+        (string)file_get_contents($root . '/skins/tilez/manifest.json'), true);
+    $tilezVersion = (string)($tilezManifest['version'] ?? '');
+    $check('the TILEZ version was read from its manifest', $tilezVersion !== '');
+    $made = $where . DIRECTORY_SEPARATOR . 'tilez-' . $tilezVersion . '.zip';
+    $check('the package this run created is where the packager said it was',
+        is_file($made));
     if (is_file($made)) { @unlink($made); }
-    $check('the package this run created was cleaned up', !is_file($made));
+    $check('and it was cleaned up', !is_file($made));
 } else {
     $check('it reports where it wrote', false);
 }
@@ -251,8 +321,11 @@ if ($fails) {
 echo "ALL PASS\n";
 
 // NOT CHECKED: a real site taking a re-baselined package over the wire. That
-// needs two installs. Also worth knowing and not a defect: the packager
-// defaults its output to the PROJECT ROOT, so running it without --output
-// drops zips into the checkout.
+// needs two installs.
+//
+// The footer here used to say the packager "defaults its output to the PROJECT
+// ROOT", which was true when it was written and is now false -- the default is
+// outside the checkout and the checkout is refused. Muse caught the stale
+// claim. A comment that was true once is the most believable kind of wrong.
 
 // ===== SNAPSMACK EOF =====

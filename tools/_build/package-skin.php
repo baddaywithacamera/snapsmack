@@ -9,7 +9,11 @@
  * USAGE:
  *   php package-skin.php <slug>               Package one skin
  *   php package-skin.php --all                Package all skins
- *   php package-skin.php --all --output DIR   Output to specific directory
+ *   php package-skin.php --all --output DIR   Output to a specific directory
+ *   php package-skin.php --all --output=DIR   Same; either spelling works
+ *
+ * Packages are written OUTSIDE the checkout. Default: SNAPSMACK_BUILD_DIR, or a
+ * <repo>-builds folder beside the repository.
  *
  * EXAMPLES:
  *   php package-skin.php galleria
@@ -95,7 +99,23 @@ if ($default_output === null || trim($default_output) === '') {
             if ($resolved !== false) { $main_root = dirname($resolved); }
         }
     }
-    $base = $main_root ?? $project_root;
+    // WITHOUT GIT the plain sibling can still be inside the repository: from a
+    // worktree it is .claude/worktrees. Muse's condition on f9e76bdc. The
+    // fallback therefore climbs out of any .claude, worktrees or .git segment
+    // before taking a sibling.
+    $base = $main_root;
+    if ($base === null) {
+        $base = $project_root;
+        $climb = 0;
+        while ($climb++ < 20) {
+            if (in_array(basename($base), ['.claude', 'worktrees', '.git'], true)
+                || in_array(basename(dirname($base)), ['.claude', 'worktrees', '.git'], true)) {
+                $base = dirname($base);
+                continue;
+            }
+            break;
+        }
+    }
     $default_output = dirname($base) . '/' . basename($base) . '-builds';
 }
 $output_dir = $args['output'] ?? $default_output;
@@ -103,11 +123,30 @@ $output_dir = $args['output'] ?? $default_output;
 // AND NEVER THE CHECKOUT, even when asked explicitly. A zip in the source
 // tree gets committed by accident, and the next person wonders why the
 // repository holds a build.
-$resolved_output = realpath($output_dir);
+// INSIDE the checkout, not merely equal to it. Muse's condition on f9e76bdc:
+// the first version compared the resolved paths for EQUALITY, so
+// --output=./packages wrote into the source tree, and a path that does not
+// exist yet resolved to false and skipped the check altogether. Both are
+// refused now: the comparison walks up to the nearest existing ancestor, so a
+// directory not yet created is judged by where it WOULD be.
 $resolved_root = realpath($project_root);
-if ($resolved_output !== false && $resolved_root !== false
-    && rtrim($resolved_output, '/\\') === rtrim($resolved_root, '/\\')) {
-    echo "REFUSED: the output directory is the checkout itself.\n";
+$probe = $output_dir;
+$resolved_output = realpath($probe);
+$probe_guard = 0;
+while ($resolved_output === false && $probe !== '' && $probe !== dirname($probe)
+       && $probe_guard++ < 40) {
+    $probe = dirname($probe);
+    $resolved_output = realpath($probe);
+}
+$inside_checkout = false;
+if ($resolved_output !== false && $resolved_root !== false) {
+    $out_norm = rtrim(str_replace('\\', '/', $resolved_output), '/');
+    $root_norm = rtrim(str_replace('\\', '/', $resolved_root), '/');
+    $inside_checkout = ($out_norm === $root_norm)
+        || strncmp($out_norm . '/', $root_norm . '/', strlen($root_norm) + 1) === 0;
+}
+if ($inside_checkout) {
+    echo "REFUSED: that output directory is inside the checkout.\n";
     echo "        Packages belong outside the source tree -- pass --output DIR,\n";
     echo "        or set SNAPSMACK_BUILD_DIR. The default is {$default_output}.\n";
     exit(1);
@@ -206,16 +245,26 @@ foreach ($slugs as $slug) {
             $errors++;
             continue;
         }
-        if ($expected === null) {
-            // FAIL CLOSED on a from-value this code cannot read. Muse found
-            // this open on f94cbb26: with the epoch present and a nonsense
-            // rebaselined_from, the wrong-number check was skipped because the
-            // expected version was null, so the package went through unchecked.
-            // A claim about where a version came from is either readable or it
-            // is not evidence.
+        // THREE CASES, and my first version collapsed the last two.
+        // snap_version_rebaseline() returns null BOTH for a value it cannot
+        // read AND for one already under 0.8 that needs no move. Muse caught
+        // that on d80ff23a: a manifest saying rebaselined_from 0.7.31 was
+        // refused as "cannot be read as a version" when it reads perfectly
+        // well. Measured before fixing -- that exact manifest was blocked.
+        if (snap_version_parts($from) === null) {
+            // Unreadable: fail closed. A claim about where a version came from
+            // is either readable or it is not evidence.
             echo "  BLOCK {$slug} — rebaselined_from is '{$from}', which cannot be read as a "
-               . "version, so the number it should carry cannot be derived
-";
+               . "version, so the number it should carry cannot be derived" . PHP_EOL;
+            $errors++;
+            continue;
+        }
+        if ($expected === null) {
+            // Readable, and already under 0.8: nothing was re-baselined, so
+            // the claim is wrong rather than unreadable, and the message says
+            // which of the two it is.
+            echo "  BLOCK {$slug} — rebaselined_from is '{$from}', which is already under 0.8, "
+               . "so nothing was re-baselined and no epoch is needed" . PHP_EOL;
             $errors++;
             continue;
         }

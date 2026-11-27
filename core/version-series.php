@@ -53,8 +53,16 @@ const SNAP_VERSION_SERIES = '0.7';
 const SNAP_VERSION_EPOCH = 1;
 
 /**
- * Split a version into [major, minor, patch], or null if it is not three
- * numbers. A letter-suffixed legacy version (0.7.9p) is not publishable.
+ * Split a version into [major, minor, patch, buildLetter], or null.
+ *
+ * FOUR elements, not three: the build letter is the fourth and is '' when
+ * there is none. Muse's nit on b39bbb97 -- this docblock still promised three
+ * after the letter was added, which is the same kind of stale comment she
+ * caught in the file header.
+ *
+ * A lowercase d is accepted and normalised to 'D', because a manifest typed by
+ * hand should not be refused over the shift key; the pre-0.7.17 legacy letters
+ * (0.7.9P, 0.7.9N) are still refused, because nothing may publish them.
  */
 function snap_version_parts(string $version): ?array
 {
