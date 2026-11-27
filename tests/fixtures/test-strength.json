@@ -2553,6 +2553,13 @@
         "predicates": 5,
         "thresholds": []
     },
+    "skin-packager-refuses-off-series-regression.php": {
+        "assertions": 25,
+        "predicates": 15,
+        "thresholds": [
+            2
+        ]
+    },
     "skin-parity-ledger-regression.php": {
         "assertions": 7,
         "predicates": 1,

@@ -33,6 +33,11 @@ if (php_sapi_name() !== 'cli') {
 $project_root = dirname(__DIR__, 2);
 $skins_dir    = $project_root . '/skins';
 require_once $project_root . '/core/skin-security-policy.php';
+// The version rules. A skin that is at 0.8 or above must not be packaged at
+// all, and a re-baselined one must carry its epoch or no site holding the
+// old bigger number will ever take it.
+require_once $project_root . '/core/constants.php';
+require_once $project_root . '/core/version-series.php';
 
 // Files/dirs excluded from the zip
 $exclude = ['.git', '.DS_Store', 'Thumbs.db', '.gitkeep', '__MACOSX'];
@@ -115,12 +120,53 @@ foreach ($slugs as $slug) {
     $name    = $manifest['name']    ?? ucfirst($slug);
     $version = $manifest['version'] ?? '1.0';
     $status  = $manifest['status']  ?? 'unknown';
+    $epoch   = (int)($manifest['version_epoch'] ?? 0);
+
+    // REFUSE AN OFF-SERIES VERSION HERE, where the package is made, rather
+    // than discovering it once it is in the registry. Sean asked for the
+    // version inflation to stop and asking did not work, so this is one of
+    // the places that now says no, and it names the version to use instead.
+    $series_problem = snap_version_series_problem((string)$version);
+    if ($series_problem !== '') {
+        echo "  BLOCK {$slug} — {$series_problem}\n";
+        $suggested = snap_version_rebaseline((string)$version);
+        if ($suggested !== null) {
+            echo "        set \"version\": \"{$suggested}\" and \"version_epoch\": "
+               . SNAP_VERSION_EPOCH . " in skins/{$slug}/manifest.json\n";
+        }
+        $errors++;
+        continue;
+    }
+
+    // A RE-BASELINED SKIN MUST DECLARE ITS EPOCH. 0.7.31 after 2.1.30 is a
+    // LOWER number, so without the epoch every site holding the old one reads
+    // the new package as a downgrade and stays behind for ever with nothing
+    // reported. The manifest states what it was re-baselined from, and this
+    // refuses the package if the epoch or the number does not match it.
+    if (!empty($manifest['rebaselined_from'])) {
+        $from = (string)$manifest['rebaselined_from'];
+        $expected = snap_version_rebaseline($from);
+        if ($epoch < SNAP_VERSION_EPOCH) {
+            echo "  BLOCK {$slug} — manifest says it was re-baselined from {$from}, so it must "
+               . 'declare "version_epoch": ' . SNAP_VERSION_EPOCH
+               . " or no site holding {$from} will ever take it\n";
+            $errors++;
+            continue;
+        }
+        if ($expected !== null && $version !== $expected) {
+            echo "  BLOCK {$slug} — re-baselined from {$from}, so its version must be "
+               . "{$expected}, not {$version}\n";
+            $errors++;
+            continue;
+        }
+    }
 
     // Build zip filename
     $zip_name = "{$slug}-{$version}.zip";
     $zip_path = rtrim($output_dir, '/') . '/' . $zip_name;
 
-    echo "  PACK  {$slug} v{$version} ({$status})\n";
+    echo "  PACK  {$slug} v{$version}"
+       . ($epoch > 0 ? " epoch {$epoch}" : '') . " ({$status})\n";
 
     // Create zip with {slug}/ as top-level folder
     $zip = new ZipArchive();
@@ -137,6 +183,7 @@ foreach ($slugs as $slug) {
     $smackback_manifest = json_encode([
         'smackback_version' => 1,
         'package_version'   => $version,
+        'package_epoch'     => $epoch,
         'skin_id'           => $slug,
         'generated_at'      => gmdate('Y-m-d\TH:i:s\Z'),
         'files'             => $smack_hashes,
@@ -156,6 +203,9 @@ foreach ($slugs as $slug) {
         'slug'     => $slug,
         'name'     => $name,
         'version'  => $version,
+        // The registry entry carries it, because that is what a site
+        // compares against its installed copy.
+        'version_epoch' => $epoch,
         'status'   => $status,
         'zip'      => $zip_name,
         'size'     => $filesize,
