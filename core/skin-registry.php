@@ -552,6 +552,13 @@ function skin_registry_local(): array {
         $installed[$slug] = [
             'name'        => $manifest['name'] ?? ucfirst($slug),
             'version'     => $manifest['version'] ?? '0.0',
+            // THE INSTALLED SIDE OF THE EPOCH. This array is an allowlist, so
+            // the field had to be named here or snap_version_with_epoch() saw
+            // nothing and compared a re-baselined install as epoch 0 -- which
+            // offered an already-installed 0.7.31 over and over. Both readers
+            // of this array compare that way: skin_registry_compare() below,
+            // and the skin notifications in core/updater.php.
+            'version_epoch' => (int)($manifest['version_epoch'] ?? 0),
             'status'      => $manifest['status'] ?? 'stable',
             'author'      => $manifest['author'] ?? 'Unknown',
             'description' => $manifest['description'] ?? '',
