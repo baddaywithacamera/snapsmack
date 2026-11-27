@@ -1898,6 +1898,8 @@ class BiggieCanvas(QTextEdit):
             if data.get("raw"):
                 data["raw"] = biggie.resize_image_shortcode(data["raw"], percent)
             data["width"] = str(percent)
+            if data.get("asset_uuid"):
+                data["width_ratio"] = percent / 100
             self._insert_object("image", data, replace_at=hit[2])
 
     def mousePressEvent(self, event):
@@ -2763,9 +2765,13 @@ class _LocalImageDialog(QDialog):
                              ("Half page", .5), ("Two-thirds page", .67),
                              ("Page width", 1.0)):
             self.width.addItem(label, value)
-        wanted = float(data.get("width_ratio", 1.0) or 1.0)
-        self.width.setCurrentIndex(min(range(self.width.count()),
-                                       key=lambda i: abs(float(self.width.itemData(i)) - wanted)))
+        percent = biggie.image_width_percent(data) or 100
+        wanted = percent / 100
+        index = self.width.findData(wanted)
+        if index < 0:
+            index = self.width.count()
+            self.width.addItem(f"{percent}%", wanted)
+        self.width.setCurrentIndex(index)
         row.addWidget(self.width, 1)
         col.addLayout(row)
         col.addWidget(QLabel("ALT text"))

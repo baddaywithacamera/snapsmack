@@ -117,4 +117,23 @@ def test_twiggy_edge_drags_only_shortcode_under_cursor(monkeypatch, tmp_path):
         mode.close()
 
 
+def test_local_image_settings_preserve_width_after_drag():
+    from PySide6.QtWidgets import QApplication
+    from coldsnap_qt.canvas import BiggieCanvas, _LocalImageDialog
+
+    app = QApplication.instance() or QApplication([])
+    canvas = BiggieCanvas()
+    canvas.from_blocks([{"type": "image", "img_id": "asset:one", "asset_uuid": "one",
+                         "width_ratio": .5, "placement": "block"}])
+    canvas._set_image_width(canvas.document().firstBlock().position(), 60)
+    block = canvas.to_blocks()[0]
+    assert block["width"] == "60" and block["width_ratio"] == .6
+    dialog = _LocalImageDialog(canvas, block)
+    assert dialog.values()["width_ratio"] == .6
+    assert biggie.image_width_percent(dialog.values()) == 60
+    dialog.close()
+    canvas.close()
+    app.processEvents()
+
+
 # ===== SNAPSMACK EOF =====
