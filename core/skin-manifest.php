@@ -182,7 +182,7 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         'community_comments', 'community_likes',
     ];
     $known = array_flip(array_merge(
-        ['schema_version', 'security_policy', 'min_images'],
+        ['schema_version', 'security_policy', 'min_images', 'version_epoch'],
         $string_keys,
         $array_keys,
         $boolean_keys
@@ -222,6 +222,25 @@ function snapsmack_normalize_skin_manifest(array $input, string $slug = ''): arr
         // handed a manifest with no min_images at all. The guard read 0 and
         // allowed everything. Three skins declared a threshold and none of
         // them had one.
+        // WHICH NUMBERING THE INSTALLED VERSION BELONGS TO. Exactly the fault
+        // described for min_images above, found a second time in the same
+        // allowlist: the key was absent, so an installed skin's declared epoch
+        // was dropped here with only an error_log, and every comparison on the
+        // site read the re-baselined 0.7.31 as having no epoch. IMPACT PRINTER
+        // 0.7.31 then compared LOWER than the registry's 1:0.7.31, so a site
+        // already holding the new package was offered it again, and again
+        // after every registry fetch. Measured on 623ea0ef before this line
+        // existed: a fresh gallery reload re-offered an installed 0.7.31.
+        //
+        // The epoch travels in the skin's own manifest.json because that is
+        // what the packager puts in the zip; nothing else on the site knows it.
+        if ($key === 'version_epoch') {
+            // A string "1" is a manifest mistake, not an epoch to guess at.
+            // Dropping it keeps the pre-epoch behaviour rather than inventing
+            // a numbering the skin author did not write.
+            if (is_int($value) && $value >= 0) $out[$key] = $value;
+            continue;
+        }
         if ($key === 'min_images') {
             if (is_int($value) && $value >= 0) $out[$key] = $value;
             // A string "50" is a manifest mistake, not a threshold to guess at:
