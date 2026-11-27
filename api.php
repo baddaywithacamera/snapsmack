@@ -17,6 +17,14 @@
 
 // --- ROUTE EXTRACTION ---
 // Parse route from query parameter or rewritten PATH_INFO
+// SS-1598. THE QUERY FORM IS THE ROUTE. A path-style request only arrives
+// here when a RewriteRule hands it over, and .htaccess has rules for
+// api/desktop-auth, api/v1, api/pixelfed and oauth -- nothing else. Every
+// other pretty /api/<x> path falls through to the HTTPS redirect and then to
+// index.php's HTML 404, which is what POCKET ALBUM's documented example did.
+// Seven comments in this file and core/ advertised paths that could not work;
+// they now name api.php?route=<x>, which is what every real client uses.
+// tests/documented-api-paths-reach-the-dispatcher-regression.php keeps it so.
 $route = '';
 
 if (isset($_GET['route'])) {
@@ -76,7 +84,7 @@ function snap_api_route_changes_content(string $route): bool {
 }
 
 // --- MULTISITE ROUTES ---
-// Route all /api/multisite/* requests to the multisite API handler
+// Route all multisite requests (api.php?route=multisite/*) to the multisite API handler
 if (strpos($route, 'multisite') === 0) {
     require_once 'core/multisite-api.php';
     exit;
@@ -90,14 +98,14 @@ if (strpos($route, 'desktop-auth') === 0) {
 }
 
 // --- OH SNAP! ROUTES ---
-// Route all /api/ohsnap/* requests to the Oh Snap! skin designer API handler
+// Route all Oh Snap! requests (api.php?route=ohsnap/*) to the skin designer API handler
 if (strpos($route, 'ohsnap') === 0) {
     require_once 'core/ohsnap-api.php';
     exit;
 }
 
 // --- SMACKPRESS ROUTES ---
-// Route all /api/smackpress/* requests to the SmackPress migration API handler
+// Route all SmackPress requests (api.php?route=smackpress/*) to the migration API handler
 if (strpos($route, 'smackpress') === 0) {
     require_once 'core/smackpress-api.php';
     exit;
@@ -112,14 +120,14 @@ if (strpos($route, 'bloggerflogger') === 0) {
 }
 
 // --- FLKR FCKR ROUTES ---
-// Route all /api/flkrfckr/* requests to the FLKR FCKR migration API handler
+// Route all FLKR FCKR requests (api.php?route=flkrfckr/*) to the migration API handler
 if (strpos($route, 'flkrfckr') === 0) {
     require_once 'core/flkrfckr-api.php';
     exit;
 }
 
 // --- GET YOUR SHIT SORTED ROUTES ---
-// Route all /api/gyss/* requests to the GYSS desktop sorter API handler
+// Route all GYSS requests (api.php?route=gyss/*) to the desktop sorter API handler
 if (strpos($route, 'gyss') === 0) {
     require_once 'core/gyss-api.php';
     exit;
@@ -148,7 +156,8 @@ if (strpos($route, 'threeacross') === 0 || strpos($route, 'unzucker') === 0) {
 }
 
 // --- POCKET ALBUM (SS-1575) ---
-// GET /api/pocket-album?album=N&page=1 -- one album's published photographs as
+// GET /api.php?route=pocket-album&album=N&page=1 -- one album's published
+// photographs as
 // JSON, so another SnapSmack site can show it. Read-only and unauthenticated,
 // because everything it returns is already on the public album page, but dark
 // until the site owner sets pocket_album_share=on. See core/pocket-album-api.php.
@@ -158,7 +167,8 @@ if (strpos($route, 'pocket-album') === 0) {
 }
 
 // --- STATS BEACON ROUTES ---
-// Route all /api/stats/* requests (Scroll Time dwell beacon) to the stats API.
+// Route all stats requests (api.php?route=stats/*, the Scroll Time dwell beacon)
+// to the stats API.
 if (strpos($route, 'stats') === 0) {
     require_once 'core/stats-api.php';
     exit;

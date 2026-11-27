@@ -1,0 +1,166 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * SNAPSMACK_EOF_HEADER
+ *     // ===== SNAPSMACK EOF =====
+ * Last non-empty line of this file MUST match the line above.
+ *
+ * A documented API path must actually reach the dispatcher.
+ *
+ * SS-1598. The POCKET ALBUM docblock advertised
+ * GET /api/pocket-album?album=N&page=1, and on an installed site that returns
+ * the HTML 404 page. api.php does accept a path-style route -- it reads
+ * PATH_INFO and strips a leading "api/" -- but ONLY where a RewriteRule hands
+ * it the path, and .htaccess has rules for api/desktop-auth, api/v1,
+ * api/pixelfed and oauth and nothing else. So the pretty path never arrived.
+ *
+ * The instance was one wrong line. THE FAULT CLASS is that nothing connected
+ * the documentation to the rewrite rules, so any pretty path anyone writes in
+ * a comment reads as true and is never tested. This checks the class: every
+ * /api/... path advertised in the source must have a rewrite behind it.
+ */
+
+$root = dirname(__DIR__);
+$fails = [];
+$check = static function (string $what, bool $ok) use (&$fails): void {
+    if (!$ok) { $fails[] = $what; }
+    echo ($ok ? 'PASS ' : 'FAIL ') . $what . "\n";
+};
+
+// ---------------------------------------------------------------------------
+// What .htaccess actually rewrites into a dispatcher.
+// ---------------------------------------------------------------------------
+$htaccess = (string)@file_get_contents($root . '/.htaccess');
+$check('.htaccess is in the build', $htaccess !== '');
+// THE TARGET MATTERS, not just the pattern. My first version collected
+// patterns only, and reported api/pocket-album as reachable because
+// ^(.*)$ -> https://%{HTTP_HOST}/$1 matched it -- the HTTPS redirect, which
+// sends the browser round again and ends at index.php's HTML 404, which is
+// EXACTLY what the ticket reported seeing. A rule only makes a path reachable
+// when it routes to a PHP dispatcher.
+preg_match_all('~^\s*RewriteRule\s+\^([^\s]+)\s+([^\s]+)~mi', $htaccess, $m, PREG_SET_ORDER);
+$rules = [];
+foreach ($m as $rule) {
+    $target = $rule[2];
+    if (!str_contains($target, '.php')) { continue; }   // a redirect, not a route
+    if (str_contains($target, 'index.php')) { continue; }  // the site router, not an API
+    $rules[] = ['pattern' => $rule[1], 'target' => $target];
+}
+$check('it carries rewrite rules that route to a dispatcher', $rules !== []);
+
+/** Does some rewrite rule accept this path? */
+$rewritten = static function (string $path) use ($rules): bool {
+    $path = ltrim($path, '/');
+    foreach ($rules as $rule) {
+        // The rule's own regex, used as Apache uses it.
+        if (@preg_match('~^' . $rule['pattern'] . '~', $path) === 1) {
+            return true;
+        }
+    }
+    return false;
+};
+
+$check('the rules that DO exist are recognised by this check',
+    $rewritten('api/desktop-auth/status') && $rewritten('api/v1/anything')
+    && $rewritten('oauth/token'));
+$check('and a path with no rule is not', !$rewritten('api/pocket-album'));
+
+// ---------------------------------------------------------------------------
+// Every /api/... path written in the source must be reachable.
+// ---------------------------------------------------------------------------
+$sources = [];
+foreach ([$root . '/*.php', $root . '/core/*.php'] as $glob) {
+    foreach (glob($glob) ?: [] as $file) { $sources[] = $file; }
+}
+$check('there are source files to read', count($sources) > 50);
+
+$unreachable = [];
+$documented = 0;
+foreach ($sources as $file) {
+    $text = (string)file_get_contents($file);
+    // Only comment lines: a string in code may be built for a client that has
+    // its own rewrite, and this check is about what we TELL people.
+    foreach (preg_split('/\R/', $text) ?: [] as $number => $line) {
+        $trimmed = ltrim($line);
+        if (!str_starts_with($trimmed, '*') && !str_starts_with($trimmed, '//')
+            && !str_starts_with($trimmed, '#')) {
+            continue;
+        }
+        // GET /api/<something>, which is how every one of these is written.
+        // $hits is reset explicitly: a compound guard here left the PREVIOUS
+        // line's matches in scope, so lines were attributed to each other and
+        // the exclusion below looked broken when it was not. Found by
+        // replicating the scan on its own and getting a different answer.
+        $hits = [];
+        if (preg_match_all('~(?:^|\s)/(api/[A-Za-z0-9_\-/]+)~', $line, $hits) < 1) {
+            continue;
+        }
+        foreach ($hits[1] ?? [] as $path) {
+            // A path that names the dispatcher directly is fine by definition.
+            if (str_starts_with($path, 'api/') && str_contains($line, 'api.php')) {
+                continue;
+            }
+            // A LINE THAT SAYS THE PATH 404s IS DOCUMENTING ABSENCE, not
+            // advertising an endpoint. core/pocket-album-api.php and
+            // core/pocket-album-feed.php both record that /api/albums/191
+            // answered with 404 before POCKET ALBUM existed -- that is
+            // evidence, and flagging it would push someone to delete the
+            // evidence to quiet the test. The fault class is advertising a
+            // path as USABLE, so only those count.
+            if (preg_match('~404|does not exist|never existed|unreachable~i', $line) === 1) {
+                continue;
+            }
+            $documented++;
+            if (!$rewritten($path)) {
+                $unreachable[] = basename($file) . ':' . ($number + 1) . '  /' . $path;
+            }
+        }
+    }
+}
+$check('some /api/ paths are documented, so this check has something to do',
+    $documented > 0);
+$check('EVERY documented /api/ path has a rewrite behind it: '
+    . ($unreachable ? implode(' | ', array_slice($unreachable, 0, 6)) : 'all reachable'),
+    $unreachable === []);
+
+// ---------------------------------------------------------------------------
+// The POCKET ALBUM example specifically, which is what SS-1598 reported.
+// ---------------------------------------------------------------------------
+$api = (string)file_get_contents($root . '/core/pocket-album-api.php');
+$display = (string)file_get_contents($root . '/core/pocket-album-display.php');
+$dispatcher = (string)file_get_contents($root . '/api.php');
+
+$check('the endpoint documents the query form that works',
+    str_contains($api, 'api.php?route=pocket-album'));
+$check('the display docblock documents it too',
+    str_contains($display, 'api.php?route=pocket-album'));
+$check('the dispatcher comment documents it too',
+    str_contains($dispatcher, 'api.php?route=pocket-album'));
+$check('the docblock explains why the pretty path did not work, not just what to type',
+    stripos($api, 'RewriteRule') !== false || stripos($api, 'rewrite') !== false);
+
+// AND THE FORM THE CODE USES MUST BE THE FORM WE DOCUMENT. The fetch in
+// pocket-album-display.php is what actually works against a live site, so if
+// the documentation and that line ever disagree again, one of them is wrong.
+preg_match('~\$src \. \'([^\']+)\'~', $display, $fetch);
+$check('the remote fetch builds the documented route: ' . ($fetch[1] ?? '(not found)'),
+    isset($fetch[1]) && str_contains($fetch[1], 'api.php?route=pocket-album'));
+
+$check('nothing still advertises the broken pretty path as the endpoint',
+    !preg_match('~(?:GET|POST)\s+/api/pocket-album~', $api . $display . $dispatcher));
+
+echo "\n";
+if ($fails) {
+    echo "FAILED (" . count($fails) . "):\n";
+    foreach ($fails as $f) { echo "  - $f\n"; }
+    exit(1);
+}
+echo "ALL PASS\n";
+
+// NOT CHECKED, and it is the ticket's own acceptance: that the example responds
+// as JSON on an INSTALLED site. That needs a running site, which this machine
+// cannot reach. What is checked here is that the documented path has a rewrite
+// behind it and that the code and the documentation agree.
+
+// ===== SNAPSMACK EOF =====

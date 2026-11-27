@@ -15,7 +15,8 @@ declare(strict_types=1);
  *
  *   [pocket_album src="https://foreverphotograph.ing" album="191"]
  *       ANOTHER SnapSmack site's album, read from that site's
- *       /api/pocket-album feed and served out of a local cache that a cron
+ *       /api.php?route=pocket-album feed and served out of a local cache
+ *       that a cron
  *       refreshes. This is the "show an album from foreverphotograph.ing on a
  *       different site" he asked for weeks ago.
  *
