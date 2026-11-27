@@ -557,6 +557,14 @@
             25
         ]
     },
+    "documented-api-paths-reach-the-dispatcher-regression.php": {
+        "assertions": 22,
+        "predicates": 25,
+        "thresholds": [
+            2,
+            50
+        ]
+    },
     "download-url-scheme-regression.php": {
         "assertions": 2,
         "predicates": 9,
@@ -568,6 +576,15 @@
         "thresholds": [
             2,
             2
+        ]
+    },
+    "duplicate-detection-needs-corroboration-regression.php": {
+        "assertions": 36,
+        "predicates": 5,
+        "thresholds": [
+            2,
+            2,
+            111
         ]
     },
     "dwell-beacon-is-bound-to-its-hit.php": {

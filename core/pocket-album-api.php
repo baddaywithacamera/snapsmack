@@ -5,7 +5,17 @@ declare(strict_types=1);
 // Last non-empty line must be: // ===== SNAPSMACK EOF =====
 
 /**
- * POCKET ALBUM, the SOURCE endpoint: GET /api/pocket-album?album=N&page=1
+ * POCKET ALBUM, the SOURCE endpoint:
+ *   GET /api.php?route=pocket-album&album=N&page=1
+ *
+ * SS-1598. This docblock used to advertise the path form of that route,
+ * which returns the HTML 404 page on an installed site. api.php does accept a
+ * path-style route, but only where a RewriteRule hands it the path, and
+ * .htaccess has rules for api/desktop-auth, api/v1, api/pixelfed and oauth --
+ * NOT for api/pocket-album. So the pretty path never reaches the dispatcher.
+ * The query form is what core/pocket-album-display.php has always used to
+ * fetch a remote album, so the code was right and the documentation was not.
+ * No route changes here: the published example does.
  *
  * SS-1575. core/pocket-album-feed.php builds the payload; this is the door it
  * is served through, and without it the feed was unreachable code. A measured
