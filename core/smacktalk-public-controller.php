@@ -12,7 +12,8 @@ require_once __DIR__ . '/parser.php';
 require_once __DIR__ . '/public-repository.php';
 require_once __DIR__ . '/public-route-aliases.php';
 
-function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request): array
+function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request,
+                                     array $skin_manifest = []): array
 {
     $base = defined('BASE_URL') ? BASE_URL : '/';
     $view = trim((string)($request['view'] ?? ''));
@@ -175,7 +176,8 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     }
 
     if ($post_slug !== '' || $post_id > 0) {
-        $single = snapsmack_smacktalk_single($pdo, $settings, $base, $post_slug, $post_id);
+        $single = snapsmack_smacktalk_single($pdo, $settings, $base, $post_slug, $post_id,
+                                            null, $skin_manifest);
         if ($single !== null) return ['handled' => true, 'kind' => 'single'] + $single;
         if (!$candidate_from_path || trim((string)($request['post_slug'] ?? '')) !== '' || $post_id > 0) {
             return ['handled' => true, 'kind' => 'not_found', 'page_title' => '404 — Not Found'];
@@ -308,7 +310,9 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
     return $tiles;
 }
 
-function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, string $slug, int $id, ?array $previewPost = null): ?array
+function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, string $slug,
+                                    int $id, ?array $previewPost = null,
+                                    array $skin_manifest = []): ?array
 {
     try {
         $repository = new SnapPublicRepository($pdo);
@@ -406,16 +410,23 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
                 $signature_row = $post;   // columns not added yet: legacy meaning
             }
         }
-        // The server renders the LIGHT surface. Which surface a reader is on is
-        // a skin-side question and there is no signal for it yet, so the dark
-        // id travels alongside for whoever builds that; it is not guessed at
-        // here. A site with only one default set uses it for both.
+        // WHICH SURFACE COMES FROM THE SKIN, NOT FROM A GUESS HERE. The skin
+        // manifest declares "signature_surface"; light is the default and no
+        // skin declares anything yet, so every site behaves as before until
+        // one does. PM ruling, 2026-11-27, on Gemini's v2 contract.
+        //
+        // The other surface's id travels alongside it. A client that wants to
+        // offer both, or a skin that switches, needs to know what the unused
+        // one resolves to -- and sending only the chosen one would make the
+        // response depend on the skin in a way a caller cannot see.
+        $signature_surface = snap_signature_surface($skin_manifest);
         $signature_ids = [
             'light' => snap_signature_resolve($signature_row, $settings, 'light'),
             'dark'  => snap_signature_resolve($signature_row, $settings, 'dark'),
         ];
-        if ($signature_ids['light'] > 0) {
-            $image = $repository->photographById($signature_ids['light']);
+        $signature_chosen = $signature_ids[$signature_surface] ?? 0;
+        if ($signature_chosen > 0) {
+            $image = $repository->photographById($signature_chosen);
             if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
                 'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
         }

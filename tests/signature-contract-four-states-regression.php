@@ -385,6 +385,93 @@ check(str_contains($controller_src, "status='published' AND created_at <= NOW()"
     'and its re-read carries the publication clause');
 
 // ---------------------------------------------------------------------------
+// WHICH SURFACE THE SKIN GETS. (PM ruling 2026-11-27, Gemini's v2 contract.)
+// The skin manifest declares it; light is the default. A manifest is
+// hand-edited JSON, so anything that is not one of the two valid values must
+// come back as light rather than reaching the resolver as a surface name.
+// ---------------------------------------------------------------------------
+check(snap_signature_surface([]) === 'light',
+    'a manifest that declares nothing gets LIGHT');
+check(snap_signature_surface(['signature_surface' => 'dark']) === 'dark',
+    'a manifest declaring dark gets DARK');
+check(snap_signature_surface(['signature_surface' => 'light']) === 'light',
+    'and declaring light gets light');
+check(snap_signature_surface(['signature_surface' => ' DARK ']) === 'dark',
+    'case and surrounding space are tolerated, because this is hand-edited JSON');
+foreach ([['signature_surface' => 'sepia'], ['signature_surface' => ''],
+          ['signature_surface' => true], ['signature_surface' => 1],
+          ['signature_surface' => ['dark']], ['signature_surface' => null]] as $bad) {
+    check(snap_signature_surface($bad) === 'light',
+        'a nonsense declaration falls back to light: '
+        . json_encode($bad['signature_surface']));
+}
+check(SNAP_SIGNATURE_SURFACE_DEFAULT === 'light',
+    'the default is named once and it is light');
+
+// AND IT RAISES NOTHING WHILE DOING IT. The is_string() guard looked
+// unobservable: casting instead of rejecting gives the same ANSWER for every
+// input above, because "1", "" and "Array" are all invalid surface names and
+// all fall back to light. The difference is that casting an ARRAY emits a PHP
+// notice -- on a reader's page, in the middle of rendering a post. That is the
+// observable consequence, so that is what is checked.
+$raised = [];
+set_error_handler(static function (int $no, string $msg) use (&$raised): bool {
+    $raised[] = $msg;
+    return true;
+});
+$surface_from_array = snap_signature_surface(['signature_surface' => ['dark']]);
+restore_error_handler();
+check($surface_from_array === 'light', 'an array declaration still resolves to light');
+check($raised === [],
+    'AND RAISES NO PHP NOTICE doing it: ' . ($raised === [] ? 'silent' : $raised[0]));
+
+// The two valid names are the SAME two the default settings use. If those ever
+// drifted apart, a skin could declare a surface that has no blog default and
+// no column behind it.
+check(array_keys(SNAP_SIGNATURE_DEFAULT_KEYS) === ['light', 'dark'],
+    'the surfaces and the blog-default keys are the same two names');
+foreach (array_keys(SNAP_SIGNATURE_DEFAULT_KEYS) as $surface) {
+    check(snap_signature_surface(['signature_surface' => $surface]) === $surface,
+        "every blog-default surface is a declarable one: {$surface}");
+    check(in_array('signature_' . $surface . '_image_id',
+        SNAP_SIGNATURE_VARIANT_FIELDS, true),
+        "and has a post column behind it: {$surface}");
+}
+
+// THE CONTROLLER USES THE DECLARED SURFACE, not a hardcoded one. Source, and
+// labelled as source -- rendering a post needs a database and a request.
+$controller_surface = (string)file_get_contents($root . '/core/smacktalk-public-controller.php');
+check(str_contains($controller_surface, 'snap_signature_surface($skin_manifest)'),
+    'SOURCE ONLY: the controller asks the manifest which surface to render');
+check(!str_contains($controller_surface, "\$signature_ids['light'] > 0"),
+    'SOURCE ONLY: and no longer hardcodes light at the render site');
+check(str_contains($controller_surface, 'array $skin_manifest = []'),
+    'SOURCE ONLY: the manifest arrives as an optional argument, so the admin'
+    . ' preview caller is unaffected');
+$front = (string)file_get_contents($root . '/index.php');
+check(str_contains($front, 'snapsmack_smacktalk_request($pdo, $settings, ['),
+    'SOURCE ONLY: the front controller still calls the request entry point');
+check(preg_match('/\$_active_manifest\s*\)\s*\?\s*\$_active_manifest\s*:\s*\[\]/', $front) === 1,
+    'SOURCE ONLY: and passes the manifest it already loaded, not a second read');
+
+// NO SKIN DECLARES IT YET, which is the point: every site keeps today's
+// behaviour until one does. Measured across every manifest in the tree rather
+// than assumed, so if somebody adds a declaration this says so.
+$declaring = [];
+foreach (glob($root . '/skins/*/manifest.json') ?: [] as $manifest_path) {
+    $decoded = json_decode((string)file_get_contents($manifest_path), true);
+    if (is_array($decoded) && array_key_exists('signature_surface', $decoded)) {
+        $declaring[] = basename(dirname($manifest_path)) . '='
+            . json_encode($decoded['signature_surface']);
+    }
+}
+check(count(glob($root . '/skins/*/manifest.json') ?: []) >= 30,
+    'every skin manifest was read: ' . count(glob($root . '/skins/*/manifest.json') ?: []));
+check($declaring === [],
+    'NO skin declares a surface yet, so every site still renders light: '
+    . ($declaring === [] ? 'none' : implode(', ', $declaring)));
+
+// ---------------------------------------------------------------------------
 // THE ADMIN CONTROL EXISTS AND RENDERS, driven rather than grepped. It must
 // offer NONE, mark the stored choice, and say so when the stored image is gone.
 // ---------------------------------------------------------------------------

@@ -108,6 +108,36 @@ function snap_signature_inherit_is_resolvable(array $settings): bool {
     return false;
 }
 
+/** The surface a skin gets when it declares nothing. */
+const SNAP_SIGNATURE_SURFACE_DEFAULT = 'light';
+
+/**
+ * Which surface this skin renders its signature on.
+ *
+ * Read from the skin manifest's declared "signature_surface", per Gemini's v2
+ * contract and the PM's ruling of 2026-11-27, with light as the default.
+ *
+ * WHY THE SKIN DECIDES AND NOT THE READER'S BROWSER. A signature is ink on a
+ * page: which of the two it needs depends on what the page is made of, and the
+ * skin is the only thing that knows that. A prefers-color-scheme switch would
+ * also mean the server could not know which image it had sent, so the stored
+ * page and the rendered page would stop agreeing.
+ *
+ * ANYTHING THAT IS NOT light OR dark IS light. A manifest is hand-edited JSON:
+ * a misspelt value, a nested array or a boolean must not reach the resolver as
+ * a surface name, and must not produce an error on a reader's page either. The
+ * default is the quiet, correct answer -- which is exactly why the two valid
+ * values are listed here rather than inferred from whatever was typed.
+ */
+function snap_signature_surface(array $manifest): string {
+    $declared = $manifest['signature_surface'] ?? null;
+    if (!is_string($declared)) { return SNAP_SIGNATURE_SURFACE_DEFAULT; }
+    $declared = strtolower(trim($declared));
+    return in_array($declared, array_keys(SNAP_SIGNATURE_DEFAULT_KEYS), true)
+        ? $declared
+        : SNAP_SIGNATURE_SURFACE_DEFAULT;
+}
+
 /**
  * Clamp a posted blog-default value. Blank is a real choice -- it means the
  * owner wants no blog signature -- so it is stored as '' rather than refused,
