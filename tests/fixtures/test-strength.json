@@ -557,6 +557,14 @@
             25
         ]
     },
+    "documented-api-paths-reach-the-dispatcher-regression.php": {
+        "assertions": 22,
+        "predicates": 25,
+        "thresholds": [
+            2,
+            50
+        ]
+    },
     "download-url-scheme-regression.php": {
         "assertions": 2,
         "predicates": 9,
