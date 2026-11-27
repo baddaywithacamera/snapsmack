@@ -36,6 +36,45 @@ if (file_exists($spam_path)) {
     require_once $spam_path;
 }
 
+// --- TOKEN (SS-1635) ---
+// This endpoint verified no token. A comment is anonymous by design, so there
+// is no identity to impersonate and that is NOT the finding. The finding is
+// the ADDRESS: a cross-site submission is made by a READER'S browser, so the
+// ban list is checked against that reader and the stored row carries their
+// address. A banned submitter can route past the ban list through readers who
+// are not banned, and an operator who later bans the address on an offending
+// comment bans an innocent reader.
+//
+// Everything here still lands in the moderation queue with approval off, so
+// nothing publishes without a human either way.
+require_once __DIR__ . '/core/csrf.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_ok_public()) {
+    http_response_code(403);
+    die('Reload the page and try again.');
+}
+
+// --- RATE LIMIT (SS-1635, second half) ---
+// A SEPARATE DEFECT IN THE SAME FILE, and it needs no token to fix. This
+// endpoint had NO rate limit of any kind, while process-community-comment.php
+// beside it has had one all along. A submitter can flood the moderation queue
+// directly, without involving anybody else's browser, so the token above does
+// nothing about it.
+//
+// REUSING community_rate_limit() rather than writing a second limiter: same
+// table, same hourly window, same trusted-client-ip resolution. A second
+// implementation of a limit is how one of them ends up with a different idea
+// of what an hour is.
+//
+// ITS OWN ACTION NAME, deliberately. Sharing the 'comments' bucket with the
+// community endpoint would mean a flood of one throttled the other, and the
+// two have different audiences. community_setting() falls back to 10 when the
+// row is absent, so this needs no migration to start working.
+require_once __DIR__ . '/core/community-session.php';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !community_rate_limit('image_comments')) {
+    http_response_code(429);
+    die('Too many comments from this address. Try again later.');
+}
+
 // --- REQUEST HANDLER ---
 // Only process POST submissions. Block direct access.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

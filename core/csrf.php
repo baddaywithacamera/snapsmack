@@ -145,4 +145,60 @@ function csrf_rotate(): void
     if (session_status() === PHP_SESSION_NONE) return;
     unset($_SESSION['csrf_token']);
 }
+
+/**
+ * The token rule for a PUBLIC endpoint that must also serve guests.
+ *
+ * SS-1385, SS-1634, SS-1635. Three public write endpoints read no token at
+ * all: the like endpoint, the community comment endpoint and the comment
+ * endpoint. csrf_check() cannot be used on any of them, because it DIES 403
+ * when there is no session, and a guest has no session: core/csrf.php's own
+ * csrf_token() returns '' without one, so a visitor who never logged in has
+ * no token to send. Using csrf_check() here would refuse every guest like and
+ * every guest comment, which is a worse defect than the one being fixed.
+ *
+ * SO THE RULE IS, in order, and the middle one is the one that bites:
+ *
+ *   a session exists      -> a valid token is REQUIRED. This is the case that
+ *                            matters: a signed-in member's cookie is the thing
+ *                            a cross-site form abuses, and it is their name on
+ *                            whatever gets written
+ *   a token is supplied
+ *   but does not match    -> REFUSED, session or not. A wrong token is never
+ *                            better than no token; it means something is
+ *                            replaying or guessing
+ *   no session and
+ *   no token              -> allowed. A guest has no identity to abuse through
+ *                            their browser, and an attacker who wants to post
+ *                            as an anonymous stranger can do it directly with
+ *                            one request. Requiring a token here would buy
+ *                            nothing and break the guest path the owner wants
+ *
+ * WHAT THIS DOES NOT CLAIM. It does not protect a guest's address or
+ * fingerprint from being used by somebody else's browser; that is SS-1635 and
+ * it needs a rate limit, not a token. Stated here so nobody reads this helper
+ * as covering more than it does.
+ *
+ * @return bool true when the request may proceed. The caller answers; this
+ *              function never prints or exits, because these endpoints speak
+ *              JSON and a die() with HTML in it breaks their clients.
+ */
+function csrf_ok_public(): bool
+{
+    if (defined('SNAPSMACK_CSRF_EXEMPT') && SNAPSMACK_CSRF_EXEMPT) return true;
+
+    $supplied = (string)($_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    $expected = '';
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $expected = (string)($_SESSION['csrf_token'] ?? '');
+    }
+
+    if ($expected !== '') {
+        return $supplied !== '' && hash_equals($expected, $supplied);
+    }
+    // No session token to compare against. A supplied token cannot be
+    // validated, so it is refused rather than ignored: ignoring it would make
+    // a replayed token indistinguishable from none at all.
+    return $supplied === '';
+}
 // ===== SNAPSMACK EOF =====

@@ -135,13 +135,29 @@ $check('pointerdown is where the conveyor starts a drag, and it is covered',
     str_contains($js, 'pointerdown'));
 $check('it posts to the SAME endpoint as the dock, not a new one',
     str_contains($js, 'process-like.php'));
-// The endpoint does NOT check a CSRF token today -- I looked rather than
-// assumed. The token is sent anyway so that adding one there is a one-sided
-// change, and so this control is not the reason it cannot be added.
-$check('it sends a CSRF token, so the endpoint can start requiring one',
+// THIS PAIR HAS BEEN FLIPPED, AND THE REASON IS WORTH READING BEFORE ANYONE
+// TRUSTS IT. The original second assertion was
+//
+//     $check('and the endpoint genuinely has no check today, ...',
+//         !preg_match('/csrf/i', $endpoint));
+//
+// It asserted THE HOLE WAS STILL OPEN. That was correct and deliberate when
+// SS-1323 was written: this control sends a token, the endpoint read none,
+// SS-1323 chose not to fix that, and the assertion recorded the unfixed state
+// so nobody could claim otherwise. It also filed SS-1385.
+//
+// SS-1385 IS NOW FIXED, so that assertion became false by design, and it is
+// the fix that falsified it rather than a regression. Changing a test to make
+// my own code pass is the single most suspicious edit available -- OPAUDIT 026
+// is exactly that -- so it is flagged here rather than quietly swapped, and it
+// is INVERTED rather than deleted: the file still has an assertion about the
+// endpoint's token, and it now demands the check EXISTS. Removing it would
+// have left the control's own test silent on the thing it was written to
+// watch.
+$check('it sends a CSRF token, which is why the endpoint could start requiring one',
     str_contains($js, 'csrf_token'));
-$check('and the endpoint genuinely has no check today, which is reported not fixed here',
-    !preg_match('/csrf/i', $endpoint));
+$check('AND THE ENDPOINT NOW REQUIRES ONE (SS-1385, was asserted absent here)',
+    (bool) preg_match('/if\s*\([^)]*!\s*csrf_ok_public\(\)[^)]*\)\s*\{/', $endpoint));
 $check('a failed request puts the heart back rather than lying',
     str_contains($js, 'paint(button, was)'));
 $check('every visible copy of one photograph shares a single in-flight request guard',

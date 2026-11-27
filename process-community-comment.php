@@ -50,6 +50,24 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// --- TOKEN (SS-1634) ---
+// This file verified no token anywhere. Both of its actions are authorised by
+// the session cookie alone, which means a form POST from any other page could
+// run either one while a member was signed in: SUBMIT writes a comment in
+// their name, and DELETE soft-deletes a comment they wrote. Comment ids are
+// sequential and comments are public, so the id a deletion needs is not a
+// secret.
+//
+// csrf_ok_public() and not csrf_check(), because a guest comment needs no
+// account and csrf_check() dies on a sessionless request. The rule and its
+// limits are written where the helper is.
+require_once __DIR__ . '/core/csrf.php';
+if (!csrf_ok_public()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'csrf', 'message' => 'Reload the page and try again.']);
+    exit;
+}
+
 // --- SETTINGS ---
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);

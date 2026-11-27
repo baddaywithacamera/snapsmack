@@ -25,11 +25,27 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/community-session.php';
 require_once __DIR__ . '/core/secret-store.php'; // SECAUDIT 047
+require_once __DIR__ . '/core/csrf.php';         // SS-1385
 
 // --- METHOD ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'method_not_allowed']);
+    exit;
+}
+
+// --- TOKEN (SS-1385) ---
+// This endpoint read NO token. assets/js/ss-engine-tile-like.js has always
+// SENT one when the page carries it, so the client half was already here and
+// the server simply never looked. A form POST from any other site could
+// therefore toggle a like for whoever was logged in.
+//
+// csrf_ok_public() and not csrf_check(): a guest has no session and so no
+// token, and a like does not require an account. The rule and its limits are
+// written where the helper is.
+if (!csrf_ok_public()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'csrf', 'message' => 'Reload the page and try again.']);
     exit;
 }
 
