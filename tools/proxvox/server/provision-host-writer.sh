@@ -46,8 +46,8 @@ set -eu
 # stops being fetchable if that branch is deleted without being merged or
 # archived, and this URL would then 404 on a host that is trying to install.
 # Once the writer lands on dev, re-pin to the dev commit.
-WRITER_COMMIT=cce3350b060f1ebde3c05d06b824e10eaf4373a1
-WRITER_SHA256=f93a0e380cd13f68d6b526274401a996b9938ad6345a298f2d0ea9488b9b718d
+WRITER_COMMIT=5709332d588a0e4749f58353f3255a2e6d544155
+WRITER_SHA256=aedb64d94a21caaa09668685d639c87db3200d9d18e0778cbd53d09f1d485f1d
 WRITER_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRITER_COMMIT}/tools/proxvox/server/proxvox_writer.py"
 WRITER_PATH=/usr/local/sbin/proxvox-writer
 DB_SHA256=e04c639235c578cdd3767d21bb20b4208b865bc7f062fd438c84f204fd8702ff
