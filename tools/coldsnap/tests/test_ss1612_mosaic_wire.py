@@ -236,11 +236,16 @@ def test_imported_mosaic_opens_the_existing_visual_editor(monkeypatch, tmp_path)
         assert hit[0] == "mosaic"
         assert hit[1]["order"] == [images[index].asset_uuid for index in (1, 0, 2)]
         for _ in range(120):
-            if canvas._inline_mosaic_hits.get(hit[2], ({}, ()))[0]:
+            tiles = canvas._inline_mosaic_hits.get(hit[2], ({}, ()))[0]
+            if len(tiles) == 3 and all(
+                canvas._objects._cached_cell_pixmap(canvas.assets[identity], rect.size()) is not None
+                for identity, rect in tiles.values()
+            ):
                 break
             QTest.qWait(25)
             canvas.viewport().update()
-        assert len(canvas._inline_mosaic_hits[hit[2]][0]) == 3
+        else:
+            pytest.fail("The canvas did not finish painting all three mosaic photos.")
         assert canvas.grab().save(str(tmp_path / "fixture-753-canvas.png"))
         observations = []
 
