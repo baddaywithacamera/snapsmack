@@ -3273,6 +3273,19 @@
         "predicates": 3,
         "thresholds": []
     },
+    "version-epoch-reaches-the-fleet-regression.php": {
+        "assertions": 22,
+        "predicates": 1,
+        "thresholds": []
+    },
+    "version-series-gate-regression.php": {
+        "assertions": 45,
+        "predicates": 5,
+        "thresholds": [
+            2,
+            30
+        ]
+    },
     "wall-endless-scroll-regression.php": {
         "assertions": 23,
         "predicates": 22,
