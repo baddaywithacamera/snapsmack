@@ -35,7 +35,7 @@ from .widgets import (Accordion, Card, hint, big_button, confirm_post,
 class _SyncBridge(QObject):
     """Thread → UI marshalling for SyncEngine events."""
     progressed = Signal()
-    finished = Signal(int, int, object, object)  # verified count, total, errors, notices
+    finished = Signal(int, int, object)  # verified count, total, send feedback
     overwrite_prompt = Signal(object, object)  # post_info, {"event": Event, "choice": str}
 
 
@@ -330,7 +330,7 @@ class BatchRail(QWidget):
                 traceback.print_exc()
                 ok = -1
                 errors = [("Send interrupted", str(exc) or type(exc).__name__)]
-            bridge.finished.emit(ok, len(ready), errors, notices)
+            bridge.finished.emit(ok, len(ready), {"errors": errors, "notices": notices})
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -384,7 +384,12 @@ class BatchRail(QWidget):
 
         return _confirm
 
-    def _send_done(self, ok: int, total: int, errors: list, notices=()):
+    def _send_done(self, ok: int, total: int, feedback):
+        if isinstance(feedback, dict):
+            errors = feedback["errors"]
+            notices = feedback["notices"]
+        else:
+            errors, notices = feedback, ()
         self._sending = False
         self.send_errors = errors
         self.send_error_btn.setVisible(bool(errors))
