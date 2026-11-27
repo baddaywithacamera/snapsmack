@@ -11,6 +11,26 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1008D — opened
+
+<!--
+  OPENED BECAUSE 0.7.1007D IS PUBLISHED AND IN SERVICE, not because this
+  build is finished. 0.7.1007D is tagged at a9d7db1a, published, and the
+  release file reports it live on the fleet as of 2026-11-27, so that number
+  and that tag can never move again. Work that landed on dev afterwards
+  therefore cannot fold into it and needs this number instead.
+
+  EACH AGENT ADDS THEIR OWN LINE AS THEIR WORK LANDS. The entries below are
+  only the ones already on dev that a site owner would notice, written from
+  what was reviewed and merged. Nothing here describes work that has not
+  landed, and nothing here was written from a screenshot.
+-->
+
+- **TELEGRAM reads like a phone feed again.** The mobile skin had drifted from
+  what it is for: the masthead now carries the site name and logo, navigation
+  folds into a single button, thumbnails are square, titles are plain, and
+  each entry shows an excerpt of the writing rather than only a heading.
+
 ## 0.7.1007D — opened
 
 - **Find album sharing in Configuration, under SECURITY.** It moved off the
