@@ -355,6 +355,12 @@ def main():
         except Exception:
             events.put("Could not verify the installed host files. Wait for confirmation.")
             return
+        if publication_sha:
+            try:
+                publication_plan(publication_sha, reader)
+            except Exception:
+                events.put("The publication files could not be verified. Check the reviewed manifest before authorizing.")
+                return
         events.put(("ready",))
 
     actions = ttk.Frame(panel)
