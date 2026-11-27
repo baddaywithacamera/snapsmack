@@ -109,7 +109,7 @@ def take_composer_checks(mode, files, *, check_renderer=False):
     from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu
 
     import sumna_offline as O
-    from coldsnap_qt import photo_tray
+    from coldsnap_qt import biggie, photo_tray
     from sumna_post import SmacktalkPoster
 
     app = QApplication.instance()
@@ -294,22 +294,32 @@ def take_composer_checks(mode, files, *, check_renderer=False):
             ))
             mode._configure_signature()
             poster, _ = mode._poster_and_url()
-            results["signature_control_visible"] = mode.signature_check.isVisible()
+            results["signature_block_in_visual_tray"] = any(
+                action.tag == "SIG" for action in mode._visual_block_actions()
+            )
             results["signature_default_is_site_specific"] = (
-                mode._signature_default("https://example.test/") == 413
+                mode._signature_default("") == 0
+                and mode._signature_default("https://example.test/") == 413
                 and mode._signature_default("https://elsewhere.test") == 0
             )
-            signed = poster.build_payload(rebuilt, [1], 1)
+            body = [block for block in mode.body.authoring_blocks() if block["type"] != "signature"]
+            signature = {"type": "signature", "mode": "custom", "light_image_id": 413}
+            mode.body.canvas.from_blocks([*body, signature])
+            signed = poster.build_payload(mode._build_draft(session), [1], 1)
             results["signature_reuses_existing_gallery_id"] = (
-                signed.get("signature_image_id") == 413 and signed["bucket_image_ids"] == [1]
+                signed.get("signature_image_id") == 413
+                and signed.get("signature_light_image_id") == 413
+                and signed["bucket_image_ids"] == [1]
             )
-            mode.signature_check.setChecked(False)
+            canvas = mode.body.canvas
+            canvas._remove_object(canvas.document().lastBlock().position())
             opted_out = O.Draft.from_dict(mode._build_draft(session).to_dict())
+            fields = biggie.signature_fields_for_blocks(biggie.blocks_from_json(opted_out.body_blocks))
             results["signature_opt_out_survives_save"] = (
-                not opted_out.signature_enabled
-                and poster.build_payload(opted_out, [1], 1).get("signature_image_id") == 0
+                len(fields) == 3 and all(value == 0 for value in fields.values())
+                and all(poster.build_payload(opted_out, [1], 1).get(field) == 0 for field in fields)
             )
-            mode.signature_check.setChecked(True)
+            mode._edit(rebuilt)
 
         from PySide6.QtWidgets import QMessageBox
 

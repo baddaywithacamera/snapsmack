@@ -4676,6 +4676,8 @@ class TakeMode(QWidget):
 
     # -- network -------------------------------------------------------------
     def _signature_default(self, url):
+        if not url:
+            return 0
         return self._view_settings.value(f"take/signatures/{site_key(url)}", 0, type=int)
 
     def _configure_signature(self):
