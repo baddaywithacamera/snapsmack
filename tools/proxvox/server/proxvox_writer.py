@@ -2,7 +2,7 @@
 """Root-owned forced-command WRITER for the PROX VOX host account. (SS-1507)
 
 The host completes the owner's Proxmox TOTP challenge on verified local TLS.
-The resulting writer session lasts up to one hour, is checked again immediately
+The resulting writer session lasts up to five hours, is checked again immediately
 before file replacement, and can be revoked on the host. A Proxmox ticket
 obtained any other way cannot open a writer session. Each file write requires a
 host-issued, one-use nonce for the exact target, bytes and expected live hash.
@@ -775,7 +775,7 @@ SPENT_GRANTS = "/var/lib/proxvox/spent-grants"
 WRITE_NONCES = "/run/proxvox/write-nonces"
 WRITE_NONCE_SECONDS = 60
 WRITE_SESSIONS = "/run/proxvox/write-sessions"
-WRITE_SESSION_SECONDS = 3600
+WRITE_SESSION_SECONDS = 5 * 60 * 60
 MAINTENANCE_LOCKS = "/run/proxvox/maintenance"
 ATTESTED_MAINTENANCE = {"preview-maintenance", "issue-maintenance-nonce", "run-maintenance"}
 ATTESTED_DATABASE = {"preview-db-update", "issue-db-update-nonce", "run-db-update"}
