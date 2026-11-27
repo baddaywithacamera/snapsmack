@@ -110,7 +110,9 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
         foreach ($groups as &$group) {
             $id = (int)($group['id'] ?? 0);
             $group['label'] = (string)($view === 'categories' ? ($group['cat_name'] ?? '') : ($group['album_name'] ?? ''));
-            $group['description'] = (string)($group['album_description'] ?? '');
+            $group['description'] = snapsmack_plain_taxonomy_description(
+                (string)($group['album_description'] ?? $group['cat_description'] ?? '')
+            );
             $group['url'] = snapsmack_public_route_url($base, $route_aliases, 'archive', 'archive')
                 . '?' . ($view === 'categories' ? 'category' : 'album') . '=' . $id;
             $group['cover_url'] = !empty($group['cover_path']) ? $base . ltrim((string)$group['cover_path'], '/') : '';
@@ -424,6 +426,24 @@ function snapsmack_smacktalk_feed(PDO $pdo, array $settings, string $base, int $
     return ['posts' => $posts, 'page' => $page, 'total_pages' => $totalPages,
         'next_page' => $page < $totalPages ? $page + 1 : 0,
         'show_titles' => ($settings['show_post_titles'] ?? '0') === '1'];
+}
+
+/**
+ * Normalize an album or category description (which may contain raw or
+ * entity-escaped HTML from imports/editors) into plain text for taxonomy
+ * link labels before skin escaping.
+ */
+function snapsmack_plain_taxonomy_description(string $raw): string {
+    if ($raw === '') {
+        return '';
+    }
+    $text = html_entity_decode($raw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/<\s*br\s*\/?>/i', ' ', $text) ?? $text;
+    $text = preg_replace('/<\/\s*(?:p|div|li|h[1-6]|blockquote)\s*>/i', ' ', $text) ?? $text;
+    $text = strip_tags($text);
+    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+    return trim($text);
 }
 
 // ===== SNAPSMACK EOF =====
