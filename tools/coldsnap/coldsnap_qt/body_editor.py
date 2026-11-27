@@ -186,6 +186,7 @@ class BodyEditor(QWidget):
         # Last-used face is a per-tool setting (spec §7: biggie_enabled).
         self._biggie_on = False
         self._text_signatures = []
+        self._text_mosaic_document = None
         if not self.rich:
             self._biggie_page.hide()
             self._apply_face(False)
@@ -244,11 +245,16 @@ class BodyEditor(QWidget):
         if on:
             self.biggie.from_blocks(self.authoring_blocks())
             self._text_signatures = []
+            self._text_mosaic_document = None
         else:
             blocks = self.biggie.to_blocks()
             self._text_signatures = [(None if index == len(blocks) - 1 else index, block) for index, block in enumerate(blocks)
                                      if block.get("type") == "signature"]
             self.editor.setPlainText(biggie.serialize_blocks(blocks))
+            self._text_mosaic_document = (
+                (self.editor.toPlainText(), blocks)
+                if any(block.get("remote_mosaic") for block in blocks) else None
+            )
         self._apply_face(on)
         # SS-1084. THIS USED TO REWRITE THE WHOLE CONFIGURATION TO REMEMBER ONE
         # BOOLEAN, and that is how every stored credential on this machine got
@@ -280,12 +286,14 @@ class BodyEditor(QWidget):
 
     def setPlainText(self, text: str):
         self._text_signatures = []
+        self._text_mosaic_document = None
         self.editor.setPlainText(text or "")
         if self._biggie_on:
             self.biggie.from_blocks(biggie.parse_body(text or ""))
 
     def clear(self):
         self._text_signatures = []
+        self._text_mosaic_document = None
         self.editor.clear()
         self.biggie.clear()
 
@@ -300,7 +308,22 @@ class BodyEditor(QWidget):
         """Canonical local model. Unlike the wire string, this retains UUIDs."""
         if self._biggie_on:
             return self.biggie.to_blocks()
-        blocks = biggie.parse_body(self.editor.toPlainText())
+        text = self.editor.toPlainText()
+        if self._text_mosaic_document:
+            original_text, original_blocks = self._text_mosaic_document
+            if text == original_text:
+                return original_blocks
+        blocks = biggie.parse_body(text)
+        if self._text_mosaic_document:
+            for original in original_blocks:
+                if not original.get("remote_mosaic"):
+                    continue
+                shortcode = biggie.serialize_block(original)
+                index = next((i for i, block in enumerate(blocks)
+                              if not block.get("remote_mosaic") and biggie.serialize_block(block) == shortcode), None)
+                if index is not None:
+                    blocks[index] = {key: value for key, value in original.items()
+                                     if key not in {"src", "sep", "wrap"}}
         for index, signature in self._text_signatures:
             blocks.insert(len(blocks) if index is None else index, signature)
         return blocks
@@ -308,6 +331,7 @@ class BodyEditor(QWidget):
     def set_state(self, caption: str, blocks_json: str):
         """Restore a draft: blocks win when the draft has them."""
         self._text_signatures = []
+        self._text_mosaic_document = None
         blocks = biggie.blocks_from_json(blocks_json)
         if blocks and not self.rich:
             # A draft made when this box still had BIGGIE: keep every word as text.

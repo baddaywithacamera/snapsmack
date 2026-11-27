@@ -78,8 +78,10 @@ class MosaicBrowser(QWebEngineView):
         root = Path(sys._MEIPASS) if getattr(sys, 'frozen', False) else Path(__file__).resolve().parents[1]
         return (root / 'assets' / 'coldsnap-mosaic-preview.js').read_text(encoding='utf-8')
 
-    def set_mosaic(self, tiles, layout, gap, weights, width, mirrored_sections=()):
+    def set_mosaic(self, tiles, layout, gap, weights, width, mirrored_sections=(),
+                   *, emphasis="natural", focus_positions=None):
         images = []
+        focus_positions = focus_positions or {}
         for index, tile in enumerate(tiles, 1):
             source = Path(tile[1]).resolve()
             thumbnail = Path(tile[2]).resolve() if len(tile) > 2 and tile[2] else source
@@ -90,16 +92,18 @@ class MosaicBrowser(QWebEngineView):
                 w, h = _photo_size(str(source), stat.st_mtime_ns, stat.st_size)
             except OSError:
                 w, h = 3, 2
+            focus = focus_positions.get(index) or {}
             images.append({
                 'id': index, 'src': _MEASURE_PIXEL if self._measure_only
                 else QUrl.fromLocalFile(str(thumbnail)).toString(),
                 'full': '' if self._measure_only else QUrl.fromLocalFile(str(source)).toString(),
                 'alt': source.name, 'width': w, 'height': h,
                 'weight': weights.get(str(index), 0),
+                'focusX': focus.get('x', 50), 'focusY': focus.get('y', 50),
             })
         self._revision += 1
         self._pending = {'images': images, 'layout': layout, 'gap': gap, 'width': width,
-                         'mirroredSections': list(mirrored_sections)}
+                         'mirroredSections': list(mirrored_sections), 'emphasis': emphasis}
         if self._ready:
             self._render()
 

@@ -72,14 +72,15 @@ KIND_LABELS = {"para": "Paragraph", "h2": "Heading", "h3": "Sub-heading",
                "quote": "Quote", "pullquote": "Pull quote", "raw": "Raw"}
 
 
-def add_mosaic_photo_actions(menu, position, count, blocks, cluster, additions, dispatch):
+def add_mosaic_photo_actions(menu, position, count, blocks, cluster, additions, dispatch,
+                             *, allow_mirror=True):
     """Use the same photo commands and labels in both mosaic editors."""
     can_mirror = any(block["count"] > 1 and block["start"] <= position < block["start"] + block["count"]
                      for block in blocks)
     for label, change, step, enabled in (
         ("Move this image earlier", "move", -1, position > 0),
         ("Move this image later", "move", 1, position < count - 1),
-        ("Swap this image to the other side", "mirror", 0, can_mirror),
+        ("Swap this image to the other side", "mirror", 0, can_mirror and allow_mirror),
         ("Make larger", "size", 1, count > 1),
         ("Make smaller", "size", -1, count > 1),
         ("Reverse arrangement", "reverse", 0, any(block["count"] > 1 for block in blocks)),
@@ -956,8 +957,9 @@ class BiggieCanvas(QTextEdit):
         gap = max(0, min(20, _mosaic_gap(data)))
         width = max(1, round(width))
         mirrors = tuple(data.get('mirrors') or ()) if len(paths) == len(data.get('order', ())) else ()
+        emphasis = (data.get('remote_mosaic') or {}).get('emphasis') or 'natural'
         key = (tuple(paths), tuple(str(item['identity']) for item in images),
-               tuple(item['weight'] for item in images), layout, gap, width, mirrors)
+               tuple(item['weight'] for item in images), layout, gap, width, mirrors, emphasis)
         if key in self._inline_browser_cache:
             return paths, self._inline_browser_cache[key]
         if key != self._inline_browser_active and key not in self._inline_browser_jobs:
@@ -973,10 +975,11 @@ class BiggieCanvas(QTextEdit):
             self._inline_browser.geometry_ready.connect(self._finish_inline_mosaic)
             self._inline_browser.failed.connect(self._fail_inline_mosaic)
         key = next(iter(self._inline_browser_jobs))
-        paths, _identities, weights, layout, gap, width, mirrors = key
+        paths, _identities, weights, layout, gap, width, mirrors, emphasis = key
         self._inline_browser_active = key
         self._inline_browser.set_mosaic(list(enumerate(paths)), layout, gap,
-                                        {str(i): w for i, w in enumerate(weights, 1)}, width, mirrors)
+                                        {str(i): w for i, w in enumerate(weights, 1)}, width, mirrors,
+                                        emphasis=emphasis)
 
     def _fail_inline_mosaic(self, message):
         self._inline_browser_error = message
@@ -1612,7 +1615,7 @@ class BiggieCanvas(QTextEdit):
             payload["mirrors"] = list(mirrors)
         existing = self._object_at(pos)
         if existing and existing[0] == "mosaic" and existing[1].get("remote_mosaic"):
-            for key in ("mosaic_id", "gap", "remote_mosaic"):
+            for key in ("mosaic_id", "gap", "remote_mosaic", "site_shortcode"):
                 if key in existing[1]:
                     payload[key] = existing[1][key]
         self._insert_object("mosaic", payload, replace_at=pos)
@@ -2133,6 +2136,7 @@ class BiggieCanvas(QTextEdit):
         add_mosaic_photo_actions(
             menu, index, len(order), blocks, cluster, additions,
             lambda change, step: self._dispatch_inline_mosaic(hit, identity, change, step, blocks, cluster, additions),
+            allow_mirror=not bool((data.get("remote_mosaic") or {}).get("gallery_shuffle")),
         )
         return True
 
@@ -2751,7 +2755,7 @@ def _export_block(block, nested: bool = False) -> list:
                 data = _data(f)
                 if okind == "mosaic":
                     blk = {"type": "mosaic"}
-                    for key in ("mosaic_id", "gap", "remote_mosaic"):
+                    for key in ("mosaic_id", "gap", "remote_mosaic", "site_shortcode"):
                         if key in data:
                             blk[key] = data[key]
                     if data.get("order"):

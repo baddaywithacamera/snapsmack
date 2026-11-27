@@ -35,7 +35,7 @@ from .widgets import (Accordion, Card, hint, big_button, confirm_post,
 class _SyncBridge(QObject):
     """Thread → UI marshalling for SyncEngine events."""
     progressed = Signal()
-    finished = Signal(int, int, object)   # verified count (-1 if interrupted), total, errors
+    finished = Signal(int, int, object, object)  # verified count, total, errors, notices
     overwrite_prompt = Signal(object, object)  # post_info, {"event": Event, "choice": str}
 
 
@@ -313,6 +313,7 @@ class BatchRail(QWidget):
             engine = O.SyncEngine(session, poster,
                                   on_event=lambda *_: bridge.progressed.emit(),
                                   confirm_overwrite_fn=confirm_fn)
+            notices = []
             try:
                 results = engine.sync_all(ready)
                 errors = []
@@ -322,12 +323,14 @@ class BatchRail(QWidget):
                         errors.append((draft.title, "No send confirmation. Check the site before retrying."))
                     elif not result.ok:
                         errors.append((draft.title, result.message or "The site did not confirm the send."))
+                    elif result.notice:
+                        notices.append(result.notice)
                 ok = len(ready) - len(errors)
             except Exception as exc:
                 traceback.print_exc()
                 ok = -1
                 errors = [("Send interrupted", str(exc) or type(exc).__name__)]
-            bridge.finished.emit(ok, len(ready), errors)
+            bridge.finished.emit(ok, len(ready), errors, notices)
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -381,7 +384,7 @@ class BatchRail(QWidget):
 
         return _confirm
 
-    def _send_done(self, ok: int, total: int, errors: list):
+    def _send_done(self, ok: int, total: int, errors: list, notices=()):
         self._sending = False
         self.send_errors = errors
         self.send_error_btn.setVisible(bool(errors))
@@ -390,6 +393,8 @@ class BatchRail(QWidget):
             summary = "Send interrupted. Check the site before retrying."
         elif errors:
             summary = f"Sent {ok} of {total}. {errors[0][1]}"
+        elif notices:
+            summary = f"Sent {ok} of {total}. {' '.join(notices)}"
         else:
             summary = f"Sent {ok} of {total}. Verified against the live site."
         self.sync_status.setText(summary)

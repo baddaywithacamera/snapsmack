@@ -24,6 +24,7 @@ function coldSnapRenderMosaic(model) {
         grid.className = 'snap-mosaic preview-grid';
         grid.dataset.mosaic = JSON.stringify(model.images);
         grid.dataset.gap = String(model.gap);
+        grid.dataset.emphasis = model.emphasis || 'natural';
         if (model.mirroredSections?.length) grid.dataset.mirrorSections = model.mirroredSections.join(',');
         if (model.layout !== 'asymmetric' && !wallClasses[model.layout]) grid.dataset.template = model.layout;
         const layout = window.SnapMosaic.renderMosaic(grid);

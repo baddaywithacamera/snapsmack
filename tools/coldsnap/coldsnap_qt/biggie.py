@@ -112,7 +112,7 @@ def serialize_block(b: dict) -> str:
         return f"[spacer:{max(1, min(100, int(b.get('px', 20) or 20)))}]"
     if t == "mosaic":
         if b.get("mosaic_id") and b.get("remote_mosaic"):
-            return f"[mosaic:{int(b['mosaic_id'])}]"
+            return b.get("site_shortcode") or f"[mosaic:{int(b['mosaic_id'])}]"
         order = [int(i) for i in (b.get("order") or [])
                  if str(i).strip().isdigit() and int(i) >= 1]
         if not order:
@@ -422,7 +422,8 @@ _RX_SITE = {
     # content is not lost. The site stores <p> and <figure>, neither of which
     # nests, so this does not arise on a SnapSmack body today.
     "element": re.compile(
-        r"<(p|figure|h2|h3|ul|ol|blockquote)\b[^>]*>.*?</\1\s*>|<hr\s*/?>",
+        r"<(p|figure|h2|h3|ul|ol|blockquote)\b[^>]*>.*?</\1\s*>|<hr\s*/?>"
+        r"|\[mosaic:\s*\d+(?:\s+width=\d{2,4})?\s*\]",
         re.DOTALL | re.IGNORECASE),
     # A <p>'s own tags, so the inner content can be read on its own.
     "p_wrap": re.compile(r"^(<p\b[^>]*>)(.*)(</p\s*>)$", re.DOTALL | re.IGNORECASE),
@@ -431,7 +432,7 @@ _RX_SITE = {
     # The same, anywhere in the paragraph. A mid-paragraph shortcode is not a
     # shape the site produces, but it must not print itself if it ever appears.
     "any_media_sc": re.compile(r"\[(?:mosaic|img):[^\]]*\]", re.IGNORECASE),
-    "site_mosaic": re.compile(r"^\[mosaic:(\d+)\]$", re.IGNORECASE),
+    "site_mosaic": re.compile(r"^\[mosaic:\s*(\d+)(?:\s+width=\d{2,4})?\s*\]$", re.IGNORECASE),
 }
 
 _SITE_GROUP = "__ss1612_group_"

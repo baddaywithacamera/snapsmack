@@ -167,6 +167,9 @@ class MosaicPreview(QWidget):
         self._layout_name, self._drag_from = "asymmetric", None
         self._rendered_layout = "asymmetric"
         self._weights = {}
+        self._emphasis = "natural"
+        self._focus_positions = {}
+        self.allow_section_mirroring = True
         self._mirrored_sections = ()
         self._cells = {"items": [], "height": 0}
         self._fit_viewport = None
@@ -197,12 +200,15 @@ class MosaicPreview(QWidget):
         self.setFixedWidth(self._content_width + 16)
         self._refresh_browser()
 
-    def set_mosaic(self, tiles, layout_name, gap: int = 4, weights=None, mirrored_sections=()):
+    def set_mosaic(self, tiles, layout_name, gap: int = 4, weights=None, mirrored_sections=(),
+                   *, emphasis="natural", focus_positions=None):
         self._tiles = list(tiles)
         self._layout_name = str(layout_name or "asymmetric")
         self._gap = max(0, min(20, int(gap)))
         self._weights = {str(k): int(v) for k, v in (weights or {}).items() if int(v or 0) != 0}
         self._mirrored_sections = tuple(mirrored_sections)
+        self._emphasis = emphasis
+        self._focus_positions = focus_positions or {}
         self._refresh_browser()
 
     def _refresh_browser(self):
@@ -212,7 +218,7 @@ class MosaicPreview(QWidget):
         self._cells = {"items": [], "height": 0}
         self._browser.set_mosaic(
             self._tiles, self._layout_name, self._gap, self._weights, self._content_width,
-            self._mirrored_sections)
+            self._mirrored_sections, emphasis=self._emphasis, focus_positions=self._focus_positions)
 
     def computed_cells(self):
         """Geometry from the last completed browser render."""
@@ -353,6 +359,7 @@ class MosaicPreview(QWidget):
         add_mosaic_photo_actions(
             menu, position, len(ordered_rows), self._cells.get("sections", ()), cluster, self.tray_additions(),
             lambda change, step: dispatch[change](step),
+            allow_mirror=self.allow_section_mirroring,
         )
         return menu
 
@@ -422,6 +429,43 @@ def _resize_mosaic_order(order, target, path_for, *, larger, width=760, gap=4):
         _area, _distance, chosen = min(
             candidates, key=lambda item: (item[0], -item[1]))
     return chosen, target_layout, chosen != authored
+
+
+def hydrate_site_mosaics(blocks, mosaics, images):
+    """Give imported mosaic references the same editable model as local mosaics."""
+    by_remote_id = {image.remote_image_id: image.asset_uuid for image in images}
+    for block in blocks:
+        if block["type"] != "site_mosaic":
+            continue
+        snapshot = mosaics.get(block["mosaic_id"], {})
+        definition = snapshot.get("mosaic") or {}
+        ordered_ids = definition.get("asset_ids") or []
+        if not definition.get("revision") or not ordered_ids or not all(
+            image_id in by_remote_id for image_id in ordered_ids
+        ):
+            continue
+        weights = definition.get("mosaic_weights") or {}
+        mirrors = definition.get("mosaic_mirrors") or []
+        ranges = []
+        for group in mirrors if isinstance(mirrors, list) else ():
+            if not isinstance(group, list) or len(group) < 2 or group[0] not in ordered_ids:
+                continue
+            start = ordered_ids.index(group[0])
+            if ordered_ids[start:start + len(group)] == group:
+                ranges.append(f"{start}:{len(group)}")
+        block.update(
+            type="mosaic",
+            order=[by_remote_id[image_id] for image_id in ordered_ids],
+            layout=definition.get("layout") or "asymmetric",
+            gap=definition.get("gap", 4),
+            weights={by_remote_id[image_id]: weights[str(image_id)]
+                     for image_id in ordered_ids if str(image_id) in weights},
+            mirrors=ranges,
+            site_shortcode=block.get("text"),
+            remote_mosaic={**definition, "reference_count": (snapshot.get("references") or {}).get("posts", 0)},
+        )
+        block.pop("label", None)
+        block.pop("text", None)
 
 
 class _PageRuler(QWidget):
@@ -1629,9 +1673,13 @@ class TakeMode(QWidget):
             elif str(identity).isdigit() and 1 <= int(identity) <= len(self._bucket):
                 existing_order.append(int(identity) - 1)
         existing_weights = {}
+        self._pending_mosaic_gap = 4
+        self._pending_mosaic_origin = {}
         if self.body.canvas._pending_obj_pos is not None:
             hit = self.body.canvas._object_at(self.body.canvas._pending_obj_pos)
             if hit and hit[0] == "mosaic":
+                self._pending_mosaic_gap = hit[1].get("gap", 4)
+                self._pending_mosaic_origin = hit[1].get("remote_mosaic") or {}
                 if len(existing_order) == len(order or ()):
                     self._pending_mosaic_mirrors = hit[1].get("mirrors") or ()
                 raw_w = (hit[1] or {}).get("weights") or {}
@@ -1888,6 +1936,12 @@ class TakeMode(QWidget):
         layout, rotate). Returns (chosen 1-based bucket positions, layout) or None."""
         self._mosaic_tray_edits = (), None
         existing = bool(existing_order)
+        mosaic_gap = getattr(self, "_pending_mosaic_gap", 4)
+        self._pending_mosaic_gap = 4
+        origin = getattr(self, "_pending_mosaic_origin", {})
+        self._pending_mosaic_origin = {}
+        reference_count = int(origin.get("reference_count") or 0)
+        focus_by_remote_id = origin.get("focus_positions") or {}
         initial_checked = list(existing_order) if existing else [
             int(i) for i in (preselected_order or []) if 0 <= int(i) < len(self._bucket)
         ]
@@ -1907,8 +1961,12 @@ class TakeMode(QWidget):
         layout.addWidget(QLabel(
             "Click photos to include them. Drag in the preview to swap positions. "
             "Right-click a preview photo to rearrange or resize it."))
+        if reference_count > 1:
+            layout.addWidget(QLabel(
+                f"This mosaic appears in {reference_count} posts. Edits create a copy for this post."))
 
         preview = MosaicPreview(content_width=self._preview_width)
+        preview.allow_section_mirroring = not bool(origin.get("gallery_shuffle"))
         preview_scroll = QScrollArea()
         preview_scroll.setWidgetResizable(False)
         preview_scroll.setAlignment(Qt.AlignCenter)
@@ -2119,8 +2177,14 @@ class TakeMode(QWidget):
                 for i, bi in enumerate(inc)
                 if weights_by_idx.get(bi, 0) != 0
             }
-            preview.set_mosaic(tiles, preset.currentData() or "asymmetric", weights=w_map,
-                               mirrored_sections=mirror_positions(inc))
+            preview.set_mosaic(tiles, preset.currentData() or "asymmetric", gap=mosaic_gap, weights=w_map,
+                               mirrored_sections=mirror_positions(inc),
+                               emphasis=origin.get("emphasis") or "natural",
+                               focus_positions={
+                                   index: focus_by_remote_id[str(self._bucket[bi].remote_image_id)]
+                                   for index, bi in enumerate(inc, 1)
+                                   if str(self._bucket[bi].remote_image_id) in focus_by_remote_id
+                               })
 
         def refresh_layouts(selected=None):
             inc = checked_indices()
@@ -3179,6 +3243,23 @@ class TakeMode(QWidget):
                 draft = None
                 if action != "attach" and not cancel.is_set():
                     preview_options = {"local_photos": local_photos} if local_photos else {}
+                    if callable(getattr(poster, "get_mosaic", None)):
+                        mosaic_ids = dict.fromkeys(
+                            block["mosaic_id"] for block in biggie.parse_site_html(post.get("content") or "")
+                            if block["type"] == "site_mosaic"
+                        )
+                        mosaics = {}
+                        for mosaic_id in mosaic_ids:
+                            if cancel.is_set():
+                                break
+                            try:
+                                definition = poster.get_mosaic(mosaic_id)
+                            except (requests.RequestException, ValueError):
+                                continue
+                            if definition:
+                                mosaics[mosaic_id] = definition
+                        if mosaics:
+                            preview_options["mosaics"] = mosaics
                     draft = self._draft_from_remote(
                         post, site=site, cancel=cancel, progress=lambda done, total:
                         self._published_bridge.progress.emit(cancel, done, total),
@@ -3259,7 +3340,14 @@ class TakeMode(QWidget):
                     return
             self._edit(draft)
             missing_previews = sum(not image.thumb_aspect for image in draft.images)
-            if missing_previews:
+            blocks = biggie.blocks_from_json(draft.body_blocks)
+            shared_mosaics = sum(
+                int((block.get("remote_mosaic") or {}).get("reference_count") or 0) > 1
+                for block in blocks
+            )
+            if shared_mosaics:
+                self.save_state.setText("Edits to a shared mosaic create a copy for this post.")
+            elif missing_previews:
                 label = "photo preview" if missing_previews == 1 else "photo previews"
                 self.save_state.setText(f"Published post opened. {missing_previews} {label} unavailable.")
             else:
@@ -3280,7 +3368,8 @@ class TakeMode(QWidget):
             return
         QMessageBox.critical(self, "Could not open post", str(error))
 
-    def _draft_from_remote(self, post, *, site=None, cancel=None, progress=None, local_photos=None):
+    def _draft_from_remote(self, post, *, site=None, cancel=None, progress=None,
+                           local_photos=None, mosaics=None):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
                         mode=self.SUITE_MODE)
         draft.remote_post_id = int(post.get("id") or 0)
@@ -3308,6 +3397,13 @@ class TakeMode(QWidget):
         draft.album_ids = [int(value) for value in (post.get("album_ids") or [])]
         cover_id = int(post.get("featured_image_id") or 0)
         rows = list(post.get("bucket") or [])
+        known_ids = {int(row.get("id") or 0) for row in rows}
+        for definition in (mosaics or {}).values():
+            for row in definition.get("images") or []:
+                image_id = int(row.get("id") or 0)
+                if image_id > 0 and image_id not in known_ids:
+                    rows.append({**row, "mosaic_only": True})
+                    known_ids.add(image_id)
         site = site or (self.app_config() or {}).get("url") or ""
         local_photos = local_photos or {}
 
@@ -3341,9 +3437,11 @@ class TakeMode(QWidget):
             local_path = str(target) if target else ""
             image = O.DraftImage(
                 local_path=local_path, original_path=local_path, filename=filename,
-                width=int(row.get("width") or 0), height=int(row.get("height") or 0),
+                width=int(row.get("width") or row.get("img_width") or 0),
+                height=int(row.get("height") or row.get("img_height") or 0),
                 alt=str(row.get("img_alt") or ""), title=str(row.get("img_title") or ""),
                 remote_path=str(row.get("img_file") or ""), remote_image_id=image_id,
+                mosaic_only=bool(row.get("mosaic_only")),
                 sort_position=pos, is_cover=(image_id == cover_id))
             if target is not None:
                 thumbs = target.parent / "thumbs"
@@ -3377,7 +3475,12 @@ class TakeMode(QWidget):
                     if progress is not None:
                         progress(index, len(rows))
         if draft.images and not any(image.is_cover for image in draft.images):
-            draft.images[0].is_cover = True
+            first_bucket_image = next((image for image in draft.images if not image.mosaic_only), None)
+            if first_bucket_image is not None:
+                first_bucket_image.is_cover = True
+        if mosaics:
+            hydrate_site_mosaics(site_blocks, mosaics, draft.images)
+            draft.body_blocks = biggie.blocks_to_json(site_blocks)
         return draft
 
     def accept_handoff(self, rows):
@@ -4396,7 +4499,8 @@ class TakeMode(QWidget):
                                         if name not in {"local_path", "filename", "thumb_square",
                                                         "is_cover"}})
                         for im in draft.images]
-        self._cover_idx = next((i for i, im in enumerate(self._bucket) if im.is_cover), 0)
+        self._cover_idx = next((i for i, im in enumerate(self._bucket) if im.is_cover),
+                               0 if not self._bucket or not self._bucket[0].mosaic_only else -1)
         self._selected_photo_idx = 0 if self._bucket else None
         self._ai_post_meta = {
             "category": getattr(draft, "category", ""),
