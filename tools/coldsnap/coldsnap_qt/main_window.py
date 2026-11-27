@@ -152,9 +152,12 @@ class MainWindow(QMainWindow):
         self.import_backup_action = QAction("Import drafts from backup…", self)
         self.import_backup_action.triggered.connect(lambda: self.rerun_backup_import())
         self.tools_menu.addAction(self.import_backup_action)
+        self.clear_published_cache_action = QAction("Clear published photo cache for this site…", self)
+        self.clear_published_cache_action.triggered.connect(self.take_mode.clear_published_photo_cache)
+        self.tools_menu.addAction(self.clear_published_cache_action)
         self.tools_menu_btn = QPushButton("⋯")
         self.tools_menu_btn.setObjectName("Quiet")
-        self.tools_menu_btn.setToolTip("More actions (Import drafts from backup…)")
+        self.tools_menu_btn.setToolTip("More actions")
         self.tools_menu_btn.setMenu(self.tools_menu)
         self.connect_panel.header_row.addWidget(self.tools_menu_btn)
 

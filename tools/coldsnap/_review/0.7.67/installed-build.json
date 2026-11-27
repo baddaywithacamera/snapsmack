@@ -1,0 +1,22 @@
+{
+  "version": "0.7.67",
+  "source_commit": "d47a27b7",
+  "executable": "C:/snapsmack/coldsnap/coldsnap.exe",
+  "binary_sha256": "081b68b83c5965261ac8c7b6999cf3ab7ca123a824737e3ccfe959d801529c33",
+  "staged_parity_checks": 69,
+  "installed_parity_checks": 69,
+  "installed_check_results": {
+    "captioned_post_keeps_clickable_link": true,
+    "colophon_visible_with_details_closed": true,
+    "queued_colophon": true,
+    "signature_control_visible": true,
+    "signature_default_is_site_specific": true,
+    "signature_reuses_existing_gallery_id": true,
+    "signature_opt_out_survives_save": true
+  },
+  "exit_status": 0,
+  "active_processes_after_exit": 0,
+  "backup": "C:/snapsmack/coldsnap-backups/0.7.66-before-caption-links-and-signature",
+  "backup_binary_sha256": "b0d69cacc6674398a84f72112594ef84ce041d69514b6d14ee698e593edebb7d",
+  "live_sends_in_parity": 0
+}

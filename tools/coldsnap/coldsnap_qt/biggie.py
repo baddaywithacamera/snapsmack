@@ -116,8 +116,45 @@ def serialize_block(b: dict) -> str:
         if not order:
             return "[mosaic]"
         layout = str(b.get("layout") or "asymmetric").lower()
-        return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + "]"
+        weights = b.get("weights") or {}
+        w_parts = []
+        if isinstance(weights, dict):
+            for k, v in sorted(weights.items(), key=lambda kv: str(kv[0])):
+                try:
+                    iv = int(v)
+                except (TypeError, ValueError):
+                    iv = 0
+                if iv != 0:
+                    w_parts.append(f"{k}:{iv}")
+        w_attr = (" weights=" + ",".join(w_parts)) if w_parts else ""
+        mirrors = b.get("mirrors") or ()
+        m_attr = (" mirrors=" + ",".join(mirrors)) if mirrors else ""
+        return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + w_attr + m_attr + "]"
     return str(b.get("text", ""))          # raw — verbatim
+
+
+def wire_mosaic_ids(block: dict, positions: dict) -> None:
+    """Translate both the arranged photographs and their sizes to bucket positions."""
+    block["order"] = [positions.get(str(identity), identity) for identity in block["order"]]
+    if block.get("weights"):
+        block["weights"] = {
+            str(positions.get(str(identity), identity)): weight
+            for identity, weight in block["weights"].items()
+        }
+
+
+def remap_mosaic_mirrors(mirrors, retained_indices):
+    """Keep mirrors whose complete original group remains contiguous and in order."""
+    retained = list(retained_indices)
+    positions = {old: new for new, old in enumerate(retained)}
+    result = []
+    for mirror in mirrors:
+        start, count = map(int, mirror.split(":"))
+        if start in positions:
+            first = positions[start]
+            if count > 1 and retained[first:first + count] == list(range(start, start + count)):
+                result.append(f"{first}:{count}")
+    return result
 
 
 def serialize_blocks(blocks: list) -> str:
@@ -135,6 +172,11 @@ _MULTI = re.compile(
     r"|<blockquote>.*?</blockquote>"
     r"|\[pullquote\].*?\[/pullquote\])",
     re.DOTALL | re.IGNORECASE)
+
+MOSAIC_TOKEN = re.compile(
+    r"\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+)"
+    r"(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?"
+    r"(?:\s+mirrors=([0-9]+:[0-9]+(?:,[0-9]+:[0-9]+)*))?)?\]", re.IGNORECASE)
 
 _RX = {
     "heading": re.compile(r"^<h([23])>(.*)</h\1>$", re.DOTALL | re.IGNORECASE),
@@ -155,7 +197,6 @@ _RX = {
         r"^<figure[^>]*>\s*(\[img:[^\]]+\])\s*<figcaption[^>]*>(.*?)</figcaption>\s*</figure>$",
         re.DOTALL | re.IGNORECASE,
     ),
-    "mosaic":  re.compile(r"^\[mosaic(?:=([0-9]+(?:\s*,\s*[0-9]+)*)\s+layout=([a-z-]+))?\]$", re.IGNORECASE),
     "columns": re.compile(r"^\[columns=(\d+)(?:\s+ratio=([0-9-]+))?\](.*)\[/columns\]$", re.DOTALL | re.IGNORECASE),
     "list":    re.compile(r"^<(ul|ol)>(.*)</\1>$", re.DOTALL | re.IGNORECASE),
     "quote":   re.compile(r"^<blockquote>(.*)</blockquote>$", re.DOTALL | re.IGNORECASE),
@@ -163,6 +204,48 @@ _RX = {
     "colsep":  re.compile(r"\n?\[col\]\n?", re.IGNORECASE),
     "any_sc":  re.compile(r"\[([a-z_]+)[:=\]|]", re.IGNORECASE),
 }
+
+
+def image_width_percent(block: dict) -> int | None:
+    """Use the site's explicit width, or the local asset's authored ratio."""
+    width = str(block.get("width") or "").strip().removesuffix("%")
+    if width.isdecimal():
+        return max(20, min(100, int(width)))
+    ratio = block.get("width_ratio") if block.get("asset_uuid") else None
+    if ratio is not None:
+        try:
+            return max(20, min(100, round(float(ratio) * 100)))
+        except (TypeError, ValueError, OverflowError):
+            pass
+    return None
+
+
+def image_drag_percent(initial, delta, column_width, align):
+    """Match the CMS drag increments for left, centered and right-aligned images."""
+    if not delta:
+        return initial
+    factor = {"center": 2, "right": -1}.get(align, 1)
+    desired = initial + 100 * factor * delta / max(1, column_width)
+    stepped = int((desired + 2.5) // 5) * 5
+    return max(20, min(100, stepped))
+
+
+def resize_image_shortcode(shortcode: str, percent: int) -> str:
+    """Replace only the width digits, or insert a width before trailing options."""
+    match = _RX["image"].fullmatch(shortcode)
+    if not match:
+        return shortcode
+    width = str(max(20, min(100, int(percent))))
+    if match.group(6) is not None:
+        start, end = match.span(6)
+        return shortcode[:start] + width + shortcode[end:]
+    group = next((index for index in (5, 4, 3, 2) if match.group(index) is not None), None)
+    if group is None:
+        return shortcode
+    end = match.end(group)
+    while end > match.start(group) and shortcode[end - 1].isspace():
+        end -= 1
+    return shortcode[:end] + "|" + width + shortcode[end:]
 
 
 def _normalise_cell(cell) -> list:
@@ -195,12 +278,22 @@ def _classify(seg: str) -> dict:
     m = _RX["spacer"].match(seg)
     if m:
         return {"type": "spacer", "px": int(m.group(1))}
-    m = _RX["mosaic"].match(seg)
+    m = MOSAIC_TOKEN.fullmatch(seg)
     if m:
         if m.group(1):
-            return {"type": "mosaic",
-                    "order": [int(v) for v in re.split(r"\s*,\s*", m.group(1).strip())],
-                    "layout": m.group(2).lower()}
+            out = {"type": "mosaic",
+                   "order": [int(v) for v in re.split(r"\s*,\s*", m.group(1).strip())],
+                   "layout": m.group(2).lower()}
+            if m.group(3):
+                weights = {}
+                for pair in re.split(r"\s*,\s*", m.group(3).strip()):
+                    k, v = pair.split(":", 1)
+                    weights[int(k)] = int(v)
+                if weights:
+                    out["weights"] = weights
+            if m.group(4):
+                out["mirrors"] = m.group(4).split(",")
+            return out
         return {"type": "mosaic"}
     fm = _RX["figure_image"].match(seg)
     if fm:
@@ -273,6 +366,237 @@ def parse_body(text: str) -> list:
         if seg:
             blocks.append(_classify(seg))
     return blocks
+
+
+# ---------------------------------------------------------------------------
+# SS-1612: reading a PUBLISHED body back into blocks.
+#
+# parse_body() above reads AUTHORED text. A body that comes back from the site
+# is not that: the site wraps every paragraph in <p>…</p> and stores a mosaic
+# or an image shortcode INSIDE the paragraph it belongs to. Opening a published
+# post therefore produced one of two failures, and both reached Sean:
+#   - mode_take._draft_from_remote never called any parser at all; it put the
+#     whole HTML body in draft.caption and left body_blocks empty.
+#   - a segment like <p>[mosaic:752]prose…</p> matches no block pattern, and
+#     "mosaic" is a KNOWN shortcode so it does not fall through to RAW either,
+#     so it became a paragraph with the markup still in its text. BIGGIE then
+#     printed <p>[mosaic:752]prose…</p> on the canvas as literal characters.
+#
+# THE INVARIANT HERE, and it is the whole design: every block keeps the exact
+# bytes it came from in "src", and the exact bytes that followed it in "sep".
+# Concatenating src + sep over the blocks in order reproduces the published
+# body BYTE FOR BYTE. Nothing is reconstructed, so nothing can be lost by a
+# misread: a pattern this code fails to recognise becomes a labelled raw block
+# that still carries its own bytes.
+#
+# When the editor changes a block it DELETES that block's "src", which hands
+# that block back to serialize_block(). Byte-identity stops being the goal the
+# moment Sean changes something; it exists so that opening a post and sending
+# it again without editing cannot alter it.
+#
+# A site element that yields two blocks (the mosaic and the prose that shared
+# one <p>) marks both with "wrap": {"open","close","group"}, so the sender can
+# tell they came out of one element and re-wrap them if one half is edited.
+# The PM ruled (room 8293) that a mosaic is its own movable block, which is why
+# the split happens at all.
+# ---------------------------------------------------------------------------
+
+_RX_SITE = {
+    # One top-level site element. Non-greedy, so it stops at the FIRST closing
+    # tag of the same name: a <div> inside a <div> is therefore cut at the
+    # inner close, and the remainder becomes a labelled raw block. That is a
+    # known limit, not a silent one, and the byte-exact invariant still holds
+    # because every piece keeps its own bytes -- the blocks are wrong, the
+    # content is not lost. The site stores <p> and <figure>, neither of which
+    # nests, so this does not arise on a SnapSmack body today.
+    "element": re.compile(
+        r"<(p|figure|h2|h3|ul|ol|blockquote)\b[^>]*>.*?</\1\s*>|<hr\s*/?>",
+        re.DOTALL | re.IGNORECASE),
+    # A <p>'s own tags, so the inner content can be read on its own.
+    "p_wrap": re.compile(r"^(<p\b[^>]*>)(.*)(</p\s*>)$", re.DOTALL | re.IGNORECASE),
+    # A leading mosaic or image shortcode, which is how the site stores them.
+    "lead_sc": re.compile(r"^\s*(\[(?:mosaic|img):[^\]]*\])", re.IGNORECASE),
+    # The same, anywhere in the paragraph. A mid-paragraph shortcode is not a
+    # shape the site produces, but it must not print itself if it ever appears.
+    "any_media_sc": re.compile(r"\[(?:mosaic|img):[^\]]*\]", re.IGNORECASE),
+    "site_mosaic": re.compile(r"^\[mosaic:(\d+)\]$", re.IGNORECASE),
+}
+
+_SITE_GROUP = "__ss1612_group_"
+
+
+def _site_block_for(fragment: str) -> dict:
+    """One fragment of site content → one display block (no src/sep yet).
+
+    Falls back to a LABELLED raw block rather than to a paragraph, because a
+    paragraph is what printed the markup on the canvas in the first place.
+    """
+    fragment = fragment.strip()
+    if not fragment:
+        return {"type": "raw", "text": "", "label": "Empty"}
+    m = _RX_SITE["site_mosaic"].match(fragment)
+    if m:
+        # Points at a gallery that lives on the site. Not editable here, but it
+        # is a block of its own: movable, deletable, and shown as a placeholder.
+        return {"type": "site_mosaic", "mosaic_id": int(m.group(1)),
+                "text": fragment, "label": "Site mosaic " + m.group(1)}
+    block = _classify(fragment)
+    # _classify falls back to {"type": "para"} for anything it does not know.
+    # On this path that fallback is only acceptable when the fragment carries
+    # no markup of its own; otherwise it is the fault this function exists to
+    # prevent, so it becomes a labelled raw block instead.
+    if block.get("type") == "para" and re.search(r"<[a-z/!][^>]*>", fragment, re.IGNORECASE):
+        return {"type": "raw", "text": fragment, "label": "Kept exactly as the site stored it"}
+    return block
+
+
+def _split_site_element(inner: str) -> list:
+    """A <p>'s inner content → its blocks, split at every media shortcode.
+
+    The site stores a mosaic or image at the START of the paragraph it belongs
+    to, which is the only shape a SnapSmack body contains today. A shortcode in
+    the MIDDLE used to fall through to paragraph text with the markup showing,
+    which is the very thing this ticket exists to stop. "The site does not do
+    that today" is not the same as "it cannot happen", so every media shortcode
+    splits, wherever it sits. Found by Muse reviewing 0e0e2314.
+
+    Returns the pieces in order; the caller slices the source bytes to match,
+    so the byte-exact invariant is unaffected by how many pieces there are.
+    """
+    pieces = _split_site_fragments(inner)
+    return [_site_block_for(piece) for piece in pieces]
+
+
+def _split_site_fragments(inner: str) -> list:
+    """The exact substrings _split_site_element turns into blocks.
+
+    Shared with the caller so the block list and the byte slices can never
+    disagree about where the boundaries are.
+    """
+    out = []
+    pos = 0
+    for m in _RX_SITE["any_media_sc"].finditer(inner):
+        before = inner[pos:m.start()]
+        if before.strip() != "":
+            out.append(before)
+        elif before != "" and out:
+            # Whitespace between two shortcodes rides with the previous piece.
+            out[-1] = out[-1] + before
+        elif before != "":
+            out.append(before)
+        out.append(m.group(0))
+        pos = m.end()
+    tail = inner[pos:]
+    if tail.strip() != "":
+        out.append(tail)
+    elif tail != "" and out:
+        out[-1] = out[-1] + tail
+    elif tail != "":
+        out.append(tail)
+    return out or [inner]
+
+
+def parse_site_html(html: str) -> list:
+    """A published body → blocks that carry their own bytes.
+
+    Byte-exact: "".join(b["src"] + b["sep"] for b in parse_site_html(x)) == x
+    for any input, including one this parser does not understand.
+    """
+    text = html or ""
+    if text == "":
+        return []
+    blocks: list = []
+    pending_prefix = ""      # whitespace before the first block
+    pos = 0
+    group_n = 0
+
+    def _emit(parts: list, src_slices: list, wrap: tuple | None) -> None:
+        nonlocal pending_prefix, group_n
+        if not parts:
+            return
+        if wrap is not None and len(parts) > 1:
+            group_n += 1
+            gid = _SITE_GROUP + str(group_n)
+            for part in parts:
+                part["wrap"] = {"open": wrap[0], "close": wrap[1], "group": gid}
+        for part, slice_src in zip(parts, src_slices):
+            part["src"] = pending_prefix + slice_src
+            part["sep"] = ""
+            part["imported"] = True
+            pending_prefix = ""
+            blocks.append(part)
+
+    for m in _RX_SITE["element"].finditer(text):
+        gap = text[pos:m.start()]
+        if gap:
+            if gap.strip() == "" and blocks:
+                blocks[-1]["sep"] = blocks[-1].get("sep", "") + gap
+            elif gap.strip() == "":
+                pending_prefix += gap
+            else:
+                # Loose text between elements. Kept verbatim, labelled, never
+                # silently folded into a neighbour.
+                _emit([{"type": "raw", "text": gap.strip(),
+                        "label": "Content the site stored outside any element"}],
+                      [gap], None)
+        element = m.group(0)
+        pw = _RX_SITE["p_wrap"].match(element)
+        if pw:
+            open_tag, inner, close_tag = pw.group(1), pw.group(2), pw.group(3)
+            fragments = _split_site_fragments(inner)
+            parts = [_site_block_for(fragment) for fragment in fragments]
+            if len(parts) == 1:
+                _emit(parts, [element], None)
+            else:
+                # The wrapper bytes ride with the pieces they touch -- the open
+                # tag with the first, the close tag with the last -- so the
+                # concatenation is still exact however many pieces there are.
+                slices = list(fragments)
+                slices[0] = open_tag + slices[0]
+                slices[-1] = slices[-1] + close_tag
+                _emit(parts, slices, (open_tag, close_tag))
+        else:
+            _emit([_site_block_for(element)], [element], None)
+        pos = m.end()
+
+    tail = text[pos:]
+    if tail:
+        if tail.strip() == "" and blocks:
+            blocks[-1]["sep"] = blocks[-1].get("sep", "") + tail
+        elif tail.strip() == "":
+            _emit([{"type": "raw", "text": "", "label": "Whitespace"}], [tail], None)
+        else:
+            _emit([{"type": "raw", "text": tail.strip(),
+                    "label": "Content the site stored outside any element"}], [tail], None)
+    if pending_prefix and blocks:
+        blocks[0]["src"] = pending_prefix + blocks[0]["src"]
+    elif pending_prefix:
+        blocks.append({"type": "raw", "text": "", "label": "Whitespace",
+                       "src": pending_prefix, "sep": "", "imported": True})
+    return blocks
+
+
+def serialize_site_blocks(blocks: list) -> str:
+    """Imported blocks → the bytes they came from.
+
+    Only meaningful while every block still carries its "src". A block the
+    editor has changed has had its "src" removed, and the sender serializes
+    that one through serialize_block() instead -- see the contract posted to
+    the room for SS-1612.
+    """
+    out = []
+    for b in (blocks or []):
+        if "src" in b:
+            out.append(str(b.get("src", "")) + str(b.get("sep", "")))
+        else:
+            out.append(serialize_block(b) + str(b.get("sep", "")))
+    return "".join(out)
+
+
+def site_blocks_are_untouched(blocks: list) -> bool:
+    """True when every block still carries the bytes it was imported with."""
+    blocks = blocks or []
+    return bool(blocks) and all("src" in b for b in blocks)
 
 
 def blocks_to_json(blocks: list) -> str:
@@ -352,6 +676,20 @@ class _BlockRow(QFrame):
     # -- per-type editors ---------------------------------------------------
     def _build_body(self, col, b):
         t = self.btype
+        if t == "site_mosaic":
+            # A gallery that lives on the site. It is a BLOCK -- movable and
+            # deletable -- but nothing about it is editable here, and it must
+            # never render as the characters "[mosaic:752]", which is what
+            # Sean saw on the canvas.
+            mid = str(b.get("mosaic_id") or "").strip()
+            label = QLabel("▦  SITE MOSAIC" + (" " + mid if mid else ""))
+            label.setStyleSheet("padding:14px; border:1px dashed rgba(127,127,127,0.6);"
+                                " font-weight:600;")
+            label.setAlignment(Qt.AlignCenter)
+            col.addWidget(label)
+            col.addWidget(hint("A gallery stored on the site. Move or delete this block; "
+                               "its photographs are arranged on the site, not here."))
+            return
         if t in ("para", "raw", "quote", "pullquote"):
             self.text = QPlainTextEdit(b.get("text", ""))
             self.text.setPlaceholderText(
@@ -479,8 +817,40 @@ class _BlockRow(QFrame):
         return [editor.to_blocks() for editor in getattr(self, "_col_editors", [])]
 
     # -- read back ----------------------------------------------------------
+    # SS-1612. Keys an IMPORTED block carries that no widget owns. to_block()
+    # rebuilds a block from its widgets, so without this list the verbatim
+    # source bytes were dropped the moment the editor opened -- which would
+    # have destroyed the byte-identical round trip by merely looking at a post.
+    _IMPORT_KEYS = ("sep", "wrap", "imported", "mosaic_id", "label")
+
+    def _carry_import_keys(self, block: dict) -> dict:
+        """Re-attach the import bookkeeping, and the source bytes if and only
+        if this block's content is still exactly what was imported.
+
+        The source is what makes an untouched post send back byte for byte. It
+        must NOT survive an edit, or an edited block would be sent as its old
+        text."""
+        original = self._block or {}
+        for key in self._IMPORT_KEYS:
+            if key in original and key not in block:
+                block[key] = original[key]
+        if "src" in original:
+            strip = set(self._IMPORT_KEYS) | {"src"}
+            was = {k: v for k, v in original.items() if k not in strip}
+            now = {k: v for k, v in block.items() if k not in strip}
+            if was == now:
+                block["src"] = original["src"]
+        return block
+
     def to_block(self) -> dict:
+        return self._carry_import_keys(self._to_block_from_widgets())
+
+    def _to_block_from_widgets(self) -> dict:
         t = self.btype
+        if t == "site_mosaic":
+            # Nothing here is editable: it points at a gallery on the site.
+            # Rebuilt from what was imported so it cannot drift.
+            return {**(self._block or {}), "type": "site_mosaic"}
         if t in ("para", "raw", "quote", "pullquote"):
             block = {"type": t, "text": self.text.toPlainText()}
             if t == "para" and self.dropcap.isChecked():
@@ -493,8 +863,24 @@ class _BlockRow(QFrame):
             items = [ln.strip() for ln in self.text.toPlainText().split("\n") if ln.strip()]
             return {"type": t, "ordered": bool(self.ordered.currentData()), "items": items}
         if t == "image":
-            return {"type": t, "img_id": self.img_id.text().strip(),
-                    "size": self.size.currentText(), "align": self.align.currentText()}
+            # SS-1612, and a fault in its own right that predates it: this
+            # returned ONLY the three fields it has widgets for, so caption,
+            # show_caption, gallery, width and decorative were DISCARDED by
+            # displaying the block. Measured on Ray's post 4: the captioned
+            # photograph "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11"
+            # lost its caption on the way through, because BIGGIE has no
+            # caption widget for an image and nothing carried the stored value
+            # forward. An editor must not drop what it cannot show.
+            widget_fields = {"img_id": self.img_id.text().strip(),
+                             "size": self.size.currentText(),
+                             "align": self.align.currentText()}
+            block = {**(self._block or {}), "type": t, **widget_fields}
+            # "raw" is the verbatim shortcode and WINS in serialize_block, so
+            # it must not survive a change to the fields it contradicts.
+            original = self._block or {}
+            if any(str(original.get(k, "")) != str(v) for k, v in widget_fields.items()):
+                block.pop("raw", None)
+            return block
         if t == "columns":
             return {"type": t, "cols": self.col_blocks(),
                     "ratio": str(self.ratio.currentData() or "equal")}

@@ -26,6 +26,8 @@ Server-side items this build flags (see addendum):
 # Missing or different = truncated/corrupted. Restore before saving.
 
 
+import html
+from itertools import groupby
 import logging
 import os
 import re
@@ -807,7 +809,11 @@ class GramPoster:
 # (same _upload_ready as solo/gram); the photographer's original is never modified.
 
 class SmacktalkPoster:
-    def __init__(self, base_url: str, smackpress_key: str, site_data=None, session=None):
+    signature_image_id = 0
+
+    def __init__(self, base_url: str, smackpress_key: str, site_data=None, session=None,
+                 *, signature_image_id=0):
+        self.signature_image_id = signature_image_id
         self.base_url = (base_url or "").rstrip("/")
         self.key = (smackpress_key or "").strip()
         self.session = session or requests.Session()
@@ -884,7 +890,10 @@ class SmacktalkPoster:
         }
         signature_ids = [image_ids[n] for n, image in enumerate(draft.images)
                          if n < len(image_ids) and getattr(image, "is_signature", False)]
-        payload["signature_image_id"] = int(signature_ids[0]) if signature_ids else 0
+        if not draft.signature_enabled:
+            payload["signature_image_id"] = 0
+        elif signature_ids or self.signature_image_id or not draft.remote_post_id:
+            payload["signature_image_id"] = int(signature_ids[0]) if signature_ids else self.signature_image_id
         if draft.post_date:
             payload["date"] = draft.post_date
         # An imported post keeps its old URL slug (SMACKPRESS / BLOGGER FLOGGER);
@@ -965,10 +974,70 @@ class SmacktalkPoster:
         r'(?:\s+layout=([a-z-]+))?'
         r'(?:\s+(shuffle))?'
         r'(?:\s+gap=([0-9]{1,2}))?'
+        r'(?:\s+weights=([0-9]+:-?[0-9]+(?:\s*,\s*[0-9]+:-?[0-9]+)*))?'
+        r'(?:\s+mirrors=([0-9]+:[0-9]+(?:,[0-9]+:[0-9]+)*))?'
         r'(?::\s*(?:bucket|new|auto)\s*)?\]', re.I)
+    _WEIGHTED_MOSAIC = re.compile(r'\[mosaic\b[^\]\r\n]*\bweights=[^\]\r\n]*\]', re.I)
+    _MIRRORED_MOSAIC = re.compile(r'\[mosaic\b[^\]\r\n]*\bmirrors=[^\]\r\n]*\]', re.I)
+
+    def _check_mosaic_weights(self, body, photo_count):
+        weighted = self._WEIGHTED_MOSAIC.findall(body)
+        mirrored = self._MIRRORED_MOSAIC.findall(body)
+        if not weighted and not mirrored:
+            return
+        for token in weighted:
+            match = self._MOSAIC_TOKEN.fullmatch(token)
+            if not match or not match.group(1) or not match.group(5):
+                raise ValueError("The mosaic size choices are invalid. Reopen the mosaic and save it again.")
+            positions = {int(pos) for pos in match.group(1).split(",")}
+            weights = self._mosaic_weights(match.group(5))
+            if not weights or any(pos not in positions or pos > photo_count for pos in weights):
+                raise ValueError("A resized mosaic photo is missing. Reopen the mosaic and save it again.")
+        for token in mirrored:
+            match = self._MOSAIC_TOKEN.fullmatch(token)
+            if not match or not match.group(1) or not match.group(6) or match.group(3):
+                raise ValueError("The mirrored mosaic is invalid. Reopen it and save it again.")
+            positions = [int(pos) for pos in match.group(1).split(",")]
+            if len(set(positions)) != len(positions) or any(not 1 <= pos <= photo_count for pos in positions):
+                raise ValueError("A mirrored mosaic photo is missing. Reopen it and save it again.")
+            self._mosaic_mirror_groups(match.group(6), positions)
+        response = self.session.get(self._route("smackpress/mosaics"), timeout=20)
+        if response.status_code in (404, 405):
+            change = "mirrored mosaic blocks" if mirrored else "resized mosaic tiles"
+            raise RuntimeError(f"This site's CMS cannot publish {change} yet. Update the site before sending this draft.")
+        response.raise_for_status()
+        capabilities = response.json()
+        if weighted and capabilities.get("mosaic_weights") is not True:
+            raise RuntimeError("This site's CMS cannot publish resized mosaic tiles yet. Update the site before sending this draft.")
+        if mirrored and capabilities.get("mosaic_mirrors") is not True:
+            raise RuntimeError("This site's CMS cannot publish mirrored mosaic blocks yet. Update the site before sending this draft.")
+
+    @staticmethod
+    def _mosaic_mirror_groups(raw, photos):
+        groups = []
+        used = set()
+        for value in raw.split(",") if raw else ():
+            start, count = map(int, value.split(":"))
+            group = photos[start:start + count]
+            if count < 2 or len(group) != count or used.intersection(group):
+                raise ValueError("The mirrored mosaic blocks are invalid. Reopen the mosaic and save it again.")
+            groups.append(group)
+            used.update(group)
+        return groups
+
+    @staticmethod
+    def _mosaic_weights(raw):
+        weights = {}
+        for pair in raw.split(",") if raw else ():
+            bucket_pos, weight = map(int, pair.split(":"))
+            if bucket_pos < 1 or weight not in (-1, 1, 2) or bucket_pos in weights:
+                raise ValueError("The mosaic size choices are invalid. Reopen the mosaic and save it again.")
+            weights[bucket_pos] = weight
+        return weights
 
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
-                      layout="asymmetric", gallery_shuffle=False) -> Tuple[int, str]:
+                      layout="asymmetric", gallery_shuffle=False,
+                      mosaic_weights=None, mosaic_mirrors=None) -> Tuple[int, str]:
         """Create a snap_mosaics panel from ordered Gallery image ids via
         POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]').
 
@@ -983,6 +1052,10 @@ class SmacktalkPoster:
                    "gap": _gap_value(gap), "layout": layout}
         if gallery_shuffle:
             payload["gallery_shuffle"] = True
+        if mosaic_weights:
+            payload["mosaic_weights"] = mosaic_weights
+        if mosaic_mirrors:
+            payload["mosaic_mirrors"] = mosaic_mirrors
         r = self.session.post(
             self._route("smackpress/mosaics"),
             json=payload,
@@ -992,6 +1065,10 @@ class SmacktalkPoster:
                 r, "Mosaic create rejected — this site's SMACKTALK key must be a 'smackpress' key."))
         r.raise_for_status()
         data = r.json()
+        if mosaic_weights and data.get("mosaic_weights") != mosaic_weights:
+            raise RuntimeError("The site did not confirm the mosaic sizes. The post was not sent.")
+        if mosaic_mirrors and data.get("mosaic_mirrors") != mosaic_mirrors:
+            raise RuntimeError("The site did not confirm the mirrored mosaic blocks. The post was not sent.")
         mid = int(data.get("mosaic_id") or 0)
         if mid <= 0:
             raise RuntimeError("mosaics endpoint did not return a mosaic_id")
@@ -1049,9 +1126,128 @@ class SmacktalkPoster:
                         or re.match(r"^\[(?:img|mosaic|spacer|columns|pullquote)\b", t, re.I)):
                     out_chunks.append(t)
                 else:
-                    out_chunks.append("<p>" + _html.escape(t, quote=False).replace("\n", "<br>\n") + "</p>")
+                    # Keep the exact anchor form emitted by COLD SNAP's link tool.
+                    # Escape all other text as before, including literal angle brackets.
+                    parts = re.split(
+                        r'(<a href="[^"<>\r\n]+"(?: target="_blank")?'
+                        r'(?: rel="(?:noopener(?: nofollow)?|nofollow)")?>[^<>\r\n]*</a>)',
+                        t,
+                    )
+                    parts[::2] = [
+                        _html.escape(part, quote=False).replace("\n", "<br>\n")
+                        for part in parts[::2]
+                    ]
+                    out_chunks.append("<p>" + "".join(parts) + "</p>")
             content = "\n\n".join(out_chunks)
         return content
+
+    _WIRE_MOSAIC = r"\[mosaic:[1-9][0-9]*(?:\s+width=[0-9]{2,4})?\]"
+    _LEGACY_MOSAIC_PARAGRAPH = re.compile(
+        rf"(<p(?:\s[^<>]*)?>)\s*({_WIRE_MOSAIC})\s*(.*?)</p>", re.I | re.S,
+    )
+    _WIRE_HTML_START = re.compile(
+        r"^\s*(?:\[(?:img|mosaic|spacer):[^\]]+\]\s*)*"
+        r"<(?:p|h[1-6]|ul|ol|blockquote|figure|div|section|article|header|main|aside|nav)\b",
+        re.I,
+    )
+
+    @classmethod
+    def _standalone_mosaic_body(cls, content):
+        """Send mosaics between prose blocks, so the CMS does not join them to prose."""
+        def split_legacy(match):
+            opener, mosaic, prose = match.groups()
+            return mosaic + ("\n\n" + opener + prose + "</p>" if prose.strip() else "")
+
+        body = cls._LEGACY_MOSAIC_PARAGRAPH.sub(split_legacy, content)
+        # Already-authored HTML keeps its existing markup, including attributes
+        # and the untouched portions of an imported paragraph.
+        if cls._WIRE_HTML_START.match(body):
+            return body
+
+        # Do not split the internal blank lines in columns or pull quotes.
+        blocks = re.split(
+            r"(\[columns[^\]]*\].*?\[/columns\]|\[pullquote\].*?\[/pullquote\])"
+            + rf"|^[ \t]*({cls._WIRE_MOSAIC})[ \t]*$|\n[ \t]*\n+",
+            body.replace("\r\n", "\n"), flags=re.I | re.M | re.S,
+        )
+        output = []
+        for block in blocks:
+            if block is None or not block.strip():
+                continue
+            text = block.strip()
+            if re.match(r"^<(?:p|h[1-6]|ul|ol|blockquote|figure|div|section|article|header|main|aside|nav)\b",
+                        text, re.I) or re.fullmatch(
+                r"\[(?:img|mosaic|spacer):[^\]]+\]|"
+                r"\[columns[^\]]*\].*?\[/columns\]|\[pullquote\].*?\[/pullquote\]", text, re.I | re.S,
+            ):
+                output.append(text)
+                continue
+            output.append("<p>" + cls._wire_prose(text) + "</p>")
+        wire = "\n\n".join(output)
+        # The CMS recognizes the HTML path only when it can see a block tag.
+        # A mosaic-only or shortcode-only post still needs that marker.
+        return wire if cls._WIRE_HTML_START.match(wire) else "<div></div>\n\n" + wire
+
+    @staticmethod
+    def _wire_prose(text):
+        parts = re.split(
+            r'(<a href="[^"<>\r\n]+"(?: target="_blank")?'
+            r'(?: rel="(?:noopener(?: nofollow)?|nofollow)")?>[^<>\r\n]*</a>'
+            r'|</?(?:b|i|u|strong|em)>)', text,
+        )
+        parts[::2] = [html.escape(html.unescape(part), quote=False).replace("\n", "<br>\n")
+                      for part in parts[::2]]
+        return "".join(parts)
+
+    @classmethod
+    def _wire_imported_blocks(cls, blocks, serialize_block):
+        """Honor the parser's source slices until one member of a group is edited."""
+        output = []
+        verbatim = True
+        for group, items in groupby(blocks, key=lambda block: (block.get("wrap") or {}).get("group")):
+            blocks_in_group = list(items)
+            if group is None:
+                for block in blocks_in_group:
+                    if block.get("src"):
+                        output.append(block["src"] + block.get("sep", ""))
+                        continue
+                    text = serialize_block(block)
+                    if block["type"] == "para":
+                        text = "<p>" + cls._wire_prose(text) + "</p>"
+                    output.append(text + (block.get("sep") or "\n\n"))
+                    verbatim = False
+                continue
+
+            wrap = blocks_in_group[0]["wrap"]
+            opening, closing = wrap["open"], wrap["close"]
+            source = "".join(block.get("src", "") + block.get("sep", "")
+                             for block in blocks_in_group)
+            if (len(blocks_in_group) > 1 and all(block.get("src") for block in blocks_in_group)
+                    and source.startswith(opening) and source.rstrip().endswith(closing)):
+                output.append(source)
+                continue
+
+            verbatim = False
+            for block in blocks_in_group:
+                existing = block.get("src", "")
+                kind = block["type"]
+                if kind in {"mosaic", "site_mosaic", "image"}:
+                    if existing:
+                        pattern = r"\[img:[^\]]+\]" if kind == "image" else cls._WIRE_MOSAIC
+                        token = re.search(pattern, existing, re.I)
+                        if token is None:
+                            raise ValueError("An imported media block lost its source shortcode.")
+                        text = token[0]
+                    else:
+                        text = serialize_block(block)
+                else:
+                    if existing:
+                        text = existing.removeprefix(opening).removesuffix(closing)
+                    else:
+                        text = cls._wire_prose(serialize_block(block))
+                    text = opening + text + closing
+                output.append(text + (block.get("sep") or "\n\n"))
+        return "".join(output), verbatim
 
     def _resolve_mosaics(self, content, image_ids, draft) -> Tuple[str, list]:
         """Turn a [mosaic] placeholder in the body into a real [mosaic:ID] gallery of
@@ -1072,15 +1268,26 @@ class SmacktalkPoster:
             if layout not in self._MOSAIC_LAYOUTS:
                 layout = 'asymmetric'
             chosen = list(image_ids)
+            site_weights = {}
             if selection:
                 positions = [int(value.strip()) for value in selection.split(',')]
                 chosen = [image_ids[pos - 1] for pos in positions
                           if 1 <= pos <= len(image_ids)]
+                site_weights = {
+                    str(image_ids[pos - 1]): weight
+                    for pos, weight in self._mosaic_weights(match.group(5)).items()
+                    if pos in positions and 1 <= pos <= len(image_ids)
+                }
             if not chosen:
                 return ''
+            options = {}
+            if site_weights:
+                options["mosaic_weights"] = site_weights
+            if match.group(6):
+                options["mosaic_mirrors"] = self._mosaic_mirror_groups(match.group(6), chosen)
             mid, shortcode = self.create_mosaic(
                 chosen, title=(draft.title or "Mosaic"), gap=gallery_gap, layout=layout,
-                gallery_shuffle=shuffle)
+                gallery_shuffle=shuffle, **options)
             mosaic_ids.append(mid)
             return shortcode
 
@@ -1108,19 +1315,21 @@ class SmacktalkPoster:
         s = re.sub(r"[\s-]+", "-", s).strip("-")
         return s
 
-    @staticmethod
-    def _body_text_for_sync(draft) -> str:
+    @classmethod
+    def _body_text_for_sync(cls, draft) -> str:
+        return cls._wire_body(draft)[0]
+
+    @classmethod
+    def _wire_body(cls, draft):
         raw = (getattr(draft, "caption", "") or "").strip()
-        if raw:
-            return raw
         bjson = (getattr(draft, "body_blocks", "") or "").strip()
-        if not bjson:
-            return ""
+        if not bjson or (raw and '"src"' not in bjson and '"wrap"' not in bjson):
+            return raw, "authored"
         try:
             from coldsnap_qt import biggie
             blocks = biggie.blocks_from_json(bjson)
             if not blocks:
-                return ""
+                return raw, "authored"
             positions = {
                 str(getattr(im, "asset_uuid", "")): i + 1
                 for i, im in enumerate(getattr(draft, "images", []) or [])
@@ -1133,6 +1342,9 @@ class SmacktalkPoster:
                     show_cap = bool(out.get("show_caption"))
                     cap_text = str(out.get("caption") or "").strip()
                     if out.get("asset_uuid"):
+                        width = biggie.image_width_percent(out)
+                        if width is not None:
+                            out["width"] = str(width)
                         pos = positions.get(str(out["asset_uuid"]))
                         if pos:
                             out["img_id"] = f"bucket:{pos}"
@@ -1146,14 +1358,19 @@ class SmacktalkPoster:
                         out.pop("caption", None)
                         out.pop("show_caption", None)
                 if out.get("type") == "mosaic" and out.get("order"):
-                    out["order"] = [positions.get(str(v), v) for v in out["order"]]
+                    biggie.wire_mosaic_ids(out, positions)
                 if out.get("type") == "columns":
                     out["cols"] = [[_wire(c) for c in col] for col in out.get("cols", [])]
                 return out
 
-            return biggie.serialize_blocks([_wire(b) for b in blocks]).strip()
+            if any("src" in block or "wrap" in block for block in blocks):
+                content, verbatim = cls._wire_imported_blocks(
+                    [_wire(block) for block in blocks], biggie.serialize_block,
+                )
+                return content, "verbatim" if verbatim else "imported"
+            return raw or biggie.serialize_blocks([_wire(b) for b in blocks]).strip(), "authored"
         except Exception:
-            return ""
+            return "", "authored"
 
     def _slug_taken_on_server(self, slug: str, cached_posts: list) -> bool:
         target = self._long_slugify(slug)
@@ -1266,7 +1483,7 @@ class SmacktalkPoster:
         is_page = getattr(draft, "destination_type", "post") == "page"
         if not (draft.title or "").strip():
             return SyncResult(False, message="a SMACKTALK post needs a title")
-        body_text = self._body_text_for_sync(draft)
+        body_text, wire_mode = self._wire_body(draft)
         if not body_text and not is_page and (getattr(draft, "body_blocks", "") or "").strip():
             return SyncResult(False, message="Draft body blocks produced empty content — refusing to overwrite with an empty post.")
         if (not draft.images and not is_page
@@ -1275,6 +1492,7 @@ class SmacktalkPoster:
                 "This post asks for a MOSAIC but has no photographs. Add the "
                 "photos, or take the mosaic out of the writing."))
         try:
+            self._check_mosaic_weights(body_text, len(draft.images))
             if not is_page:
                 err_msg, was_cancelled = self._resolve_existing_post_id(
                     draft, confirm_overwrite_fn=confirm_overwrite_fn)
@@ -1301,8 +1519,15 @@ class SmacktalkPoster:
             # gallery of this essay's photos (created from the just-uploaded Gallery
             # ids). The photographer writes text + [mosaic]; the render is a real
             # tiled gallery in place. No server change — smackpress/mosaics exists.
-            content = self._resolve_mosaics(body_text, image_ids, draft)[0]
-            content = self._resolve_bucket_images(content, image_ids)
+            content = body_text
+            if wire_mode != "verbatim":
+                content, new_mosaics = self._resolve_mosaics(content, image_ids, draft)
+                content = self._resolve_bucket_images(content, image_ids)
+                if wire_mode == "authored" and new_mosaics:
+                    content = self._standalone_mosaic_body(content)
+                elif (wire_mode == "imported" and re.search(self._WIRE_MOSAIC, content, re.I)
+                      and not self._WIRE_HTML_START.match(content)):
+                    content = "<div></div>\n\n" + content
 
             route = "smackpress/pages" if is_page else "smackpress/posts"
             payload = (self.build_page_payload(draft, content=content) if is_page
