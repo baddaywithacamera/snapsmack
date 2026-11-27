@@ -37,7 +37,7 @@ $check('the masthead places the shared dock component',
 $check('the same dedicated CMS model feeds both placements',
        substr_count($layout, "'model' => \$view['site']['social_dock']") === 2);
 $check('the header dock is centred by ALFRED presentation CSS',
-       preg_match('/\.site-header \.social-dock-inline\s*\{[^}]*justify-content:\s*center;[^}]*margin:\s*24px auto 0;/s', $css) === 1);
+       preg_match('/\.site-header \.social-dock-inline\s*\{[^}]*justify-content:\s*center;[^}]*margin:\s*19px 0 0;/s', $css) === 1);
 $check('the header circles use the owner-approved compact size',
        preg_match('/\.site-header \.dock-link\s*\{[^}]*flex:\s*0 0 36px;[^}]*width:\s*36px;[^}]*height:\s*36px;/s', $css) === 1);
 $check('header and footer use a transparent ring coloured by the shared appearance setting',

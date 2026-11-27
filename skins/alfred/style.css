@@ -1861,6 +1861,7 @@ p.comment-form-author { margin-right: 5%; }
     }
 
     .nav-toggle .bars {
+        display: block;
         margin: 0 auto;
         height: 12px;
         width: 20px;
@@ -2048,6 +2049,11 @@ p.comment-form-author { margin-right: 5%; }
     /* Blog */
 
     .posts { margin-top: 0; }
+
+    .alfred-archive-grid.posts:not(.ss-square-wall) {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
 
     .posts .post {
         padding-bottom: 100%;
