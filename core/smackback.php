@@ -1623,16 +1623,21 @@ function smackback_handle_breach(
          ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)"
     );
 
-    // Only update breach_at if not already in breach (don't reset the original timestamp)
-    $current_status = $pdo->query(
-        "SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_status'"
-    )->fetchColumn();
-
-    if ($current_status !== 'breach') {
+    // Claim the transition in the database. Concurrent requests can both
+    // detect a change, but only one may send the opening alert.
+    $pdo->exec(
+        "INSERT INTO snap_settings (setting_key, setting_val) VALUES ('smackback_status', 'pending')
+         ON DUPLICATE KEY UPDATE setting_val = setting_val"
+    );
+    $first_breach = $pdo->exec(
+        "UPDATE snap_settings SET setting_val = 'breach'
+         WHERE setting_key = 'smackback_status'
+           AND (setting_val IS NULL OR setting_val <> 'breach')"
+    ) === 1;
+    if ($first_breach) {
         $upsert->execute(['smackback_breach_at', $now]);
     }
 
-    $upsert->execute(['smackback_status',       'breach']);
     $upsert->execute(['smackback_breach_files', $breach_files]);
 
     // ── Forensic capture (the whole point of the logs/ work) ──────────────────
@@ -1661,7 +1666,7 @@ function smackback_handle_breach(
     };
     snap_diaglog('smackback', 'breach', [
         'source'       => $source,
-        'first_breach' => $current_status !== 'breach',
+        'first_breach' => $first_breach,
         'counts'       => [
             'tampered'   => count($tampered),
             'missing'    => count($missing),
@@ -1680,8 +1685,9 @@ function smackback_handle_breach(
         ),
     ]);
 
-    // Send alert email
-    smackback_send_alert($tampered, $missing, $truncated, $corrupted, $unexpected);
+    if ($first_breach) {
+        smackback_send_alert($tampered, $missing, $truncated, $corrupted, $unexpected);
+    }
 
     // Phase 2 hook: hub/spoke correlation (no-op in this build)
     $mode = $pdo->query(

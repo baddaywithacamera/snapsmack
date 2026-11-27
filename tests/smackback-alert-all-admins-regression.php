@@ -69,6 +69,84 @@ sb_test(str_contains($src, 'smackback_last_alert_failed')
     && str_contains($src, 'smackback_last_alert_at'),
     'it persists last-alert status keys for the dashboard to read');
 
+// Run the breach handler with a local mail sink and a real settings table.
+final class AlertFixturePdo extends PDO {
+    public function prepare(string $query, array $options = []): PDOStatement|false {
+        return parent::prepare(str_replace(
+            'ON DUPLICATE KEY UPDATE setting_val = VALUES(setting_val)',
+            'ON CONFLICT(setting_key) DO UPDATE SET setting_val = excluded.setting_val',
+            $query
+        ), $options);
+    }
+
+    public function exec(string $statement): int|false {
+        return parent::exec(str_replace(
+            'ON DUPLICATE KEY UPDATE setting_val = setting_val',
+            'ON CONFLICT(setting_key) DO NOTHING',
+            $statement
+        ));
+    }
+}
+
+$fixture = sys_get_temp_dir() . '/snapsmack-breach-alert-' . bin2hex(random_bytes(6));
+mkdir($fixture . '/core', 0700, true);
+try {
+    copy($root . '/core/smackback.php', $fixture . '/core/smackback.php');
+    file_put_contents($fixture . '/core/diaglog.php', <<<'PHP'
+<?php
+function snap_diaglog(string $log, string $event, array $data): void {
+    $GLOBALS['breach_detections'][] = $data['first_breach'];
+}
+function snap_maint_lock_state(): array { return []; }
+PHP);
+    file_put_contents($fixture . '/core/mailer.php', <<<'PHP'
+<?php
+function snapsmack_send_mail(string $to, string $subject, string $body, array $options): bool {
+    $GLOBALS['breach_mail'][] = strtolower($to);
+    return strtolower($to) !== 'admin@example.test';
+}
+PHP);
+    require $fixture . '/core/smackback.php';
+    $pdo = new AlertFixturePdo('sqlite::memory:');
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec('CREATE TABLE snap_settings (setting_key TEXT PRIMARY KEY, setting_val TEXT)');
+    $pdo->exec('CREATE TABLE snap_users (email TEXT, user_role TEXT)');
+    $pdo->exec('CREATE TABLE snap_smackback_log (detected_at TEXT, resolved_at TEXT, affected_files TEXT, file_count INTEGER, resolution TEXT)');
+    $pdo->exec("INSERT INTO snap_settings VALUES ('smackback_alert_email', 'owner@example.test')");
+    $pdo->exec("INSERT INTO snap_users VALUES ('OWNER@example.test', 'owner'), ('admin@example.test', 'admin')");
+    $breach_mail = $breach_detections = [];
+
+    smackback_handle_breach(['core/constants.php'], []);
+    sort($breach_mail);
+    sb_test($breach_mail === ['admin@example.test', 'owner@example.test'],
+        'a new incident mails each distinct admin even when the status row was absent');
+    $pdo->exec("UPDATE snap_settings SET setting_val = '2001-01-01 00:00:00' WHERE setting_key = 'smackback_breach_at'");
+    $delivery = $pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_last_alert_failed'")->fetchColumn();
+    sb_test($delivery === '1', 'a failed delivery remains visible');
+
+    smackback_handle_breach(['core/constants.php'], []);
+    smackback_handle_breach([], ['core/updater.php']);
+    sb_test($breach_mail === ['admin@example.test', 'owner@example.test'],
+        'repeat detections during the incident send no additional email');
+    sb_test($breach_detections === [true, false, false], 'every detection is still logged');
+    sb_test($pdo->query("SELECT setting_val FROM snap_settings WHERE setting_key = 'smackback_breach_at'")->fetchColumn()
+        === '2001-01-01 00:00:00', 'repeat detections keep the opening timestamp');
+    sb_test(smackback_is_breach(), 'containment remains active');
+
+    smackback_resolve_breach();
+    smackback_handle_breach(['core/updater.php'], []);
+    sort($breach_mail);
+    sb_test($breach_mail === ['admin@example.test', 'admin@example.test', 'owner@example.test', 'owner@example.test'],
+        'a new incident after recovery mails every admin again');
+    sb_test($breach_detections === [true, false, false, true], 'recovery re-arms first detection');
+} finally {
+    foreach (['smackback.php', 'diaglog.php', 'mailer.php'] as $file) {
+        unlink($fixture . '/core/' . $file);
+    }
+    rmdir($fixture . '/core');
+    rmdir($fixture);
+}
+
 echo "\n  {$pass} passed, {$fail} failed\n";
 if ($fail > 0) {
     echo "SMACKBACK alert all-admins: FAIL ({$fail}).\n";
