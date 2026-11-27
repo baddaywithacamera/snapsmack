@@ -41,15 +41,6 @@ PUBLICATION_PAGES = ("wotcha.php", "tool-snap-slapper.php", "faq-tools.php",
                      "includes/header.php", "index.php")
 
 
-class UpgradeWriter(ScopedFileWriter):
-    owner = None
-
-    def authorize_session(self, user, challenge, code):
-        result = super().authorize_session(user, challenge, code)
-        self.owner = user, result["ticket"]
-        return result
-
-
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
@@ -137,7 +128,8 @@ def publish_pages(reader, writer, client, planned, publish):
     return completed
 
 
-def preview_artist(audit, writer):
+def preview_artist(client):
+    audit = client.audit
     target = ContainerTarget("ct102", "192.168.1.12", "proxvox-ro", "ct102_ssh", (SITE_ROOT,))
     site = ContainerReadBroker([target], DatabaseTarget("192.168.1.20", "proxvox_ro"), audit)
     page = site.select("ct102", "bad", "SELECT id, content FROM snap_pages WHERE slug=%s", ("the-artist",))
@@ -146,16 +138,15 @@ def preview_artist(audit, writer):
     key, value = page["rows"][0]
     plan = {"target": "102", "config_path": SITE_ROOT + "/core/db.php", "database": "bad",
             "table": "snap_pages", "key_column": "id", "key": key, "column": "content", "value": value}
-    user, ticket = writer.owner
-    preview = writer.preview_db_update(user, ticket, plan)
+    preview = client.preview_db_update(plan)
     if not re.fullmatch(r"[0-9a-f]{64}", preview.get("expected", "")):
         raise RuntimeError("The database preview did not confirm the expected row.")
 
 
-def upgrade(user, password, otp, publish, planned=None, retain=None):
+def authorize(user, password, otp, publish, retain):
     audit = AuditBuffer(str(ROOT.parent / "audit-buffer.jsonl"))
     reader = RootReadBroker(PVE_HOST, "proxvox-root-ro", audit)
-    writer = UpgradeWriter(PVE_HOST, audit, str(Path.home() / ".ssh" / "snapsmack-proxvox-writer-ed25519"))
+    writer = ScopedFileWriter(PVE_HOST, audit, str(Path.home() / ".ssh" / "snapsmack-proxvox-writer-ed25519"))
     client = None
     retained = False
     phase = "preflight"
@@ -173,18 +164,9 @@ def upgrade(user, password, otp, publish, planned=None, retain=None):
                              certificate_sha256=PVE_CERT, host_writer=writer)
         client.authorize(user, password, otp, timeout=25)
         password = otp = ""
-        if retain is not None:
-            retain(client, writer)
-            retained = True
-        if planned is not None:
-            phase = "SnapSmack.ca publishing"
-            count = publish_pages(reader, writer, client, planned, publish)
-            publish(f"Published and verified {count} files.")
-            return
-        phase = "read-only database rehearsal"
-        publish("Verifying the database connection from the site container…")
-        preview_artist(audit, writer)
-        publish("The Artist database preview passed. No page content was written.")
+        retain(client, reader, writer)
+        retained = True
+        publish("Session authorized. Choose an action below.")
     except Exception as error:
         reason = str(error)
         if phase == "owner authorization" and reason == "the host could not complete Proxmox TOTP verification":
@@ -204,8 +186,6 @@ def upgrade(user, password, otp, publish, planned=None, retain=None):
                 client.revoke("PROX VOX form finished")
             except Exception:
                 publish("Could not confirm session revocation. Check the host audit.")
-        if not retained:
-            writer.owner = None
 
 
 def main():
@@ -225,18 +205,13 @@ def main():
         return
     window = tk.Tk()
     publication_sha = os.environ.get("PROXVOX_PUBLICATION_SHA256")
-    window.title("Publish SnapSmack.ca through PROX VOX" if publication_sha
-                 else "Authorize PROX VOX database tools")
+    window.title("Authorize PROX VOX")
     window.geometry("645x405")
     events = queue.SimpleQueue()
     panel = ttk.Frame(window, padding=24)
     panel.pack(fill="both", expand=True)
-    purpose = "Publish SnapSmack.ca" if publication_sha else "PROX VOX database preview"
-    ttk.Label(panel, text=purpose, font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 10))
-    description = ("This publishes the reviewed SnapSmack.ca pages and image dependencies."
-                   if publication_sha else
-                   "This verifies the installed host files and checks the connection to The Artist.")
-    ttk.Label(panel, text=description,
+    ttk.Label(panel, text="PROX VOX", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 10))
+    ttk.Label(panel, text="Authorize once, then choose the actions you want to run.",
               wraplength=585).pack(anchor="w")
     form = ttk.Frame(panel)
     form.pack(fill="x", pady=12)
@@ -258,7 +233,7 @@ def main():
     status = tk.StringVar(value="Checking the installed host files…")
     remaining = tk.StringVar(value="No active session")
     running = False
-    planned = None
+    publication_complete = False
     session = None
 
     def start():
@@ -279,19 +254,18 @@ def main():
 
         def work():
             try:
-                upgrade(account, secret, code, events.put, planned,
-                        retain=lambda client, writer: events.put(("session", (client, writer))))
+                authorize(account, secret, code, events.put,
+                          retain=lambda *context: events.put(("session", context)))
             finally:
                 events.put(None)
 
         threading.Thread(target=work, daemon=True).start()
 
     def poll():
-        nonlocal running, planned, session
+        nonlocal running, publication_complete, session
         while not events.empty():
             item = events.get()
             if isinstance(item, tuple) and item[0] == "ready":
-                planned = item[1]
                 status.set("Ready for the owner to authorize.")
                 button.state(["!disabled"])
                 for entry in entries:
@@ -299,6 +273,8 @@ def main():
                 entries[0].focus_set()
             elif isinstance(item, tuple) and item[0] == "session":
                 session = item[1]
+            elif item == "publication complete":
+                publication_complete = True
             elif isinstance(item, tuple) and item[0] == "end":
                 session = None
                 remaining.set("No active session")
@@ -317,7 +293,6 @@ def main():
                 status.set(item)
         seconds = session[0].seconds_remaining() if session else 0
         if session and seconds == 0:
-            session[1].owner = None
             session = None
             remaining.set("The PROX VOX session expired.")
         elif seconds:
@@ -326,10 +301,11 @@ def main():
             remaining.set(f"Session remaining {hours:02}:{minutes:02}:{seconds:02}")
         state = ["!disabled"] if session and not running else ["disabled"]
         preview_action.state(state)
+        publish_action.state(state if publication_sha and not publication_complete else ["disabled"])
         end_action.state(state)
         window.after(150, poll)
 
-    def use_session(end=False, close=False):
+    def use_session(end=False, close=False, publish_site=False):
         nonlocal running
         if running:
             return
@@ -337,7 +313,9 @@ def main():
             if close:
                 window.destroy()
             return
-        client, writer = session
+        if publish_site and (not publication_sha or publication_complete):
+            return
+        client, reader, writer = session
         running = True
 
         def work():
@@ -345,18 +323,23 @@ def main():
                 if end:
                     client.revoke("Owner ended PROX VOX session")
                     events.put(("end", True, close))
+                elif publish_site:
+                    plan = publication_plan(publication_sha, reader)
+                    count = publish_pages(reader, writer, client, plan, events.put)
+                    events.put(f"Published and verified {count} files.")
+                    events.put("publication complete")
                 else:
-                    preview_artist(client.audit, writer)
+                    preview_artist(client)
                     events.put("The Artist database preview passed. No page content was written.")
             except Exception:
                 if end:
                     events.put(("end", False, close))
+                elif publish_site:
+                    events.put("Publication stopped. Check the reviewed manifest and live file hashes.")
                 else:
                     events.put("The Artist preview did not complete.")
             finally:
-                if end:
-                    writer.owner = None
-                else:
+                if not end:
                     events.put(None)
 
         threading.Thread(target=work, daemon=True).start()
@@ -369,19 +352,21 @@ def main():
             if pending:
                 events.put("The five-hour host update must be installed before you enter credentials.")
                 return
-            plan = publication_plan(publication_sha, reader) if publication_sha else None
         except Exception:
             events.put("Could not verify the installed host files. Wait for confirmation.")
             return
-        events.put(("ready", plan))
+        events.put(("ready",))
 
     actions = ttk.Frame(panel)
     actions.pack(anchor="w")
-    button = ttk.Button(actions, text="Authorize and publish" if publication_sha else "Authorize and preview",
-                        command=start, state="disabled")
+    button = ttk.Button(actions, text="Authorize", command=start, state="disabled")
     button.pack(side="left")
     preview_action = ttk.Button(actions, text="Preview The Artist", command=use_session, state="disabled")
     preview_action.pack(side="left", padx=8)
+    publish_action = ttk.Button(actions, text="Publish SnapSmack.ca",
+                                command=lambda: use_session(publish_site=True), state="disabled")
+    if publication_sha:
+        publish_action.pack(side="left", padx=(0, 8))
     end_action = ttk.Button(actions, text="End session", command=lambda: use_session(end=True), state="disabled")
     end_action.pack(side="left")
     ttk.Label(panel, textvariable=remaining).pack(anchor="w", pady=(10, 0))

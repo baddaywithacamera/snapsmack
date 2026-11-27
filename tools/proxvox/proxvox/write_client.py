@@ -309,6 +309,25 @@ class WriteClient:
     # client that hands a live Proxmox credential to any code that asks.
     MAX_FILE_GRANT_SECONDS = 900
 
+    def _host_operation(self, operation, *args):
+        with self._session_lock:
+            if self._host_writer is None or not self.is_authorized():
+                raise Refused("This operation needs an active PROX VOX host session.")
+            username, ticket = self._username, self._ticket
+        return getattr(self._host_writer, operation)(username, ticket, *args)
+
+    def preview_db_update(self, plan):
+        return self._host_operation("preview_db_update", plan)
+
+    def run_db_update(self, plan, expected):
+        return self._host_operation("run_db_update", plan, expected)
+
+    def preview_maintenance(self, target, action, subject, value=None):
+        return self._host_operation("preview_maintenance", target, action, subject, value)
+
+    def run_maintenance(self, target, action, subject, expected, value=None):
+        return self._host_operation("run_maintenance", target, action, subject, expected, value)
+
     def mint_file_grant(self, *, target: str, path: str, sha256: str,
                         seconds: int = 300) -> str:
         """A single-operation grant as JSON, or Refused if not authorised.

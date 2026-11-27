@@ -252,10 +252,26 @@ class ProxVoxP3Tests(unittest.TestCase):
         second = json.loads(client.mint_file_grant(target="101", path="/second", sha256="b" * 64))
         self.assertEqual(client.seconds_remaining(), 3600)
         self.assertEqual(first["ticket"], second["ticket"])
+        plan = {"target": "102"}
+        client.preview_db_update(plan)
+        client.run_db_update(plan, "expected-db")
+        client.preview_maintenance("101", "systemd", "apache2")
+        client.run_maintenance("101", "systemd", "apache2", "expected-service")
+        owner = ("proxvox@pve", first["ticket"])
+        host.preview_db_update.assert_called_once_with(*owner, plan)
+        host.run_db_update.assert_called_once_with(*owner, plan, "expected-db")
+        host.preview_maintenance.assert_called_once_with(*owner, "101", "systemd", "apache2", None)
+        host.run_maintenance.assert_called_once_with(*owner, "101", "systemd", "apache2", "expected-service", None)
         self.assertEqual(host.authorize_session.call_count, 1)
         client.revoke()
         self.assertEqual(client.seconds_remaining(), 0)
         host.revoke_session.assert_called_once()
+        with self.assertRaises(Refused):
+            client.preview_db_update(plan)
+        with self.assertRaises(Refused):
+            client.run_maintenance("101", "systemd", "apache2", "expected-service")
+        self.assertEqual(host.preview_db_update.call_count, 1)
+        self.assertEqual(host.run_maintenance.call_count, 1)
 
     def test_unauthenticated_write_is_refused_and_logged(self):
         wc = self._client()
