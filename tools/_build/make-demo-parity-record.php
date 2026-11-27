@@ -51,14 +51,40 @@ function dpr_fail(string $message): void
  *
  * Reported to the room for the gate itself; this is the narrow fix in my lane.
  */
-const DPR_PLACEHOLDERS = ['FILL IN', 'FILLIN', 'TODO', 'TBD', 'XXX', '<fill', 'PLACEHOLDER'];
+const DPR_PLACEHOLDERS = ['FILL IN', 'FILLIN', 'TODO', 'TBD', 'TBC', 'XXX', 'PLACEHOLDER', 'FIXME'];
 
-/** Does this text still read as an unsupplied fact? */
+/**
+ * Text with every run of punctuation and whitespace flattened to one space.
+ *
+ * Muse's caveat on the first version (room 8417): it matched the exact
+ * substring, so "FILL  IN", "FILL\tIN", "FILL-IN" and "FILL_IN" all slipped
+ * past. Flattening first means one rule covers every spelling.
+ */
+function dpr_normalise(string $text): string
+{
+    $flat = preg_replace('/[^A-Za-z0-9]+/', ' ', strtoupper($text));
+    return trim((string)$flat);
+}
+
+/**
+ * Does this text still read as an unsupplied fact?
+ *
+ * A BARE "FILL" is only treated as a marker when it is the WHOLE field.
+ * SnapSmack has a feature called Generative Fill, so a capture may legitimately
+ * say "the Generative Fill panel" and must not be refused for it.
+ *
+ * This cannot catch plausible text somebody invented, and it is not meant to:
+ * it catches a template nobody filled in. Fabricated evidence is a different
+ * problem and no string check solves it.
+ */
 function dpr_is_placeholder(string $text): bool
 {
-    $upper = strtoupper($text);
+    $flat = dpr_normalise($text);
+    if ($flat === '' || $flat === 'FILL' || $flat === 'N A' || $flat === 'NA' || $flat === 'NONE') {
+        return true;
+    }
     foreach (DPR_PLACEHOLDERS as $marker) {
-        if (str_contains($upper, strtoupper($marker))) {
+        if (str_contains($flat, dpr_normalise($marker))) {
             return true;
         }
     }
