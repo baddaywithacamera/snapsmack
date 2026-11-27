@@ -39,6 +39,7 @@ if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
 
 // Diagnostic logger — extraction-lifecycle troubleshooting trail (logs/updater.log).
 require_once __DIR__ . '/diaglog.php';
+require_once __DIR__ . '/version-series.php';
 
 // release-pubkey.php holds the Ed25519 public key for verifying release packages.
 // It is PUBLIC — safe to ship and commit; only the matching private key (held in
@@ -589,16 +590,16 @@ function updater_check_status(string $installed_version, array $release_info, st
     }
     // Epoch-aware for the core too: a re-baselined core release would
     // otherwise read as older than what is installed.
-    $remote_cmp = snap_version_with_epoch($release_info);
-    if (snap_version_compare($remote_cmp, $installed_version, '>')) {
+    $remote_cmp = snap_release_version_with_epoch($release_info);
+    if (snap_compare_release_versions($remote_cmp, $installed_version, '>')) {
         return 'update_available';
     }
     // Same version number — check whether the package was rebuilt (checksum changed).
     // This lets force-pushed tags propagate to spokes without inflating the version.
     // Only applies when versions are exactly equal — never trigger on a remote version
     // that is older than what is installed (avoids false "update available" on stale servers).
-    $versions_equal = !snap_version_compare($remote_cmp, $installed_version, '<')
-                   && !snap_version_compare($remote_cmp, $installed_version, '>');
+    $versions_equal = !snap_compare_release_versions($remote_cmp, $installed_version, '<')
+                   && !snap_compare_release_versions($remote_cmp, $installed_version, '>');
     if ($versions_equal
         && $installed_checksum !== ''
         && !empty($release_info['checksum_sha256'])
@@ -761,7 +762,13 @@ function updater_load_protected_paths(): array {
     }
 
     $data = json_decode(file_get_contents($file), true);
-    return $data['protected'] ?? [];
+    // Very old installations shipped this exact entry and protected the
+    // manifest itself. Retire the entry in memory so the release can replace
+    // its system constants while all other local protection rules still apply.
+    return array_values(array_filter(
+        $data['protected'] ?? [],
+        static fn($path) => $path !== 'core/constants.php'
+    ));
 }
 
 /**
@@ -2543,9 +2550,9 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
             isset($skin['version'], $local[$slug]['version']) &&
             // Epoch-aware: see the note in core/skin-registry.php. A
             // re-baselined skin must not read as a downgrade.
-            snap_version_compare(
-                snap_version_with_epoch($skin),
-                snap_version_with_epoch($local[$slug]),
+            snap_compare_release_versions(
+                snap_release_version_with_epoch($skin),
+                snap_release_version_with_epoch($local[$slug]),
                 '>'
             )
         ) {
@@ -2584,9 +2591,9 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
     $mobile_missing  = $mobile_slug !== '' && !is_dir($mobile_dir);
     $mobile_outdated = $mobile_slug !== '' && !$mobile_missing
         && isset($mobile_entry['version'], $local[$mobile_slug]['version'])
-        && snap_version_compare(
-            snap_version_with_epoch($mobile_entry),
-            snap_version_with_epoch($local[$mobile_slug]),
+        && snap_compare_release_versions(
+            snap_release_version_with_epoch($mobile_entry),
+            snap_release_version_with_epoch($local[$mobile_slug]),
             '>'
         );
 

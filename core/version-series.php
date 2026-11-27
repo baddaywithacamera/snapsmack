@@ -38,13 +38,84 @@ declare(strict_types=1);
  * ALFRED 1.0.30 -> 0.7.31, THE GRID 1.3.64 -> 0.7.65.
  *
  * A re-baselined release carries version_epoch 1 so that a site holding the
- * old 2.1.30 treats 0.7.31 as newer -- see snap_version_compare() in
- * core/constants.php. Without the epoch every one of those sites would refuse
+ * old 2.1.30 treats 0.7.31 as newer -- see snap_compare_release_versions() below. Without the epoch every one of those sites would refuse
  * the update for ever and nobody would be told.
  *
  * NOTHING HERE REPUBLISHES ANYTHING. These are rules and a table; the
  * packager, updater and installer call them.
  */
+
+// --- VERSION COMPARISON ---
+// Versions are standard three-part semver: 0.7.17, 0.7.18, etc.
+// Milestone map: 0.7.x = Alpha, 0.8.x = Closed Beta, 0.9.x = Open Beta, 1.0 = Stable.
+//
+// Legacy installs (pre-0.7.17) used a letter-suffix scheme (0.7.9P, etc.).
+// This function handles both formats: it normalises a trailing letter to a
+// fourth numeric segment (a=1, b=2, ...) before delegating to version_compare().
+// Plain semver strings pass through unmodified (appended .0 is harmless).
+//
+// Usage: snap_compare_release_versions('0.7.123', '0.7.123', '>') => true
+//        snap_compare_release_versions('0.7.9p', '0.7.9n', '>') => true (legacy)
+//
+// --- THE EPOCH, AND WHY A NUMBER CAN GO DOWN ---
+//
+// SnapSmack is in alpha and every version is meant to be 0.7.x, but several
+// skins and tools drifted to 1.x and 2.x. Sean asked for that to stop and it
+// carried on, so the numbers are being brought back: IMPACT PRINTER 2.1.30
+// becomes 0.7.31, RATIONAL GEO 2.1.46 becomes 0.7.47, and so on.
+//
+// Semver says 2.1.30 is NEWER than 0.7.31, so without something else every
+// site holding the old number would refuse the re-baselined release for ever
+// and silently stay behind. That something else is an EPOCH: an integer that
+// is compared BEFORE the version, written as "epoch:version" the way Debian
+// and RPM have done it for twenty years.
+//
+//   snap_compare_release_versions('1:0.7.31', '0:2.1.30', '>')  => true
+//
+// A version with no colon is epoch 0, so every existing call and every
+// installed copy keeps behaving exactly as it did. The epoch only ever rises,
+// and only when Sean re-bases a series; it is not a version number and nobody
+// sets it per release.
+function snap_compare_release_versions(string $v1, string $v2, string $op = '>'): bool {
+    $split = function (string $v): array {
+        // "1:0.7.31" → [1, '0.7.31']. No colon → epoch 0, which is what every
+        // version in the wild before the re-baseline is.
+        if (preg_match('/^\s*(\d+)\s*:\s*(.*)$/', $v, $m) === 1) {
+            return [(int)$m[1], $m[2]];
+        }
+        return [0, $v];
+    };
+    $normalise = function (string $v): string {
+        // Strip non-numeric prefix (e.g. 'Alpha 0.7.182' → '0.7.182').
+        $v = preg_replace('/^[^0-9]+/', '', $v);
+        if (preg_match('/^(\d+(?:\.\d+)*)([a-z])$/i', $v, $m)) {
+            return $m[1] . '.' . (ord(strtolower($m[2])) - ord('a') + 1);
+        }
+        return $v . '.0';
+    };
+    [$e1, $r1] = $split($v1);
+    [$e2, $r2] = $split($v2);
+    if ($e1 !== $e2) {
+        // The epoch decides, and the version is not consulted at all: that is
+        // the whole point of having one.
+        return version_compare((string)$e1, (string)$e2, $op);
+    }
+    return version_compare($normalise($r1), $normalise($r2), $op);
+}
+
+/**
+ * The comparable version of a package entry, epoch included.
+ *
+ * Pass this, not $entry['version'], wherever a REMOTE package is compared
+ * against an INSTALLED one. A registry entry or manifest declares its epoch as
+ * version_epoch; absent means 0, which is every release made before the
+ * re-baseline.
+ */
+function snap_release_version_with_epoch(array $entry, string $version_key = 'version'): string {
+    $version = (string)($entry[$version_key] ?? '0.0');
+    $epoch = (int)($entry['version_epoch'] ?? 0);
+    return $epoch > 0 ? $epoch . ':' . $version : $version;
+}
 
 /** The only series anything may be published on while SnapSmack is in alpha. */
 const SNAP_VERSION_SERIES = '0.7';

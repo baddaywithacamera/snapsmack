@@ -22,8 +22,16 @@ declare(strict_types=1);
  */
 
 $root = dirname(__DIR__);
-require_once $root . '/core/constants.php';
-require_once $root . '/core/version-series.php';
+$legacy_constants = in_array('--legacy-constants', $argv, true);
+if ($legacy_constants) {
+    // Older installs have a comparator that knows nothing about epochs and
+    // do not define snap_version_with_epoch() at all.
+    function snap_version_compare(string $left, string $right, string $operator = '>'): bool {
+        return version_compare($left, $right, $operator);
+    }
+} else {
+    require_once $root . '/core/constants.php';
+}
 
 $fails = [];
 $check = static function (string $what, bool $ok) use (&$fails): void {
@@ -125,8 +133,8 @@ $check('an error from the server is still reported as an error',
 // ---------------------------------------------------------------------------
 foreach (['core/skin-registry.php', 'core/updater.php'] as $file) {
     $source = (string)file_get_contents($root . '/' . $file);
-    $check($file . ' compares through snap_version_with_epoch',
-        str_contains($source, 'snap_version_with_epoch('));
+    $check($file . ' compares through snap_release_version_with_epoch',
+        str_contains($source, 'snap_release_version_with_epoch('));
 }
 
 echo "\n";
@@ -134,6 +142,13 @@ if ($fails) {
     echo "FAILED (" . count($fails) . "):\n";
     foreach ($fails as $f) { echo "  - $f\n"; }
     exit(1);
+}
+if (!$legacy_constants) {
+    $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' --legacy-constants';
+    passthru($command, $legacy_status);
+    if ($legacy_status !== 0) {
+        exit($legacy_status);
+    }
 }
 echo "ALL PASS\n";
 

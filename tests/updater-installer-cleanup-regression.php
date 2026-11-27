@@ -3,7 +3,7 @@
 $source = dirname(__DIR__);
 $scratch = sys_get_temp_dir() . '/snapsmack-one-shot-' . bin2hex(random_bytes(6));
 mkdir($scratch . '/core', 0777, true);
-foreach (['updater.php', 'diaglog.php', 'installer-cleanup.php', 'release-pubkey.php'] as $file) {
+foreach (['updater.php', 'diaglog.php', 'installer-cleanup.php', 'release-pubkey.php', 'version-series.php'] as $file) {
     copy($source . '/core/' . $file, $scratch . '/core/' . $file);
 }
 define('SNAPSMACK_DIAGLOG_OFF', true);
@@ -15,7 +15,7 @@ $pdo->exec('CREATE TABLE snap_file_manifest (file_path TEXT)');
 $zipPath = $scratch . '/update.zip';
 $zip = new ZipArchive();
 $zip->open($zipPath, ZipArchive::CREATE);
-foreach (['install.php', 'setup.php', 'fedup.php', 'INSTALL.PHP', 'ordinary.php'] as $file) {
+foreach (['install.php', 'setup.php', 'fedup.php', 'INSTALL.PHP', 'ordinary.php', 'core/constants.php'] as $file) {
     $zip->addFromString('package/' . $file, 'new package content');
 }
 $zip->close();
@@ -27,13 +27,27 @@ try {
     // model the artifacts shipped by the actual release package.
     if (is_file($scratch . '/INSTALL.PHP') && realpath($scratch . '/INSTALL.PHP') !== realpath($scratch . '/install.php')) unlink($scratch . '/INSTALL.PHP');
     file_put_contents($scratch . '/core/db.php', 'configured');
+    $rules = json_encode(['protected' => ['core/db.php', 'core/constants.php', 'protected_paths.json']]);
+    file_put_contents($scratch . '/protected_paths.json', $rules);
+    $effective_rules = updater_load_protected_paths();
+    if (!updater_is_protected('protected_paths.json', $effective_rules)
+        || !updater_is_protected('core/db.php', $effective_rules)
+        || updater_is_protected('core/constants.php', $effective_rules)) {
+        throw new RuntimeException('Legacy rule handling changed the protection of another file.');
+    }
+
+
     foreach (['full', 'chunk'] as $mode) {
         foreach (['install.php', 'setup.php', 'fedup.php', 'core/.snapsmack-installer-state.php'] as $file) {
             file_put_contents($scratch . '/' . $file, 'old artifact');
         }
+        file_put_contents($scratch . '/core/constants.php', 'legacy constants');
         $result = $mode === 'full' ? updater_extract($zipPath) : updater_extract_chunk($zipPath, 0, 60);
         if (!$result['success'] || $result['files_skipped'] !== 4
             || snapsmack_installer_artifacts($scratch)
+            || file_get_contents($scratch . '/core/constants.php') !== 'new package content'
+            || file_get_contents($scratch . '/protected_paths.json') !== $rules
+            || file_get_contents($scratch . '/core/db.php') !== 'configured'
             || file_get_contents($scratch . '/ordinary.php') !== 'new package content') {
             throw new RuntimeException('One-shot update prevention failed: ' . $mode . ' ' . json_encode($result));
         }
