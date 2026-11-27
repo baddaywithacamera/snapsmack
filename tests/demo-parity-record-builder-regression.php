@@ -113,7 +113,21 @@ $check('the 1007D feature file is in the repository', is_file($featuresPath));
 if (is_file($featuresPath)) {
     $features = json_decode((string)file_get_contents($featuresPath), true);
     $check('it is a list of features', is_array($features) && $features !== []);
-    $check('it covers both SS-1600 features', is_array($features) && count($features) === 2);
+    // NOT A COUNT ANY MORE. This said count($features) === 2, and adding the
+    // version-epoch entry broke it -- correctly, but a magic number needs
+    // editing every time the build gains a feature, and an edited number is
+    // indistinguishable from a re-pin. What matters is WHICH changes have an
+    // entry, so the check names the one that can stop a site taking updates at
+    // all. The epoch is the highest-consequence thing in this build and it had
+    // no entry until now.
+    $check('the worksheet covers more than one feature',
+        is_array($features) && count($features) >= 2);
+    $all_acceptance = strtolower(implode(' ',
+        array_map(static fn ($f) => (string)($f['acceptance'] ?? ''), $features ?: [])));
+    $check('THE VERSION EPOCH HAS AN ENTRY -- the change that can stop a site updating',
+        str_contains($all_acceptance, 'epoch'));
+    $check('and its acceptance says what must still be offered, not just what changed',
+        str_contains($all_acceptance, 'newer') && str_contains($all_acceptance, 'offered'));
     $acceptances = array_map(static fn ($f) => (string)($f['acceptance'] ?? ''), $features ?: []);
     foreach ($acceptances as $text) {
         $check('each acceptance states what must be true, not what was built: '
@@ -135,8 +149,22 @@ if (is_file($featuresPath)) {
         rf_demo_parity_record_problem($built, $sha) !== '');
     $check('the BUILDER refuses it instead, naming every unsupplied fact',
         dpr_placeholders_left($built) !== []);
-    $check('it names the site, the room message and every capture as unsupplied',
-        count(dpr_placeholders_left($built)) === 2 + 2 + 4 + 2);
+    // ALSO NOT A HARDCODED SUM. This read 2 + 2 + 4 + 2, which is one site,
+    // one room message and the captures PER ENTRY written out by hand -- it
+    // broke the moment a feature was added, and the fix would have been to
+    // edit the arithmetic, which proves nothing. The expected total is derived
+    // from the worksheet itself: every entry's site, every entry's room
+    // message, and every capture in it. If a single one of those were
+    // accidentally filled with real text, this number would no longer match.
+    $expected_unsupplied = 0;
+    foreach ($features ?: [] as $feature) {
+        $expected_unsupplied += 2;                               // site, room message
+        $expected_unsupplied += count($feature['captures'] ?? []);
+    }
+    $check('it names EVERY unsupplied fact: expected ' . $expected_unsupplied,
+        count(dpr_placeholders_left($built)) === $expected_unsupplied);
+    $check('and there is more than one entry worth of them',
+        $expected_unsupplied > 6);
     $check('a fully supplied record has nothing left to fill in',
         dpr_placeholders_left(dpr_build_record($sha, 'claude', date('c'), $good)) === []);
     foreach (['FILL IN', 'todo', 'TBD', 'TBC', 'xxx', 'PLACEHOLDER', 'FIXME'] as $marker) {

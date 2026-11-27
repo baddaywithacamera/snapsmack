@@ -582,13 +582,14 @@
         "thresholds": []
     },
     "demo-parity-record-builder-regression.php": {
-        "assertions": 45,
-        "predicates": 8,
+        "assertions": 48,
+        "predicates": 11,
         "thresholds": [
             2,
             2,
             2,
             2,
+            6,
             120
         ]
     },
