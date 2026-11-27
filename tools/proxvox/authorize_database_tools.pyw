@@ -26,6 +26,7 @@ ROOT = Path(os.environ.get("PROXVOX_STAGE_DIR", str(Path(__file__).resolve().par
 PVE_HOST = "192.168.1.10"
 PVE_CERT = "debec00ae597023b601cca7e7316ba1ff0dca8cfe6446a478b47d34a9ba4a925"
 HOST_PATH = "/usr/local/sbin/"
+WINDOW_TITLE = "Authorize PROX VOX"
 OLD_WRITER = "aedb64d94a21caaa09668685d639c87db3200d9d18e0778cbd53d09f1d485f1d"
 PACKAGE = (
     ("proxvox-pymysql.whl", "proxvox-pymysql.whl",
@@ -188,6 +189,25 @@ def authorize(user, password, otp, publish, retain):
                 publish("Could not confirm session revocation. Check the host audit.")
 
 
+def activate_existing_form():
+    from ctypes import wintypes
+
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    find_window = user32.FindWindowW
+    find_window.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
+    find_window.restype = wintypes.HWND
+    window = find_window("TkTopLevel", WINDOW_TITLE)
+    if window:
+        show_window = user32.ShowWindow
+        show_window.argtypes = (wintypes.HWND, ctypes.c_int)
+        show_window.restype = wintypes.BOOL
+        show_window(window, 9)  # SW_RESTORE
+        foreground = user32.SetForegroundWindow
+        foreground.argtypes = (wintypes.HWND,)
+        foreground.restype = wintypes.BOOL
+        foreground(window)
+
+
 def main():
     from ctypes import wintypes
     kernel = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -202,10 +222,11 @@ def main():
     close_handle.argtypes = (wintypes.HANDLE,)
     if already_open:
         close_handle(handle)
+        activate_existing_form()
         return
     window = tk.Tk()
     publication_sha = os.environ.get("PROXVOX_PUBLICATION_SHA256")
-    window.title("Authorize PROX VOX")
+    window.title(WINDOW_TITLE)
     window.geometry("645x405")
     events = queue.SimpleQueue()
     panel = ttk.Frame(window, padding=24)

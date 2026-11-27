@@ -130,4 +130,20 @@ def test_shared_form_preflights_then_reuses_and_revokes(monkeypatch, valid_manif
         plan.assert_called_once_with("fixture", reader)
 
 
+def test_duplicate_launcher_reopens_the_shared_window_without_another_login(monkeypatch):
+    source = Path(__file__).resolve().parents[1]
+    monkeypatch.syspath_prepend(str(source))
+    main = runpy.run_path(str(source / "authorize_database_tools.pyw"))["main"]
+    kernel = SimpleNamespace(CreateMutexW=Mock(return_value=1), CloseHandle=Mock())
+    activate, create_window = Mock(), Mock()
+    monkeypatch.setitem(main.__globals__, "ctypes", SimpleNamespace(
+        WinDLL=lambda *args, **kwargs: kernel, get_last_error=lambda: 183))
+    monkeypatch.setitem(main.__globals__, "tk", SimpleNamespace(Tk=create_window))
+    monkeypatch.setitem(main.__globals__, "activate_existing_form", activate)
+    main()
+    kernel.CloseHandle.assert_called_once_with(1)
+    activate.assert_called_once()
+    create_window.assert_not_called()
+
+
 # ===== SNAPSMACK EOF =====
