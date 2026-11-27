@@ -570,6 +570,15 @@
             2
         ]
     },
+    "duplicate-detection-needs-corroboration-regression.php": {
+        "assertions": 26,
+        "predicates": 5,
+        "thresholds": [
+            2,
+            2,
+            111
+        ]
+    },
     "dwell-beacon-is-bound-to-its-hit.php": {
         "assertions": 31,
         "predicates": 18,
