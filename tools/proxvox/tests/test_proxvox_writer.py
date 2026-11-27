@@ -1022,7 +1022,10 @@ def test_host_writer_session_expires_even_if_wall_clock_moves_back(tmp_path, mon
     monotonic_start = time.monotonic()
     session = writer._start_write_session("root@pam", {})
     monkeypatch.setattr(writer.time, "time", lambda: session["expires_at"] - 120)
-    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 3601)
+    assert writer.WRITE_SESSION_SECONDS == 18000
+    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 4 * 60 * 60)
+    assert writer._check_write_session("root@pam", ticket) == session["expires_at"]
+    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 18001)
     with pytest.raises(writer.Refused, match="authorization expired"):
         writer._check_write_session("root@pam", ticket)
 

@@ -26,14 +26,14 @@ ROOT = Path(os.environ.get("PROXVOX_STAGE_DIR", str(Path(__file__).resolve().par
 PVE_HOST = "192.168.1.10"
 PVE_CERT = "debec00ae597023b601cca7e7316ba1ff0dca8cfe6446a478b47d34a9ba4a925"
 HOST_PATH = "/usr/local/sbin/"
-OLD_WRITER = "f93a0e380cd13f68d6b526274401a996b9938ad6345a298f2d0ea9488b9b718d"
+OLD_WRITER = "aedb64d94a21caaa09668685d639c87db3200d9d18e0778cbd53d09f1d485f1d"
 PACKAGE = (
     ("proxvox-pymysql.whl", "proxvox-pymysql.whl",
      "e169bed906168fffd0088925f45b3df024c2775c6fd128da0df773d47c458840", "-"),
     ("proxvox_database.py", "proxvox_database.py",
      "e04c639235c578cdd3767d21bb20b4208b865bc7f062fd438c84f204fd8702ff", "-"),
     ("proxvox_writer.py", "proxvox-writer",
-     "aedb64d94a21caaa09668685d639c87db3200d9d18e0778cbd53d09f1d485f1d", OLD_WRITER),
+     "18aa8c284eb9bbf5e64c6fa59323929f00bd3f7248ef107949e967e319e0712b", OLD_WRITER),
 )
 SITE_ROOT = "/var/www/sites/baddaywithacamera.ca"
 PUBLICATION_ROOT = "/var/www/snapsmack.ca/"
@@ -137,41 +137,35 @@ def publish_pages(reader, writer, client, planned, publish):
     return completed
 
 
-def upgrade(user, password, otp, publish, planned=None):
+def preview_artist(audit, writer):
+    target = ContainerTarget("ct102", "192.168.1.12", "proxvox-ro", "ct102_ssh", (SITE_ROOT,))
+    site = ContainerReadBroker([target], DatabaseTarget("192.168.1.20", "proxvox_ro"), audit)
+    page = site.select("ct102", "bad", "SELECT id, content FROM snap_pages WHERE slug=%s", ("the-artist",))
+    if len(page["rows"]) != 1 or page["rows"][0][0] != 3:
+        raise RuntimeError("Unexpected live page identity.")
+    key, value = page["rows"][0]
+    plan = {"target": "102", "config_path": SITE_ROOT + "/core/db.php", "database": "bad",
+            "table": "snap_pages", "key_column": "id", "key": key, "column": "content", "value": value}
+    user, ticket = writer.owner
+    preview = writer.preview_db_update(user, ticket, plan)
+    if not re.fullmatch(r"[0-9a-f]{64}", preview.get("expected", "")):
+        raise RuntimeError("The database preview did not confirm the expected row.")
+
+
+def upgrade(user, password, otp, publish, planned=None, retain=None):
     audit = AuditBuffer(str(ROOT.parent / "audit-buffer.jsonl"))
     reader = RootReadBroker(PVE_HOST, "proxvox-root-ro", audit)
     writer = UpgradeWriter(PVE_HOST, audit, str(Path.home() / ".ssh" / "snapsmack-proxvox-writer-ed25519"))
     client = None
+    retained = False
     phase = "preflight"
     try:
         if prepare(reader):
-            publish("The host certificate update is ready for review. Wait for installation before entering credentials.")
+            publish("The five-hour host update must be installed before this form can authorize a session.")
             return
         if user not in writer.scope().get("owner_users", []):
             publish("The installed writer does not accept this account. Wait for confirmation.")
             return
-        if planned is not None:
-            phase = "owner authorization"
-            publish("Verifying the account password and authenticator code…")
-            guid = machine_guid()
-            client = WriteClient(f"https://{PVE_HOST}:8006", audit, guid, actual_guid=guid,
-                                 certificate_sha256=PVE_CERT, host_writer=writer)
-            client.authorize(user, password, otp, timeout=25)
-            password = otp = ""
-            phase = "SnapSmack.ca publishing"
-            count = publish_pages(reader, writer, client, planned, publish)
-            client.revoke("SnapSmack.ca publication complete")
-            client = None
-            publish(f"Published and verified {count} files. The write session is closed.")
-            return
-        target = ContainerTarget("ct102", "192.168.1.12", "proxvox-ro", "ct102_ssh", (SITE_ROOT,))
-        site = ContainerReadBroker([target], DatabaseTarget("192.168.1.20", "proxvox_ro"), audit)
-        page = site.select("ct102", "bad", "SELECT id, content FROM snap_pages WHERE slug=%s", ("the-artist",))
-        if len(page["rows"]) != 1 or page["rows"][0][0] != 3:
-            raise RuntimeError("Unexpected live page identity.")
-        key, value = page["rows"][0]
-        plan = {"target": "102", "config_path": SITE_ROOT + "/core/db.php", "database": "bad",
-                "table": "snap_pages", "key_column": "id", "key": key, "column": "content", "value": value}
         phase = "owner authorization"
         publish("Verifying the account password and authenticator code…")
         guid = machine_guid()
@@ -179,12 +173,17 @@ def upgrade(user, password, otp, publish, planned=None):
                              certificate_sha256=PVE_CERT, host_writer=writer)
         client.authorize(user, password, otp, timeout=25)
         password = otp = ""
+        if retain is not None:
+            retain(client, writer)
+            retained = True
+        if planned is not None:
+            phase = "SnapSmack.ca publishing"
+            count = publish_pages(reader, writer, client, planned, publish)
+            publish(f"Published and verified {count} files.")
+            return
         phase = "read-only database rehearsal"
         publish("Verifying the database connection from the site container…")
-        session_user, ticket = writer.owner
-        preview = writer.preview_db_update(session_user, ticket, plan)
-        if len(preview.get("expected", "")) != 64:
-            raise RuntimeError("The database preview did not confirm the expected row.")
+        preview_artist(audit, writer)
         publish("The Artist database preview passed. No page content was written.")
     except Exception as error:
         reason = str(error)
@@ -200,12 +199,13 @@ def upgrade(user, password, otp, publish, planned=None):
             publish(f"Stopped during {phase} ({type(error).__name__}). Check the host result before retrying.")
     finally:
         password = otp = ""
-        if client is not None:
+        if client is not None and not retained:
             try:
                 client.revoke("PROX VOX form finished")
             except Exception:
                 publish("Could not confirm session revocation. Check the host audit.")
-        writer.owner = None
+        if not retained:
+            writer.owner = None
 
 
 def main():
@@ -227,7 +227,7 @@ def main():
     publication_sha = os.environ.get("PROXVOX_PUBLICATION_SHA256")
     window.title("Publish SnapSmack.ca through PROX VOX" if publication_sha
                  else "Authorize PROX VOX database tools")
-    window.geometry("645x365")
+    window.geometry("645x405")
     events = queue.SimpleQueue()
     panel = ttk.Frame(window, padding=24)
     panel.pack(fill="both", expand=True)
@@ -256,8 +256,10 @@ def main():
         entries.append(entry)
     form.columnconfigure(1, weight=1)
     status = tk.StringVar(value="Checking the installed host files…")
+    remaining = tk.StringVar(value="No active session")
     running = False
     planned = None
+    session = None
 
     def start():
         nonlocal running
@@ -277,14 +279,15 @@ def main():
 
         def work():
             try:
-                upgrade(account, secret, code, events.put, planned)
+                upgrade(account, secret, code, events.put, planned,
+                        retain=lambda client, writer: events.put(("session", (client, writer))))
             finally:
                 events.put(None)
 
         threading.Thread(target=work, daemon=True).start()
 
     def poll():
-        nonlocal running, planned
+        nonlocal running, planned, session
         while not events.empty():
             item = events.get()
             if isinstance(item, tuple) and item[0] == "ready":
@@ -294,15 +297,69 @@ def main():
                 for entry in entries:
                     entry.state(["!disabled"])
                 entries[0].focus_set()
+            elif isinstance(item, tuple) and item[0] == "session":
+                session = item[1]
+            elif isinstance(item, tuple) and item[0] == "end":
+                session = None
+                remaining.set("No active session")
+                status.set("PROX VOX session ended." if item[1] else "Could not confirm host revocation.")
+                running = False
+                if item[1] and item[2]:
+                    window.destroy()
+                    return
             elif item is None:
                 running = False
-                if not publication_sha:
+                if session is None:
                     button.state(["!disabled"])
                     for entry in entries:
                         entry.state(["!disabled"])
             else:
                 status.set(item)
+        seconds = session[0].seconds_remaining() if session else 0
+        if session and seconds == 0:
+            session[1].owner = None
+            session = None
+            remaining.set("The PROX VOX session expired.")
+        elif seconds:
+            hours, remainder = divmod(seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            remaining.set(f"Session remaining {hours:02}:{minutes:02}:{seconds:02}")
+        state = ["!disabled"] if session and not running else ["disabled"]
+        preview_action.state(state)
+        end_action.state(state)
         window.after(150, poll)
+
+    def use_session(end=False, close=False):
+        nonlocal running
+        if running:
+            return
+        if session is None:
+            if close:
+                window.destroy()
+            return
+        client, writer = session
+        running = True
+
+        def work():
+            try:
+                if end:
+                    client.revoke("Owner ended PROX VOX session")
+                    events.put(("end", True, close))
+                else:
+                    preview_artist(client.audit, writer)
+                    events.put("The Artist database preview passed. No page content was written.")
+            except Exception:
+                if end:
+                    events.put(("end", False, close))
+                else:
+                    events.put("The Artist preview did not complete.")
+            finally:
+                if end:
+                    writer.owner = None
+                else:
+                    events.put(None)
+
+        threading.Thread(target=work, daemon=True).start()
 
     def check_host():
         audit = AuditBuffer(str(ROOT.parent / "audit-buffer.jsonl"))
@@ -310,7 +367,7 @@ def main():
         try:
             pending = prepare(reader)
             if pending:
-                events.put("The host certificate update must be installed before you enter credentials.")
+                events.put("The five-hour host update must be installed before you enter credentials.")
                 return
             plan = publication_plan(publication_sha, reader) if publication_sha else None
         except Exception:
@@ -318,12 +375,19 @@ def main():
             return
         events.put(("ready", plan))
 
-    button = ttk.Button(panel, text="Authorize and publish" if publication_sha else "Authorize and preview",
+    actions = ttk.Frame(panel)
+    actions.pack(anchor="w")
+    button = ttk.Button(actions, text="Authorize and publish" if publication_sha else "Authorize and preview",
                         command=start, state="disabled")
-    button.pack(anchor="w")
+    button.pack(side="left")
+    preview_action = ttk.Button(actions, text="Preview The Artist", command=use_session, state="disabled")
+    preview_action.pack(side="left", padx=8)
+    end_action = ttk.Button(actions, text="End session", command=lambda: use_session(end=True), state="disabled")
+    end_action.pack(side="left")
+    ttk.Label(panel, textvariable=remaining).pack(anchor="w", pady=(10, 0))
     ttk.Label(panel, textvariable=status, wraplength=585).pack(anchor="w", pady=12)
     window.protocol("WM_DELETE_WINDOW", lambda: status.set("Please wait for the authorized operation to finish.")
-                    if running else window.destroy())
+                    if running else use_session(end=True, close=True))
     threading.Thread(target=check_host, daemon=True).start()
     poll()
     try:

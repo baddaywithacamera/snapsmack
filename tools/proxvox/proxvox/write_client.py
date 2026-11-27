@@ -17,6 +17,7 @@ Sean's rulings (2026-11-22 15:50, 15:51, 16:44):
 
 import hashlib
 import json
+import math
 import re
 import threading
 import time
@@ -30,6 +31,7 @@ from .tls_pin import CertificatePinError, pinned_https_opener
 
 ALLOWED_METHODS = ("POST", "PUT", "DELETE", "GET")
 PROXMOX_TICKET_TTL_SECONDS = 7200
+HOST_WRITE_SESSION_SECONDS = 5 * 60 * 60
 
 
 class WriteClient:
@@ -37,7 +39,7 @@ class WriteClient:
 
     def __init__(self, base_url: str, audit, pinned_guid: str,
                  actual_guid: str = None, opener=None, verify_host: bool = True,
-                 clock=None, ticket_ttl: int = PROXMOX_TICKET_TTL_SECONDS,
+                 clock=None, ticket_ttl: int | None = None,
                  certificate_sha256: str = "", expiry_timer_factory=None,
                  host_writer=None):
         if verify_host:
@@ -64,7 +66,8 @@ class WriteClient:
             self.audit.record("tls_refused", {"why": "Proxmox URL is not HTTPS"})
             raise Refused("PROX VOX requires an HTTPS Proxmox URL.")
         self._clock = clock or time.time
-        self._ticket_ttl = max(1, int(ticket_ttl))
+        default_ttl = HOST_WRITE_SESSION_SECONDS if host_writer is not None else PROXMOX_TICKET_TTL_SECONDS
+        self._ticket_ttl = max(1, min(int(ticket_ttl), default_ttl)) if ticket_ttl is not None else default_ttl
         self._expiry_timer_factory = expiry_timer_factory or threading.Timer
         self._certificate_sha256 = certificate_sha256
         self._host_writer = host_writer
@@ -110,7 +113,7 @@ class WriteClient:
                     self.audit.record("write_expired", {"username": user})
                     self._clear_session()
 
-            timer = self._expiry_timer_factory(self._ticket_ttl, expire)
+            timer = self._expiry_timer_factory(max(0, self._expires_at - float(self._clock())), expire)
             if hasattr(timer, "daemon"):
                 timer.daemon = True
             self._expiry_timer = timer
@@ -124,6 +127,12 @@ class WriteClient:
                 self._clear_session()
                 return False
             return True
+
+    def seconds_remaining(self) -> int:
+        with self._session_lock:
+            if not self.is_authorized():
+                return 0
+            return max(0, math.ceil(self._expires_at - float(self._clock())))
 
     # ── P3 Option A: /access/ticket + TFA ────────────────────────────────
     def authorize(self, username: str, password: str, otp: str,

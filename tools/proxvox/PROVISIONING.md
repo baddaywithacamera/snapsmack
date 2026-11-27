@@ -129,7 +129,10 @@ credentials above keep working without this setup.
    `host_writer`. Authorize with the enrolled owner account once per working
    session. The password goes to the Proxmox login and the next TOTP is
    confirmed by the host writer. Keep both in the local authorization form.
-   The default host session expires after one hour.
+   Host-backed file, database and maintenance operations share one five-hour
+   session. Each operation still needs its own grant. End the session early
+   from the authorization form. Native Proxmox API calls retain their own
+   Proxmox ticket lifetime.
 4. Exercise the whole path on a disposable file. Verify the hash after a
    successful write. Revoke the session and verify that a write with the old
    authorization is refused. Check the root-owned JSONL log at
