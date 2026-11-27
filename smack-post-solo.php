@@ -900,6 +900,13 @@ include 'core/sidebar.php';
                             </div>
                         </div>
                         <textarea id="desc" name="desc" placeholder="Plain text. Blank lines become paragraph breaks."></textarea>
+                        <section id="long-image-blocks" data-target="desc" data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>" style="margin-top:18px;display:none;">
+                            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;">
+                                <strong style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;">Image blocks</strong>
+                                <span class="dim" style="font-size:11px;">Drag a block edge or use its width slider. Text stays in the shortcode editor.</span>
+                            </div>
+                            <div id="long-image-block-list" style="display:grid;gap:12px;"></div>
+                        </section>
 
 
                     </div>
@@ -1066,6 +1073,7 @@ include 'core/sidebar.php';
     });
 </script>
 <script src="assets/js/shortcode-toolbar.js"></script>
+<script src="assets/js/smack-longform-image-blocks.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <?php if (snap_ai_active()): ?>
 <!-- AI Assist Modal -->
 <div id="ai-assist-overlay" class="ai-assist-overlay" style="display:none;" aria-modal="true" role="dialog" aria-label="AI Writing Assistant">

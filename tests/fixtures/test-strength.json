@@ -1579,6 +1579,11 @@
         "predicates": 1,
         "thresholds": []
     },
+    "longform-image-blocks-resize.test.js": {
+        "assertions": 21,
+        "predicates": 16,
+        "thresholds": []
+    },
     "longform-page-loads-the-engines-its-content-needs.php": {
         "assertions": 13,
         "predicates": 9,

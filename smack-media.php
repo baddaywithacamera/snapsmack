@@ -70,6 +70,42 @@ $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_border_color 
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_alt VARCHAR(500) DEFAULT NULL");
 $pdo->exec("ALTER TABLE snap_assets ADD COLUMN IF NOT EXISTS asset_caption VARCHAR(500) DEFAULT NULL");
 
+// --- AJAX IMAGE METADATA BY ID (for inline editor resize blocks) ---
+if (!empty($_GET['ajax']) && isset($_GET['ids'])) {
+    $ids = array_values(array_unique(array_filter(
+        array_map('intval', explode(',', (string)$_GET['ids'])),
+        static fn(int $id): bool => $id > 0
+    )));
+    $out = [];
+    if ($ids) {
+        $ids = array_slice($ids, 0, 100);
+        $ph  = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $pdo->prepare("SELECT id, asset_name AS img_title, asset_path AS img_file FROM snap_assets WHERE id IN ({$ph})");
+        $stmt->execute($ids);
+        $found = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $found[(int)$row['id']] = $row;
+        }
+        $missing = array_values(array_filter($ids, static fn(int $id): bool => !isset($found[$id])));
+        if ($missing) {
+            $mph   = implode(',', array_fill(0, count($missing), '?'));
+            $fstmt = $pdo->prepare("SELECT id, img_title, img_thumb_aspect, img_thumb_square, img_file FROM snap_images WHERE id IN ({$mph})");
+            $fstmt->execute($missing);
+            foreach ($fstmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $found[(int)$row['id']] = $row;
+            }
+        }
+        foreach ($ids as $id) {
+            if (isset($found[$id])) {
+                $out[] = $found[$id];
+            }
+        }
+    }
+    header('Content-Type: application/json');
+    echo json_encode(['images' => $out]);
+    exit;
+}
+
 // --- ALT SAVE (AJAX) ---
 // Persists per-asset accessibility ALT text. Rendered everywhere [img:ID] embeds
 // the asset (parser falls back to asset_name when blank).
