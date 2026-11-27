@@ -2554,8 +2554,8 @@
         "thresholds": []
     },
     "skin-packager-refuses-off-series-regression.php": {
-        "assertions": 68,
-        "predicates": 31,
+        "assertions": 71,
+        "predicates": 33,
         "thresholds": [
             2,
             2,

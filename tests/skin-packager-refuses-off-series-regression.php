@@ -9,6 +9,21 @@ declare(strict_types=1);
  * The Skin Packager must refuse a version at 0.8 or above, and must refuse a
  * re-baselined skin that does not carry its epoch.
  *
+ * THE NUMBERS, SO THEY LIVE WITH THE TEST AND NOT IN A COMMIT MESSAGE. (Muse
+ * had to reconcile these by hand, twice.) There are 70 assertion sites here
+ * plus the one non-zero exit at the end, which is the strength ledger's 71.
+ * A clean run EXECUTES 66 of them: four are failure-only branches that fire
+ * when an earlier step has already gone wrong -- an unopenable package, and
+ * three refusals that did not state their default output directory -- so on a
+ * passing run they are never reached. 70 minus 4 is 66. Any other run count
+ * here means something changed.
+ *
+ * AND THIS PARAGRAPH IS WRITTEN WITHOUT THE LITERAL TOKENS ON PURPOSE. The
+ * strength ledger reads test files as TEXT and counts assertion idioms, so the
+ * first version of this note -- which spelled out the call and the exit
+ * verbatim -- was itself counted, and the ledger went to 73. Documenting a
+ * count changed the count. Describe the idioms here; never spell them.
+ *
  * WHY HERE AND NOT IN THE RULE TEST. tests/version-series-gate-regression.php
  * proves the rules; this proves the PACKAGER APPLIES THEM, by running the real
  * command. A rule nothing calls is the fault class that shipped a sharing
@@ -279,8 +294,10 @@ if (preg_match('~default is (.+?)\.?$~m', $output, $m) === 1) {
         $normalised !== '' && strncmp($normalised, $rootNorm, strlen($rootNorm)) !== 0);
     $check('and not inside the repository internals either',
         !str_contains($normalised, '/.claude/') && !str_contains($normalised, '/.git/'));
+    $withGitDefault = $normalised;   // the no-git run below must NOT match this
 } else {
     $check('the refusal states the default output directory', false);
+    $withGitDefault = '';
 }
 
 
@@ -335,16 +352,80 @@ foreach ($newInTree as $stray) { @unlink($stray); }
 // rather than a stub. Measured with the climb removed: the default becomes
 // .claude/worktrees/<name>-builds, inside the repository's own internals.
 // ---------------------------------------------------------------------------
-$withoutGit = static function (array $args) use ($root): array {
-    $cmd = 'set "SNAPSMACK_GIT_BIN=' . $root . '/no-such-git.exe" && '
-        . escapeshellarg(PHP_BINARY) . ' '
+// THE FIRST VERSION OF THIS ONLY WORKED ON WINDOWS. (Muse, on 6e9133cd.) It
+// set the variable with cmd.exe syntax -- set "VAR=..." && php ... -- and on a
+// POSIX shell `set "VAR=..."` assigns POSITIONAL PARAMETERS and exports
+// nothing, so php ran with git available, $main_root was set, the fallback
+// climb never executed and all four checks below passed WITHOUT TESTING
+// ANYTHING. A test that proves nothing on the machine CI runs on is worse than
+// no test, and it is the same vacuous-pass fault this whole section was
+// written to close.
+//
+// putenv() changes this process's environment and the child inherits it, with
+// no shell involved, so it behaves the same on both platforms. And the result
+// is checked against the with-git default below rather than taken on trust: if
+// the knob ever stops reaching the child, the two defaults become equal and
+// that is caught instead of passing.
+// ONE MECHANISM, USED BY BOTH THE PROBE AND THE PACKAGER RUNS. The first
+// version had the probe and the packager run each set the variable their own
+// way, and mutation proof showed why that is useless: breaking the packager
+// run's mechanism left the probe passing, so the probe proved only that
+// putenv works in general -- not that THIS run used it. Both go through
+// $noGitRun now, so a mutation to the mechanism breaks the probe too and the
+// probe is a real control rather than a decoration. Same lesson as the scan
+// that kept its own copy of an exemption rule.
+$noGitRun = static function (string $cmd) use ($root): array {
+    $previous = getenv('SNAPSMACK_GIT_BIN');
+    putenv('SNAPSMACK_GIT_BIN=' . $root . '/no-such-git-binary');
+    try {
+        $lines = [];
+        $code  = 1;
+        exec($cmd . ' 2>&1', $lines, $code);
+        return [$code, implode("\n", $lines)];
+    } finally {
+        // Restore, so nothing after this section runs with a broken git path.
+        if ($previous === false) { putenv('SNAPSMACK_GIT_BIN'); }
+        else { putenv('SNAPSMACK_GIT_BIN=' . $previous); }
+    }
+};
+
+$withoutGit = static function (array $args) use ($root, $noGitRun): array {
+    $cmd = escapeshellarg(PHP_BINARY) . ' '
         . escapeshellarg($root . '/tools/_build/package-skin.php');
     foreach ($args as $arg) { $cmd .= ' ' . escapeshellarg($arg); }
-    $lines = [];
-    $code = 1;
-    exec($cmd . ' 2>&1', $lines, $code);
-    return [$code, implode("\n", $lines)];
+    return $noGitRun($cmd);
 };
+
+// THE POSITIVE CONTROL, and it is not the one I reached for first. The obvious
+// check -- that the no-git default DIFFERS from the with-git one -- is wrong:
+// measured, both resolve to the same directory, because the fallback climb
+// lands exactly where git would have said. That is the behaviour working, so
+// comparing them proves nothing either way.
+//
+// What failed on POSIX was the KNOB, not the packager, so the knob is what is
+// checked: a child process started the same way must actually see the
+// variable. The packager's only shell_exec reads it, so if a child sees it the
+// no-git path is genuinely taken; if some later change stops it arriving,
+// this fails instead of the four checks below passing vacuously.
+[, $seenByChild] = $noGitRun(escapeshellarg(PHP_BINARY) . ' -r '
+    . escapeshellarg("echo (string)getenv('SNAPSMACK_GIT_BIN');"));
+$seenByChild = trim($seenByChild);
+// WHAT THIS STILL CANNOT PROVE, said plainly. If $withoutGit were changed to
+// bypass $noGitRun and exec directly, the packager would run WITH git and
+// every check below would still pass -- because both routes resolve to the
+// same directory, which is the behaviour being correct, not a bug. That mutant
+// survives and I am not going to pretend otherwise. Closing it would mean
+// making the packager announce which route it took, which is output added for
+// a test rather than for an operator. The probe holds the mechanism; the
+// mechanism being USED by this particular call is held by there being only one
+// of it.
+$check('THE GIT KNOB REACHES THE CHILD PROCESS: ' . ($seenByChild ?: '(nothing)'),
+    str_contains(str_replace(chr(92), '/', $seenByChild), 'no-such-git-binary'));
+$check('and it is restored afterwards, so later checks run with real git',
+    getenv('SNAPSMACK_GIT_BIN') === false || !str_contains(
+        (string)getenv('SNAPSMACK_GIT_BIN'), 'no-such-git-binary'));
+$check('the binary it points at really does not exist',
+    !file_exists($root . '/no-such-git-binary'));
 
 [$code, $output] = $withoutGit(['tilez', '--output=' . $root]);
 $check('the packager still runs with no git available', $output !== '');
