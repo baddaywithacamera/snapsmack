@@ -2164,7 +2164,7 @@ to full disaster recovery.</p>
     codes are left out, and fleet or hub keys are left out too. A kit is a file you copy
     elsewhere and keep for years, so anything in it that could be used to sign in later
     does not belong in it.</li>
-    <li><strong>Kits made before version 0.7.1000D DO contain those second factors.</strong>
+    <li><strong>Kits made before version 0.7.1008D DO contain those second factors.</strong>
     Treat an older kit as a sensitive file. Importing one is safe — the import revokes every
     second factor it finds rather than restoring it — but the file itself still holds them,
     so store it as carefully as you would a password.</li>
