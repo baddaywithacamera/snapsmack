@@ -130,6 +130,16 @@ def serialize_block(b: dict) -> str:
         mirrors = b.get("mirrors") or ()
         m_attr = (" mirrors=" + ",".join(mirrors)) if mirrors else ""
         return "[mosaic=" + ",".join(map(str, order)) + " layout=" + layout + w_attr + m_attr + "]"
+    if t == "signature":
+        # SS-1621. THE SIGNATURE IS NOT BODY TEXT. The CMS carries it as POST
+        # FIELDS -- signature_image_id, signature_light_image_id and
+        # signature_dark_image_id, per Gemini's v2 contract (room 8475) -- so
+        # this block must contribute NOTHING to the body string.
+        # serialize_blocks() drops empty parts, so an empty string lets the
+        # block show the author where the signature goes without putting a
+        # single character into the post. A shortcode here would print literal
+        # text on 30 skins that know nothing about it.
+        return ""
     return str(b.get("text", ""))          # raw — verbatim
 
 
@@ -557,6 +567,91 @@ def site_blocks_are_untouched(blocks: list) -> bool:
     return bool(blocks) and all("src" in b for b in blocks)
 
 
+# ---------------------------------------------------------------------------
+# SS-1621: the SIGNATURE block, and the post fields it writes.
+#
+# Gemini's approved v2 contract (room 8475) is three post fields, each a
+# nullable image id with THREE distinct meanings that must not be confused:
+#   NULL     inherit the blog default
+#   0        explicit opt-out -- this post carries no signature
+#   an id    use that image
+# and a field OMITTED on an edit means "preserve what is stored", which is a
+# fourth state. That is why this cannot be a checkbox: a checkbox has two
+# states and this has four, and collapsing them is how a post silently loses
+# a signature the author never touched.
+#
+# The block records the author's INTENT, and signature_fields() turns that
+# intent into the payload. The sender is Codex's lane; this is the mapping it
+# should use, written once here rather than inferred at each call site.
+# ---------------------------------------------------------------------------
+
+SIGNATURE_MODES = ("inherit", "off", "custom")
+
+
+def signature_block_normalise(block: dict) -> dict:
+    """A signature block with a valid mode and clean ids."""
+    mode = str((block or {}).get("mode") or "inherit").lower()
+    if mode not in SIGNATURE_MODES:
+        mode = "inherit"
+
+    def _id(value):
+        try:
+            number = int(str(value).strip())
+        except (TypeError, ValueError):
+            return None
+        return number if number > 0 else None
+
+    return {
+        "type": "signature",
+        "mode": mode,
+        "light_image_id": _id((block or {}).get("light_image_id")),
+        "dark_image_id": _id((block or {}).get("dark_image_id")),
+    }
+
+
+def signature_fields(block: dict) -> dict:
+    """The post fields for one signature block, per the v2 contract.
+
+    inherit -> all three NULL, so the blog default applies.
+    off     -> all three 0, an explicit per-post opt-out.
+    custom  -> the chosen ids. A surface left empty stays NULL so it INHERITS
+               rather than silently switching itself off, which is the
+               difference between "I did not choose" and "I chose none". The
+               back-compat signature_image_id follows the light surface when
+               there is one, because light is the default surface (TILEZ).
+    """
+    clean = signature_block_normalise(block)
+    if clean["mode"] == "off":
+        return {"signature_image_id": 0,
+                "signature_light_image_id": 0,
+                "signature_dark_image_id": 0}
+    if clean["mode"] == "inherit":
+        return {"signature_image_id": None,
+                "signature_light_image_id": None,
+                "signature_dark_image_id": None}
+    light = clean["light_image_id"]
+    dark = clean["dark_image_id"]
+    return {"signature_image_id": light if light is not None else dark,
+            "signature_light_image_id": light,
+            "signature_dark_image_id": dark}
+
+
+def signature_fields_for_blocks(blocks: list) -> dict:
+    """The fields for a whole draft, or {} to leave the stored values alone.
+
+    A draft with NO signature block returns {}, which the sender must read as
+    OMIT THESE FIELDS. That is the contract's "preserve" state, and it matters:
+    a draft that never mentioned signatures must not clear one.
+
+    The LAST signature block wins if somebody adds two. A post has one
+    signature, and declining to choose would mean sending nothing, which reads
+    as "preserve" and would quietly ignore what the author did.
+    """
+    found = [b for b in (blocks or [])
+             if isinstance(b, dict) and b.get("type") == "signature"]
+    return signature_fields(found[-1]) if found else {}
+
+
 def blocks_to_json(blocks: list) -> str:
     return json.dumps(blocks or [], ensure_ascii=False)
 
@@ -594,6 +689,7 @@ _TYPE_LABELS = [
     ("spacer",  "Spacer"),
     ("hr",      "Divider line"),
     ("mosaic",  "Mosaic — this post's photos"),
+    ("signature", "Signature"),
     ("raw",     "Raw (kept exactly as-is)"),
 ]
 
@@ -634,6 +730,30 @@ class _BlockRow(QFrame):
     # -- per-type editors ---------------------------------------------------
     def _build_body(self, col, b):
         t = self.btype
+        if t == "signature":
+            clean = signature_block_normalise(b)
+            self.sig_mode = QComboBox()
+            self.sig_mode.addItem("Use this blog's signature", "inherit")
+            self.sig_mode.addItem("No signature on this post", "off")
+            self.sig_mode.addItem("Choose images for this post", "custom")
+            self.sig_mode.setCurrentIndex({"inherit": 0, "off": 1, "custom": 2}[clean["mode"]])
+            col.addWidget(self.sig_mode)
+            row = QHBoxLayout()
+            row.addWidget(field_label("Light background"))
+            self.sig_light = QLineEdit('' if clean["light_image_id"] is None
+                                       else str(clean["light_image_id"]))
+            self.sig_light.setPlaceholderText("image id")
+            row.addWidget(self.sig_light, 1)
+            row.addWidget(field_label("Dark background"))
+            self.sig_dark = QLineEdit('' if clean["dark_image_id"] is None
+                                      else str(clean["dark_image_id"]))
+            self.sig_dark.setPlaceholderText("image id")
+            row.addWidget(self.sig_dark, 1)
+            col.addLayout(row)
+            col.addWidget(hint("Shows where your signature goes. It is not part of the "
+                               "post's words, so this adds nothing to the text. Leave a "
+                               "surface empty to keep the blog's choice for it."))
+            return
         if t == "site_mosaic":
             # A gallery that lives on the site. It is a BLOCK -- movable and
             # deletable -- but nothing about it is editable here, and it must
@@ -805,6 +925,12 @@ class _BlockRow(QFrame):
 
     def _to_block_from_widgets(self) -> dict:
         t = self.btype
+        if t == "signature":
+            return signature_block_normalise({
+                "mode": self.sig_mode.currentData(),
+                "light_image_id": self.sig_light.text(),
+                "dark_image_id": self.sig_dark.text(),
+            })
         if t == "site_mosaic":
             # Nothing here is editable: it points at a gallery on the site.
             # Rebuilt from what was imported so it cannot drift.
