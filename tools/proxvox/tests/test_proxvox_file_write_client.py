@@ -878,6 +878,24 @@ def test_the_real_transport_forbids_agent_forwarding_and_password_auth():
     # real ssh needs the provisioned host. It is the only check here that
     # does, and it is marked so nobody mistakes it for an executed one.
 
+def test_real_transport_hides_the_windows_ssh_console(monkeypatch):
+    from proxvox.file_write_client import _ssh_runner
+
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return subprocess.CompletedProcess(argv, 0, b"result", b"")
+
+    monkeypatch.setattr(subprocess, "CREATE_NO_WINDOW", 0x08000000, raising=False)
+    monkeypatch.setattr(subprocess, "run", run)
+    assert _ssh_runner("fixture", "owner", "/key", "scope", b"", 5) == (0, b"result", b"")
+    assert calls[0][1]["creationflags"] == 0x08000000
+    monkeypatch.delattr(subprocess, "CREATE_NO_WINDOW")
+    _ssh_runner("fixture", "owner", "/key", "scope", b"", 5)
+    assert calls[1][1]["creationflags"] == 0
+
+
 def test_session_transport_keeps_secrets_out_of_commands_and_client_audit():
     challenge, code, ticket, csrf = ("PVE:!tfa!fixture", "012345", "fixture-ticket", "fixture-csrf")
     calls = []

@@ -78,6 +78,8 @@ def _ssh_runner(host, account, identity, command, stdin_bytes, timeout):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         timeout=timeout,
+        # A GUI launched with pythonw has no console to share with ssh.exe.
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     return completed.returncode, completed.stdout, completed.stderr
 
