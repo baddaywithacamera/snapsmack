@@ -39,6 +39,68 @@ def isolated_settings(directory):
             stack.enter_context(_replace_for_fixture(module, "QSettings", fixture_settings))
         yield
 
+def take_resize_checks(mode, output):
+    """Exercise actual Visual and Text drag events in the frozen composer."""
+    from PySide6.QtCore import QPoint, Qt
+    from PySide6.QtGui import QColor, QPixmap
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication, QDialog
+
+    from coldsnap_qt import biggie
+    from coldsnap_qt.mode_take import _ImageWidthPreview
+
+    app = QApplication.instance()
+    mode.body._set_biggie(True)
+    canvas = mode.body.canvas
+    fixture = QPixmap(240, 120)
+    fixture.fill(QColor("#1968aa"))
+    canvas.set_image_resolver(lambda *_: fixture)
+    original = "[img:7|100%|decorative]"
+    canvas.from_blocks(biggie.parse_body(original))
+    canvas.select_block_at(0)
+    app.processEvents()
+    handle = canvas._image_resize_handle
+    if handle is None:
+        return {"visual_image_resize": False, "text_image_resize": False}
+    rect, _, width, column, _ = handle
+    start = rect.center()
+    end = start - QPoint(round(column * .1), 0)
+    handle_visible = canvas.viewport().rect().contains(rect)
+    QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=start)
+    QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=end)
+    visual = handle_visible and width == 100 and canvas.body_text() == "[img:7|80%|decorative]"
+    canvas.grab().save(str(output / "visual-image-resize.png"), "PNG")
+
+    mode.body._set_biggie(False)
+    editor = mode.body.editor
+    text = "Lead [img:7|40%|decorative] then [img:8|30]"
+    editor.setPlainText(text)
+    cursor = editor.document().find("40%")
+    cursor.clearSelection()
+    editor.setTextCursor(cursor)
+
+    def drag_preview(dialog):
+        dialog.show()
+        app.processEvents()
+        preview = dialog.findChild(_ImageWidthPreview)
+        if preview is None or not preview._handle.isValid():
+            return QDialog.Rejected
+        start = preview._handle.center()
+        end = start + QPoint(round((preview.width() - 26) * .1), 0)
+        QTest.mousePress(preview, Qt.LeftButton, pos=start)
+        QTest.mouseMove(preview, end)
+        QTest.mouseRelease(preview, Qt.LeftButton, pos=end)
+        dialog.grab().save(str(output / "text-image-resize.png"), "PNG")
+        return QDialog.Accepted if preview.percent == 60 else QDialog.Rejected
+
+    with _replace_for_fixture(QDialog, "exec", drag_preview):
+        mode._resize_text_image()
+    expected = text.replace("40%", "60%")
+    mode.body._set_biggie(True)
+    mode.body._set_biggie(False)
+    return {"visual_image_resize": visual, "text_image_resize": editor.toPlainText() == expected}
+
+
 def take_composer_checks(mode, files, *, check_renderer=False):
     """Exercise the real composer controls against a disposable queued post."""
     from PySide6.QtCore import QPoint, QPointF, Qt
@@ -1050,6 +1112,7 @@ def _run_capture(out, app, retire_views, overlap):
     content, _ = SmacktalkPoster._wire_body(imported)
     checks["published_unchanged_send_preserves_body"] = content == site_body
     imported_canvas.grab().save(str(out / "published-import-parity.png"), "PNG")
+    checks.update(take_resize_checks(composer_mode, out))
     composer_mode.close()
 
     checks["one_mosaic_browser_at_a_time"] = not overlap
