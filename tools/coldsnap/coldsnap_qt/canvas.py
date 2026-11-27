@@ -28,6 +28,7 @@ import json
 import math
 import os
 import re
+from threading import Thread
 
 from PySide6.QtCore import Qt, QPointF, QRect, QRectF, QSize, QSizeF, QTimer, Signal
 from PySide6.QtGui import (
@@ -864,6 +865,7 @@ class BiggieCanvas(QTextEdit):
     photographsDropped = Signal(list)
     photographPasted = Signal(object)
     trayPhotoDropped = Signal(str)
+    _galleryPathsReady = Signal(str, object)
 
     def __init__(self, parent=None, *, allow_mosaic: bool = True):
         super().__init__(parent)
@@ -873,6 +875,10 @@ class BiggieCanvas(QTextEdit):
         self._image_resize_handle = None
         self._image_resize_drag = None
         self._image_resolver = None      # callable(img_id, width) -> QPixmap|None
+        self._published_image_paths = {}
+        self._gallery_site = ""
+        self._gallery_paths = {}
+        self._galleryPathsReady.connect(self._apply_gallery_paths)
         self.signature_default = lambda: 0
         self._site_provider = None       # callable() -> site url; unlocks the gallery picker
         self._pending_obj_pos = None     # document position of a mosaic being edited
@@ -1107,6 +1113,33 @@ class BiggieCanvas(QTextEdit):
     def set_image_resolver(self, fn):
         self._image_resolver = fn
 
+    def set_published_image_paths(self, paths):
+        self._published_image_paths = dict(paths)
+        self.viewport().update()
+
+    def _apply_gallery_paths(self, site, paths):
+        if site == self._gallery_site:
+            self._gallery_paths = paths
+            self.viewport().update()
+
+    def _load_gallery_paths(self, site):
+        self._gallery_site = site
+        self._gallery_paths = {}
+
+        def load():
+            from .gallery_picker import gallery_images
+
+            paths = {}
+            for image in gallery_images(site):
+                if image["path"]:
+                    paths.setdefault(image["img_id"], image["path"])
+            try:
+                self._galleryPathsReady.emit(site, paths)
+            except RuntimeError:
+                pass  # The editor closed before the worker finished.
+
+        Thread(target=load, name="coldsnap-gallery-preview", daemon=True).start()
+
     def set_site_provider(self, fn):
         """Tell the canvas which site it writes for: IMG becomes a picture picker
         from that site's cached Media Gallery, and inline images paint for real."""
@@ -1123,26 +1156,24 @@ class BiggieCanvas(QTextEdit):
             side = max(64, int(width))
             sid = str(img_id).strip().lower()
             if sid.startswith("asset:"):
-                from .widgets import load_pixmap
                 path = self.assets.get(sid[6:])
-                if path in self._local_preview_paths:
-                    return self._objects._cached_cell_pixmap(path, QSize(side, side))
-                return load_pixmap(path, side) if path else None
+                return self._objects._cached_cell_pixmap(path, QSize(side, side))
             if sid.startswith("bucket:") and sid[7:].isdigit():
                 n = int(sid[7:])
                 if 1 <= n <= len(self.bucket):
-                    from .widgets import load_pixmap
                     path = self.bucket[n - 1]
-                    if path in self._local_preview_paths:
-                        return self._objects._cached_cell_pixmap(path, QSize(side, side))
-                    return load_pixmap(path, side)
+                    return self._objects._cached_cell_pixmap(path, QSize(side, side))
                 return None
             if self._image_resolver is not None:
                 return self._image_resolver(img_id, width)
+            path = self._published_image_paths.get(sid)
+            if path:
+                return self._objects._cached_cell_pixmap(path, QSize(side, side))
             site = self._site()
             if site:
-                from .gallery_picker import gallery_thumb_path
-                path = gallery_thumb_path(site, img_id)
+                if site != self._gallery_site:
+                    self._load_gallery_paths(site)
+                path = self._gallery_paths.get(sid)
                 return self._objects._cached_cell_pixmap(path, QSize(side, side)) if path else None
         except Exception:  # noqa: BLE001 — a preview must never break typing
             return None
