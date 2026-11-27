@@ -55,4 +55,36 @@ def test_clearing_shared_cache_keeps_saved_draft_original(monkeypatch, tmp_path)
     assert not path.exists()
     assert saved.read_bytes() == b"original"
 
+def test_open_published_keeps_other_photos_when_one_preview_is_unreadable(monkeypatch, tmp_path):
+    from io import BytesIO
+    from types import SimpleNamespace
+    from PIL import Image
+    from coldsnap_qt import mode_take
+    from test_ss1514_open_published_preserves_draft import _FakePoster, _setup_mode, _wait_until
+
+    positive = BytesIO()
+    Image.new("RGB", (160, 100), "#3377aa").save(positive, "JPEG")
+    invalid_url = "https://media.example/bad.jpg"
+    valid_url = "https://media.example/good.jpg"
+    files = {invalid_url: b"not an image", valid_url: positive.getvalue()}
+    monkeypatch.setattr(mode_take.requests, "get", lambda url, timeout: SimpleNamespace(
+        content=files[url], raise_for_status=lambda: None,
+    ))
+    post = {"id": 4, "title": "Published post", "content": "<p>Still editable.</p>",
+            "featured_image_id": 21,
+            "bucket": [{"id": 21, "url": invalid_url}, {"id": 22, "url": valid_url}]}
+    app, mode = _setup_mode(monkeypatch, tmp_path, _FakePoster([post], {4: post}))
+    try:
+        mode._open_published(choose_fn=lambda _title: "separate")
+        assert _wait_until(app, lambda: mode._remote_post_id == 4)
+        assert "Still editable." in mode.body.toPlainText()
+        assert [image.remote_image_id for image in mode._bucket] == [21, 22]
+        broken, good = mode._bucket
+        assert broken.is_cover and not broken.thumb_aspect
+        assert Path(good.thumb_aspect).is_file()
+        assert "1 photo preview unavailable" in mode.save_state.text()
+    finally:
+        mode.close()
+
+
 # ===== SNAPSMACK EOF =====
