@@ -888,12 +888,22 @@ class SmacktalkPoster:
             "album_ids": [int(value) for value in (getattr(draft, "album_ids", []) or [])],
             "colophon": getattr(draft, "colophon", "") or "",
         }
-        signature_ids = [image_ids[n] for n, image in enumerate(draft.images)
-                         if n < len(image_ids) and getattr(image, "is_signature", False)]
-        if not draft.signature_enabled:
+        signature_fields = {}
+        if draft.body_blocks:
+            from coldsnap_qt import biggie
+            signature_fields = biggie.signature_fields_for_blocks(
+                biggie.blocks_from_json(draft.body_blocks))
+        if signature_fields:
+            payload.update(signature_fields)
+        elif not draft.signature_enabled:
             payload["signature_image_id"] = 0
-        elif signature_ids or self.signature_image_id or not draft.remote_post_id:
-            payload["signature_image_id"] = int(signature_ids[0]) if signature_ids else self.signature_image_id
+        else:
+            signature_id = next((int(image_ids[n]) for n, image in enumerate(draft.images)
+                                 if n < len(image_ids) and getattr(image, "is_signature", False)), None)
+            if signature_id is not None:
+                payload["signature_image_id"] = signature_id
+            elif not draft.remote_post_id:
+                payload["signature_image_id"] = self.signature_image_id
         if draft.post_date:
             payload["date"] = draft.post_date
         # An imported post keeps its old URL slug (SMACKPRESS / BLOGGER FLOGGER);

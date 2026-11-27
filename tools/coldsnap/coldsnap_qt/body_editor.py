@@ -185,6 +185,7 @@ class BodyEditor(QWidget):
 
         # Last-used face is a per-tool setting (spec §7: biggie_enabled).
         self._biggie_on = False
+        self._text_signatures = []
         if not self.rich:
             self._biggie_page.hide()
             self._apply_face(False)
@@ -241,9 +242,13 @@ class BodyEditor(QWidget):
             self._apply_face(on)   # re-assert button states
             return
         if on:
-            self.biggie.from_blocks(biggie.parse_body(self.editor.toPlainText()))
+            self.biggie.from_blocks(self.authoring_blocks())
+            self._text_signatures = []
         else:
-            self.editor.setPlainText(biggie.serialize_blocks(self.biggie.to_blocks()))
+            blocks = self.biggie.to_blocks()
+            self._text_signatures = [(None if index == len(blocks) - 1 else index, block) for index, block in enumerate(blocks)
+                                     if block.get("type") == "signature"]
+            self.editor.setPlainText(biggie.serialize_blocks(blocks))
         self._apply_face(on)
         # SS-1084. THIS USED TO REWRITE THE WHOLE CONFIGURATION TO REMEMBER ONE
         # BOOLEAN, and that is how every stored credential on this machine got
@@ -274,11 +279,13 @@ class BodyEditor(QWidget):
         return self.editor.toPlainText()
 
     def setPlainText(self, text: str):
+        self._text_signatures = []
         self.editor.setPlainText(text or "")
         if self._biggie_on:
             self.biggie.from_blocks(biggie.parse_body(text or ""))
 
     def clear(self):
+        self._text_signatures = []
         self.editor.clear()
         self.biggie.clear()
 
@@ -291,11 +298,16 @@ class BodyEditor(QWidget):
 
     def authoring_blocks(self) -> list:
         """Canonical local model. Unlike the wire string, this retains UUIDs."""
-        return self.biggie.to_blocks() if self._biggie_on else biggie.parse_body(
-            self.editor.toPlainText())
+        if self._biggie_on:
+            return self.biggie.to_blocks()
+        blocks = biggie.parse_body(self.editor.toPlainText())
+        for index, signature in self._text_signatures:
+            blocks.insert(len(blocks) if index is None else index, signature)
+        return blocks
 
     def set_state(self, caption: str, blocks_json: str):
         """Restore a draft: blocks win when the draft has them."""
+        self._text_signatures = []
         blocks = biggie.blocks_from_json(blocks_json)
         if blocks and not self.rich:
             # A draft made when this box still had BIGGIE: keep every word as text.
