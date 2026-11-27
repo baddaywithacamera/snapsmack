@@ -288,9 +288,40 @@ foreach ($current as $name => $now) {
     $wasBars = array_map('floatval', (array)($was['thresholds'] ?? []));
     $nowBars = array_map('floatval', $now['thresholds']);
     if ($wasBars !== $nowBars) {
+        // BY COUNT, NOT BY POSITION. This used array_diff_assoc(), which
+        // compares index against index. Both lists are SORTED, so inserting a
+        // smaller number shifts everything after it and the comparison then
+        // reports the largest values as missing when nothing was removed at
+        // all. Measured: adding two 2s to [2,2,2,2,30] produced
+        // [2,2,2,2,2,2,30] and the gate announced "Gone from the file: 30"
+        // while 30 was still there.
+        //
+        // That is the worst possible direction for this message to be wrong
+        // in. "A threshold was removed" is the OPAUDIT 026 signal -- the one
+        // that means stop and look -- so a false one on a purely additive
+        // change teaches the next reader to run --update straight through it,
+        // which is how a real removal gets waved past.
+        //
+        // A threshold is gone when there are FEWER of it than there were, so
+        // the occurrences are counted on both sides and only a genuine
+        // shortfall is named.
         $lowered = [];
-        foreach (array_values(array_diff_assoc($wasBars, $nowBars)) as $gone) {
-            $lowered[] = (string)($gone == (int)$gone ? (int)$gone : $gone);
+        $tally = static function (array $bars): array {
+            $counts = [];
+            foreach ($bars as $bar) {
+                $key = (string)$bar;
+                $counts[$key] = ($counts[$key] ?? 0) + 1;
+            }
+            return $counts;
+        };
+        $wasCounts = $tally($wasBars);
+        $nowCounts = $tally($nowBars);
+        foreach ($wasCounts as $key => $count) {
+            $short = $count - ($nowCounts[$key] ?? 0);
+            if ($short <= 0) { continue; }
+            $value = (float)$key;
+            $label = (string)($value == (int)$value ? (int)$value : $value);
+            for ($i = 0; $i < $short; $i++) { $lowered[] = $label; }
         }
         $problems[] = sprintf(
             "%s: the numbers it holds the code to changed.\n      was: %s\n      now: %s\n"
