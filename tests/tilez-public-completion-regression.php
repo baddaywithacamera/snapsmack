@@ -79,7 +79,20 @@ $expect(str_contains($manifest, '"asset:public:public-base"')
 $expect(str_contains($assetRegistry, "if(isset(\$registry[\$handle]))")
     && str_contains($assetRegistry, "':css'"),
     'Paired mosaic JavaScript and CSS can overwrite one another in the asset registry.');
-$expect(str_contains($controller, "\$post['signature_image_id']")
+// THIS EXPECTATION CHANGED, AND THAT NEEDS SAYING OUT LOUD. It required the
+// literal $post['signature_image_id'] in the controller. SS-1621 replaced that
+// raw field read with snap_signature_resolve(), which applies the four-state
+// contract -- an id, an explicit opt-out, inherit the blog default, or the
+// legacy field's own meaning -- so the literal is gone while the thing the
+// rule protects is MORE true than it was: the controller no longer reads a
+// column directly at all.
+//
+// Requiring the resolver is STRICTER than requiring the field, not looser: the
+// old form was satisfied by any code that touched that column, including code
+// that ignored what it found. The person-name prohibitions below are the real
+// teeth of this rule and are untouched.
+$expect(str_contains($controller, 'snap_signature_resolve(')
+    && !str_contains($controller, "\$post['signature_image_id']")
     && !str_contains(strtolower($controller), 'mccormick')
     && !str_contains(strtolower($repository), 'mccormick'),
     'Public rendering guesses a site-specific signature instead of using the post contract.');

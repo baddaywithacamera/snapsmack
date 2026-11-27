@@ -2670,6 +2670,26 @@
         "predicates": 3,
         "thresholds": []
     },
+    "signature-contract-four-states-regression.php": {
+        "assertions": 194,
+        "predicates": 32,
+        "thresholds": [
+            2,
+            9,
+            9,
+            11,
+            30,
+            42,
+            42,
+            77,
+            77,
+            77,
+            99,
+            413,
+            413,
+            414
+        ]
+    },
     "site-mode-guard-regression.php": {
         "assertions": 25,
         "predicates": 29,
@@ -3449,7 +3469,7 @@
     },
     "tilez-public-completion-regression.php": {
         "assertions": 43,
-        "predicates": 69,
+        "predicates": 70,
         "thresholds": [
             2
         ]

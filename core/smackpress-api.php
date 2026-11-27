@@ -28,6 +28,7 @@ header('Content-Type: application/json');
 
 // --- AUTH ---
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/signature-contract.php';  // the two-variant signature rules
 
 function smackpress_ensure_key_type(PDO $pdo): void {
     // Defensive: add key_type column if this is a pre-SmackPress install
@@ -81,6 +82,11 @@ function smackpress_error(int $code, string $message): void {
 function smackpress_ok(array $data): void {
     echo json_encode(array_merge(['status' => 'ok'], $data));
     exit;
+}
+
+/** How this API refuses a signature field that is none of the four states. */
+function smackpress_signature_refuse(string $message): void {
+    smackpress_error(422, $message);
 }
 
 $route = $_GET['route'] ?? '';
@@ -676,8 +682,27 @@ if ($sub === 'posts' && $method === 'POST') {
     // id is also a snap_images id, so we treat it as the cover too.
     $featured_image = !empty($body['featured_image_id']) ? (int)$body['featured_image_id']
                     : (!empty($body['featured_asset_id']) ? (int)$body['featured_asset_id'] : null);
-    $has_signature_image = array_key_exists('signature_image_id', $body);
-    $signature_image = !empty($body['signature_image_id']) ? (int)$body['signature_image_id'] : null;
+    // ── SIGNATURE, FOUR STATES ───────────────────────────────────────────
+    // The two-variant contract: signature_image_id (legacy, follows light),
+    // signature_light_image_id and signature_dark_image_id. Each field has
+    // four states and they are NOT interchangeable:
+    //
+    //   omitted  preserve whatever is stored (a re-pull must not clear one)
+    //   null     inherit the blog default
+    //   0        explicit opt-out: this post carries no signature
+    //   id       that image
+    //
+    // THE OLD LINE COLLAPSED TWO OF THEM. It read
+    //     !empty($body['signature_image_id']) ? (int)... : null
+    // so a client sending 0 got null. That was harmless while null meant "no
+    // signature", and it is the opposite of the author's intent the moment
+    // null means "inherit": asking for no signature would have produced the
+    // blog's. The rules live in core/signature-contract.php, where a test can
+    // run them -- this file reads a route and authenticates at the top level,
+    // so nothing defined in it can be required by the suite.
+    $signature_fields    = snap_signature_read($body, 'smackpress_signature_refuse');
+    $has_signature_image = $signature_fields[SNAP_SIGNATURE_LEGACY_FIELD]['sent'];
+    $signature_image     = $signature_fields[SNAP_SIGNATURE_LEGACY_FIELD]['value'];
     $manual_tags    = trim($body['tags'] ?? '');
     $selected_cats  = array_map('intval', $body['cat_ids'] ?? []);
     if (empty($selected_cats) && !empty($body['category_id'])) {
@@ -750,11 +775,20 @@ if ($sub === 'posts' && $method === 'POST') {
         ? smackpress_sanitize_html(smack_autop_long($raw_colophon))
         : null;
 
-    if ($signature_image) {
+    // Every signature id the caller sent must be a real image. An id that is
+    // not there is refused, not stored: a stored id pointing at nothing renders
+    // as a missing picture on a published page.
+    foreach (snap_signature_ids_to_verify($signature_fields) as $field_name => $image_id) {
         $image_check = $pdo->prepare("SELECT id FROM snap_images WHERE id=? LIMIT 1");
-        $image_check->execute([$signature_image]);
-        if (!$image_check->fetchColumn()) smackpress_error(422, 'Signature image was not found.');
+        $image_check->execute([$image_id]);
+        if (!$image_check->fetchColumn()) {
+            smackpress_error(422, "Signature image for {$field_name} was not found.");
+        }
     }
+
+    $signature_update = snap_signature_write_sql($signature_fields, false);
+    $signature_sql    = $signature_update['sql'];
+    $signature_params = $signature_update['params'];
 
     if ($post_id) {
         // UPDATE
@@ -775,10 +809,12 @@ if ($sub === 'posts' && $method === 'POST') {
             if ($has_primary_cat)    { $portfolio_sql .= ', primary_category_id=?'; $portfolio_params[] = $primary_cat; }
         }
         $sql = "UPDATE snap_posts SET title=?, slug=?, content=?, colophon=?, signature_image_id=?, status=?, allow_comments=?, featured_image_id=?, user_id=?"
+             . $signature_sql
              . $portfolio_sql
              . ($custom_date ? ", created_at=?" : "")
              . " WHERE id=? AND post_type='longform'";
         $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
+        foreach ($signature_params as $p) $params[] = $p;
         foreach ($portfolio_params as $p) $params[] = $p;
         if ($custom_date) $params[] = $custom_date;
         $params[] = $post_id;
@@ -824,13 +860,23 @@ if ($sub === 'posts' && $method === 'POST') {
             if ($has_primary_album)  { $portfolio_cols .= ',primary_album_id';    $portfolio_marks .= ',?'; $portfolio_params[] = $primary_album; }
             if ($has_primary_cat)    { $portfolio_cols .= ',primary_category_id'; $portfolio_marks .= ',?'; $portfolio_params[] = $primary_cat; }
         }
+        // Same for the two signature variants: only what the caller sent is
+        // written, so an omitted field takes the column default rather than a
+        // value this code invented.
+        $signature_insert        = snap_signature_write_sql($signature_fields, true);
+        $signature_cols          = $signature_insert['sql'];
+        $signature_marks         = $signature_insert['marks'];
+        $signature_insert_params = $signature_insert['params'];
         $sql = "INSERT INTO snap_posts (title,slug,content,colophon,signature_image_id,post_type,status,allow_comments,featured_image_id,user_id"
+             . $signature_cols
              . $portfolio_cols
              . ($custom_date ? ",created_at" : "")
              . ") VALUES(?,?,?,?,?,'longform',?,?,?,?"
+             . $signature_marks
              . $portfolio_marks
              . ($custom_date ? ",?" : "") . ")";
         $params = [$title, $slug, $content_html, $colophon_html, $signature_image, $status, $allow_comments, $featured_image, $actor_user_id];
+        foreach ($signature_insert_params as $p) $params[] = $p;
         foreach ($portfolio_params as $p) $params[] = $p;
         if ($custom_date) $params[] = $custom_date;
         $pdo->prepare($sql)->execute($params);
@@ -868,7 +914,9 @@ if ($sub === 'posts' && $method === 'POST') {
 // =====================================================================
 if (preg_match('#^posts/(\d+)$#', $sub, $m) && $method === 'GET') {
     $post_id = (int)$m[1];
-    $stmt = $pdo->prepare("SELECT id,title,slug,content,colophon,signature_image_id,status,allow_comments,created_at,
+    $stmt = $pdo->prepare("SELECT id,title,slug,content,colophon,signature_image_id,
+                                  signature_light_image_id,signature_dark_image_id,
+                                  status,allow_comments,created_at,
                                   featured_image_id
                              FROM snap_posts WHERE id=? AND post_type='longform'");
     $stmt->execute([$post_id]);
@@ -917,6 +965,25 @@ if (preg_match('#^posts/(\d+)$#', $sub, $m) && $method === 'GET') {
     $post['id'] = (int)$post['id'];
     $post['featured_image_id'] = (int)($post['featured_image_id'] ?? 0);
     $post['signature_image_id'] = (int)($post['signature_image_id'] ?? 0);
+    // The two variants go back UNCAST -- see snap_signature_response(), which
+    // is where that rule and the reason for it live.
+    $post = array_merge($post, snap_signature_response($post));
+    // And the client is told plainly that inherit resolves to nothing yet,
+    // rather than being left to wonder why a signature never appears.
+    // Whether "inherit" can resolve depends on THIS blog's settings, so they
+    // are read rather than assumed. A client that is told inherit resolves
+    // when it does not would show the author a choice that silently does
+    // nothing.
+    $sig_settings = [];
+    try {
+        $sig_settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
+                            ->fetchAll(PDO::FETCH_KEY_PAIR) ?: [];
+    } catch (Throwable $e) {
+        $sig_settings = [];   // no settings table on an older install: not resolvable
+    }
+    $post['signature_inherit_resolvable'] = snap_signature_inherit_is_resolvable($sig_settings);
+    $post['signature_default_light_image_id'] = snap_signature_default_for($sig_settings, 'light');
+    $post['signature_default_dark_image_id']  = snap_signature_default_for($sig_settings, 'dark');
     $post['url'] = $base_url . 'post/' . $post['slug'];
     smackpress_ok(['post' => $post]);
 }

@@ -213,7 +213,11 @@ CREATE TABLE IF NOT EXISTS `snap_posts` (
   `colophon`          longtext       COLLATE utf8mb4_unicode_ci DEFAULT NULL
                       COMMENT 'Optional post ephemera such as camera, materials, or production notes.',
   `signature_image_id` int unsigned  DEFAULT NULL
-                      COMMENT 'Optional closing signature image — FK to snap_images.id.',
+                      COMMENT 'Optional closing signature image — FK to snap_images.id. LEGACY/back-compat: follows the light surface. NULL keeps its original meaning here — no signature on this post — so nothing already published moves.',
+  `signature_light_image_id` int unsigned DEFAULT NULL
+                      COMMENT 'Closing signature for the LIGHT surface — FK to snap_images.id. Four states: NULL inherits the blog default, 0 is an explicit opt-out, an id selects that image, and an omitted field preserves whatever is stored. Added for the two-variant signature contract.',
+  `signature_dark_image_id` int unsigned DEFAULT NULL
+                      COMMENT 'Closing signature for the DARK surface — FK to snap_images.id. Same four states as signature_light_image_id. Added for the two-variant signature contract.',
   `featured_asset_id` int unsigned   DEFAULT NULL
                       COMMENT 'Legacy hero image for longform posts — FK to snap_assets.id (Library). Superseded by featured_image_id (Gallery) as the cover source — migration 041',
   `featured_image_id` int unsigned   DEFAULT NULL

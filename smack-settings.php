@@ -18,6 +18,7 @@ require_once 'core/auth-smack.php';
 require_once 'core/ste-client.php';
 require_once 'core/client-ip.php';
 require_once 'core/pocket-album-share-control.php';
+require_once 'core/signature-contract.php';   // this blog's default signature
 
 // Separate POST action: test saved settings without saving the main form.
 $brevo_test_flash = (string)($_SESSION['brevo_test_flash'] ?? '');
@@ -266,6 +267,18 @@ if (isset($_POST['save_settings'])) {
         $_POST['settings'][snap_pocket_album_share_key()] =
             snap_pocket_album_share_sanitise($_POST['settings'][snap_pocket_album_share_key()]);
     }
+    // The blog's default signature, one id per surface. The loop below stores
+    // posted values as they stand, so an unclamped value would reach the
+    // settings table and then the render path. Blank is a real choice (no blog
+    // signature); anything that is not a positive integer becomes blank rather
+    // than a number this code invented. Admin only: it changes what appears on
+    // every post that inherits.
+    foreach (SNAP_SIGNATURE_DEFAULT_KEYS as $sig_default_key) {
+        if (!isset($_POST['settings'][$sig_default_key])) { continue; }
+        smack_require_admin();
+        $_POST['settings'][$sig_default_key] =
+            snap_signature_default_sanitise($_POST['settings'][$sig_default_key]);
+    }
     // update_track: only 'stable' or 'dev' are valid; anything else silently collapses to 'stable'.
     if (isset($_POST['settings']['update_track']) && !in_array($_POST['settings']['update_track'], ['stable', 'dev'], true)) {
         $_POST['settings']['update_track'] = 'stable';
@@ -459,6 +472,17 @@ include 'core/sidebar.php';
                     <div class="read-only-display client-ip-diagnostic">
                         <?php echo strtoupper(htmlspecialchars($active_skin_friendly)); ?>
                     </div>
+
+                    <?php
+                    // THIS BLOG'S CLOSING SIGNATURE. What a post means when it
+                    // says "use this blog's signature" -- until these are set,
+                    // that choice resolves to nothing, which is why the control
+                    // exists. Both start EMPTY on every site: a signature is
+                    // the author's own mark and nothing seeds it for them.
+                    // Rendering picks light or dark by surface; a site with
+                    // only one set uses it for both.
+                    snap_signature_default_control($pdo, $settings);
+                    ?>
                 </div>
             </div>
         </div>
