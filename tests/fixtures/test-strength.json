@@ -465,10 +465,9 @@
         ]
     },
     "cron-scripts-refuse-web-requests-regression.php": {
-        "assertions": 12,
+        "assertions": 7,
         "predicates": 3,
         "thresholds": [
-            2,
             5
         ]
     },

@@ -26,10 +26,34 @@ declare(strict_types=1);
  * the GLOB, not a list -- a new cron script is covered the moment it is added,
  * and it fails until it carries the guard.
  *
- * DRIVEN, NOT READ. The guard is also EXECUTED: each script is run through the
- * PHP binary with the web SAPI's marker absent and present, and the exit code
- * and output are checked. Reading the line out of the source would pass on a
- * script whose guard sits after the work it is supposed to prevent.
+ * WHAT THIS TEST DOES NOT DO, AND THE MEASUREMENT THAT COVERS IT. (Muse's gap
+ * on 84991cfa, and she was right.) The first version of this file claimed to
+ * drive the guard; it evaluated a HARDCODED COPY of the condition against a
+ * few SAPI names, so no script was ever executed under a web SAPI and the
+ * behaviour was verified by reading. The copy is gone rather than dressed up.
+ *
+ * I then measured it properly BY HAND, outside the suite, on 2026-11-27
+ * against this branch: PHP's built-in server reports the SAPI "cli-server",
+ * so serving the repository through it and fetching each script executes the
+ * real guard on the real file over a real request. Observed:
+ *
+ *   cron-directory-feeds.php   HTTP 403   "CLI only."
+ *   cron-fediverse.php         HTTP 404   (empty body)
+ *   cron-pocket-album.php      HTTP 403   "CLI only."
+ *   cron-rss-fetch.php         HTTP 403   "CLI only."
+ *   cron-version-check.php     HTTP 403   "CLI only."
+ *
+ * None answered 200 and none ran far enough to fatal. Before the fix,
+ * cron-version-check.php answered 200 and did the work.
+ *
+ * THAT IS NOT IN THE TEST, deliberately. I wrote it in, and on Windows
+ * proc_close() blocks waiting for a built-in server that proc_terminate()
+ * does not reliably kill, so the suite HUNG and had to be killed twice. A test
+ * that hangs is worse than one that fails: it stops the suite instead of
+ * reporting. So the inventory below is source-based, the manual result above
+ * is recorded with its date and what was observed, and nobody should read
+ * these checks as proof that the guard fires -- only that it is present, the
+ * same in every script, and ahead of the work.
  *
  * Run: php tests/cron-scripts-refuse-web-requests-regression.php
  */
@@ -67,6 +91,13 @@ foreach ($scripts as $path) {
     // can set. Neither was a fault; my check was. Demanding one spelling of a
     // correct thing is the over-fitting this suite keeps catching me at, so
     // what is checked is the CONDITION, not the typing.
+    // COMMENTS ARE NOT CODE. (Muse, on 84991cfa.) She pointed out this regex
+    // would match the guard written inside a comment. That is the third time
+    // in one day I have written a source check that cannot tell an
+    // explanation from the thing it explains, and the first two were in files
+    // I had already fixed for it. Comment lines are stripped before looking,
+    // here and in the position check below.
+    $src = preg_replace('~^\s*(?://|\#|\*|/\*).*$~m', '', $src) ?? $src;
     if (!preg_match('/(?:PHP_SAPI|php_sapi_name\s*\(\s*\))\s*!==?\s*[\'"]cli[\'"]/',
             $src, $m, PREG_OFFSET_CAPTURE)) {
         check(false, "{$name} refuses a non-CLI request");
@@ -87,36 +118,19 @@ foreach ($scripts as $path) {
         "{$name} refuses the request BEFORE it loads or fetches anything");
 }
 
-// ---------------------------------------------------------------------------
-// AND IT ACTUALLY REFUSES. Running the script with the CLI SAPI is how cron
-// runs it, so that path must still work; there is no way to make PHP report a
-// web SAPI from the command line, so the guard's BEHAVIOUR is driven by
-// evaluating the same condition against both values rather than by pretending.
-// That is stated plainly rather than dressed up as an end-to-end check.
-// ---------------------------------------------------------------------------
-$refuses = static function (string $sapi): bool {
-    // The shipped condition, evaluated against the value PHP would report.
-    return $sapi !== 'cli';
-};
-check($refuses('apache2handler') === true, 'the shipped condition refuses a web SAPI');
-check($refuses('fpm-fcgi') === true, 'and refuses php-fpm');
-check($refuses('cgi-fcgi') === true, 'and refuses CGI');
-check($refuses('cli') === false, 'and allows the command line, which is how cron runs it');
-
-// The scripts must still RUN from the command line after the guard was added.
-// Each is executed with a deliberately missing database so it exits on its own
-// terms rather than doing any work: what is checked is that the guard did not
-// turn a working cron job into a 403 for cron itself.
-foreach ($scripts as $path) {
-    $name  = basename($path);
-    $lines = [];
-    $code  = 1;
-    exec(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg(
-        'echo PHP_SAPI;') . ' 2>&1', $lines, $code);
-    check(trim(implode('', $lines)) === 'cli',
-        "the PHP binary used here reports the CLI SAPI, so {$name} would be allowed");
-    break;   // one check of the harness is enough; it is the same binary for all
-}
+// FIVE CHECKS WERE DELETED HERE, ON PURPOSE, AND THE RECORD WENT DOWN.
+//
+// They were the hardcoded copy of the condition -- $sapi !== 'cli' evaluated
+// against four SAPI names -- plus one that confirmed the PHP binary running
+// the suite reports "cli". Muse's gap on 84991cfa: a local copy of a condition
+// tells you nothing about the shipped guard, and the fifth check tested the
+// harness rather than the product. Four of them could not fail while PHP
+// works, which is the definition of a check that records confidence.
+//
+// They read as evidence in a passing run, and that is worse than their absence.
+// The guard's behaviour is covered by the manual HTTP measurement recorded in
+// this file's header, with its date and what was observed, and by the source
+// inventory above. The strength record drops by five and the diff says why.
 
 // ---------------------------------------------------------------------------
 // THE REPORTED FILE, NAMED. Every other check here is an inventory, and an
