@@ -108,6 +108,22 @@ $check('and a path with no rule is not', !$rewritten('api/pocket-album'));
 // ---------------------------------------------------------------------------
 // Every /api/... path written in the source must be reachable.
 // ---------------------------------------------------------------------------
+// THE EXEMPTION DECISION, defined ONCE and used by both the scan below and the
+// sample checks further down. Muse's condition on bfcfc064: the scan had its
+// own copy of these two rules, so a mutant that dropped the advertises-check
+// FROM THE SCAN ALONE passed every sample check and the string check too. Two
+// copies of one rule is the drift fault I keep writing tests about, in my own
+// test.
+//
+// A line recording that a path 404s is documenting ABSENCE and is excused. A
+// line that ADVERTISES a path names a method -- "GET /api/x" -- and is never
+// excused, however it is annotated.
+$excused = static function (string $line): bool {
+    $advertises = preg_match('~(?:GET|POST|PUT|PATCH|DELETE)\s+/api/~i', $line) === 1;
+    $records_absence = preg_match('~404|does not exist|never existed|unreachable~i', $line) === 1;
+    return $records_absence && !$advertises;
+};
+
 $sources = [];
 foreach ([$root . '/*.php', $root . '/core/*.php'] as $glob) {
     foreach (glob($glob) ?: [] as $file) { $sources[] = $file; }
@@ -152,9 +168,7 @@ foreach ($sources as $file) {
             // unreachable path as long as 404 appeared anywhere on it. An
             // ADVERTISEMENT names a method -- "GET /api/x" -- so a line doing
             // that is never excused, however it is annotated.
-            $advertises = preg_match('~(?:GET|POST|PUT|PATCH|DELETE)\s+/api/~i', $line) === 1;
-            $records_absence = preg_match('~404|does not exist|never existed|unreachable~i', $line) === 1;
-            if ($records_absence && !$advertises) {
+            if ($excused($line)) {
                 continue;
             }
             $documented++;
@@ -190,11 +204,6 @@ $check('the dispatcher comment documents it too',
 // a mutant that dropped the advertises-check survive, because no line in the
 // tree happens to both advertise a path and mention 404 -- so the repo could
 // not tell the two rules apart. These samples can.
-$excused = static function (string $line): bool {
-    $advertises = preg_match('~(?:GET|POST|PUT|PATCH|DELETE)\s+/api/~i', $line) === 1;
-    $records_absence = preg_match('~404|does not exist|never existed|unreachable~i', $line) === 1;
-    return $records_absence && !$advertises;
-};
 $check('a line recording that a path 404s IS excused',
     $excused(' *   /api/albums/191                        with 404'));
 $check('a line that ADVERTISES a path is NOT excused, even mentioning 404',
@@ -202,8 +211,22 @@ $check('a line that ADVERTISES a path is NOT excused, even mentioning 404',
 $check('an advertisement with no annotation is not excused',
     !$excused(' * GET /api/nope?x=1'));
 $check('a line with neither is not excused', !$excused(' * just prose about the api'));
-$check('the exemption in the scan above uses the same two rules',
-    str_contains((string)file_get_contents(__FILE__), '$records_absence && !$advertises'));
+// The scan must CALL the decision, not carry a copy of it. A substring search
+// for the expression passed while two copies existed, which is what let the
+// mutant live.
+$ownSource = (string)file_get_contents(__FILE__);
+$check('the scan calls the shared decision rather than repeating it',
+    str_contains($ownSource, 'if ($excused($line)) {'));
+// Counting the DEFINITION, not the expression: my first version searched for
+// the expression text, which this very check contains, so it counted itself
+// and reported two.
+// THE NEEDLE IS ASSEMBLED, so it never appears whole in this file and cannot
+// count itself. Two earlier versions of this check did exactly that -- one
+// searched for the expression it contains, the next for the definition it
+// contains -- and both reported two occurrences when there was one.
+$needle = 'advertises' . ' = ' . 'preg_match(';
+$check('and the rule is DEFINED exactly once in this file',
+    substr_count($ownSource, $needle) === 1);
 
 $check('the docblock explains why the pretty path did not work, not just what to type',
     stripos($api, 'RewriteRule') !== false || stripos($api, 'rewrite') !== false);
