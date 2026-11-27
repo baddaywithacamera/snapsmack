@@ -3118,7 +3118,12 @@ class TakeMode(QWidget):
                     self._published_post_failed(exc)
                     return
             self._edit(draft)
-            self.save_state.setText("Published post opened separately — your draft is still safe")
+            missing_previews = sum(not image.thumb_aspect for image in draft.images)
+            if missing_previews:
+                label = "photo preview" if missing_previews == 1 else "photo previews"
+                self.save_state.setText(f"Published post opened. {missing_previews} {label} unavailable.")
+            else:
+                self.save_state.setText("Published post opened separately — your draft is still safe")
         self.rail.refresh_batches()
 
     def _published_post_failed(self, error) -> None:
@@ -3194,8 +3199,13 @@ class TakeMode(QWidget):
                 if image.width > 0 and image.height > 0 and square.is_file() and aspect.is_file():
                     image.thumb_square, image.thumb_aspect = str(square), str(aspect)
                     image.thumb_params = O.thumb_signature(image)
-                elif not O.generate_image_thumbs(image):
-                    raise ValueError(f"Could not prepare a preview for {filename}.")
+                else:
+                    try:
+                        O.generate_image_thumbs(image)
+                    except OSError:
+                        # The existing remote image and the rest of the post remain editable
+                        # even when a thumbnail cannot be written to the local cache.
+                        pass
             return image
 
         if rows:
