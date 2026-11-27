@@ -5,9 +5,11 @@
 """
 import ctypes
 import hashlib
+import json
 import os
 from pathlib import Path
 import queue
+import re
 import threading
 import tkinter as tk
 import urllib.error
@@ -34,6 +36,9 @@ PACKAGE = (
      "aedb64d94a21caaa09668685d639c87db3200d9d18e0778cbd53d09f1d485f1d", OLD_WRITER),
 )
 SITE_ROOT = "/var/www/sites/baddaywithacamera.ca"
+PUBLICATION_ROOT = "/var/www/snapsmack.ca/"
+PUBLICATION_PAGES = ("wotcha.php", "tool-snap-slapper.php", "faq-tools.php",
+                     "includes/header.php", "index.php")
 
 
 class UpgradeWriter(ScopedFileWriter):
@@ -76,7 +81,63 @@ def prepare(reader):
     return pending
 
 
-def upgrade(user, password, otp, publish):
+def publication_plan(manifest_sha256, reader):
+    manifest = (ROOT / "publications-homepage-preflight.json").read_bytes()
+    if digest(manifest) != manifest_sha256:
+        raise RuntimeError("Publication manifest changed after review.")
+    canonical = Path(os.environ["PROXVOX_SITE_CHECKOUT"]).resolve(strict=True)
+    planned = []
+    seen = set()
+    for item in json.loads(manifest):
+        path = item["path"]
+        name = path.removeprefix(PUBLICATION_ROOT)
+        if (path != PUBLICATION_ROOT + name or name in seen
+                or (name not in PUBLICATION_PAGES
+                    and not re.fullmatch(r"img/[\w-]+(?:\.[\w-]+)+", name))):
+            raise RuntimeError("Unexpected publication path.")
+        seen.add(name)
+        local = (canonical / name).resolve(strict=True)
+        if not local.is_relative_to(canonical):
+            raise RuntimeError("Local publication file is outside the checkout.")
+        content = local.read_bytes()
+        wanted = item["new_sha256"]
+        expected = item["expected_sha256"]
+        if digest(content) != wanted or len(content) > 8 * 1024 * 1024:
+            raise RuntimeError(f"Canonical file changed or exceeds the writer limit: {name}")
+        try:
+            live = digest(reader.read_file(path, vmid=101))
+        except Exception as error:
+            if "No such file or directory" not in str(error):
+                raise
+            live = "-"
+        if live != expected:
+            raise RuntimeError(f"The live file changed since review: {name}")
+        planned.append((path, content, expected, wanted))
+    page_order = tuple(path.removeprefix(PUBLICATION_ROOT)
+                       for path, *_ in planned if not path.startswith(PUBLICATION_ROOT + "img/"))
+    if not page_order or page_order != tuple(name for name in PUBLICATION_PAGES if name in seen):
+        raise RuntimeError("Publication manifest is empty or out of order.")
+    if any(path.startswith(PUBLICATION_ROOT + "img/") for path, *_ in planned[-len(page_order):]):
+        raise RuntimeError("Publish image dependencies before their pages.")
+    return planned
+
+
+def publish_pages(reader, writer, client, planned, publish):
+    completed = 0
+    for path, content, expected, wanted in planned:
+        name = path.removeprefix(PUBLICATION_ROOT)
+        publish(f"Publishing {name} ({completed + 1} of {len(planned)})…")
+        grant = client.mint_file_grant(target="101", path=path, sha256=wanted)
+        result = writer.put_file("101", path, content, grant, expected)
+        if (result.get("verified") is not True or result.get("sha256_after") != wanted
+                or digest(reader.read_file(path, vmid=101)) != wanted):
+            raise RuntimeError(f"Readback failed for {name}.")
+        completed += 1
+        publish(f"Verified {name} ({completed} of {len(planned)}).")
+    return completed
+
+
+def upgrade(user, password, otp, publish, planned=None):
     audit = AuditBuffer(str(ROOT.parent / "audit-buffer.jsonl"))
     reader = RootReadBroker(PVE_HOST, "proxvox-root-ro", audit)
     writer = UpgradeWriter(PVE_HOST, audit, str(Path.home() / ".ssh" / "snapsmack-proxvox-writer-ed25519"))
@@ -88,6 +149,20 @@ def upgrade(user, password, otp, publish):
             return
         if user not in writer.scope().get("owner_users", []):
             publish("The installed writer does not accept this account. Wait for confirmation.")
+            return
+        if planned is not None:
+            phase = "owner authorization"
+            publish("Verifying the account password and authenticator code…")
+            guid = machine_guid()
+            client = WriteClient(f"https://{PVE_HOST}:8006", audit, guid, actual_guid=guid,
+                                 certificate_sha256=PVE_CERT, host_writer=writer)
+            client.authorize(user, password, otp, timeout=25)
+            password = otp = ""
+            phase = "SnapSmack.ca publishing"
+            count = publish_pages(reader, writer, client, planned, publish)
+            client.revoke("SnapSmack.ca publication complete")
+            client = None
+            publish(f"Published and verified {count} files. The write session is closed.")
             return
         target = ContainerTarget("ct102", "192.168.1.12", "proxvox-ro", "ct102_ssh", (SITE_ROOT,))
         site = ContainerReadBroker([target], DatabaseTarget("192.168.1.20", "proxvox_ro"), audit)
@@ -126,7 +201,10 @@ def upgrade(user, password, otp, publish):
     finally:
         password = otp = ""
         if client is not None:
-            client.revoke("SS-1615 read-only preview complete")
+            try:
+                client.revoke("PROX VOX form finished")
+            except Exception:
+                publish("Could not confirm session revocation. Check the host audit.")
         writer.owner = None
 
 
@@ -146,13 +224,19 @@ def main():
         close_handle(handle)
         return
     window = tk.Tk()
-    window.title("Authorize PROX VOX database tools")
+    publication_sha = os.environ.get("PROXVOX_PUBLICATION_SHA256")
+    window.title("Publish SnapSmack.ca through PROX VOX" if publication_sha
+                 else "Authorize PROX VOX database tools")
     window.geometry("645x365")
     events = queue.SimpleQueue()
     panel = ttk.Frame(window, padding=24)
     panel.pack(fill="both", expand=True)
-    ttk.Label(panel, text="PROX VOX database preview", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 10))
-    ttk.Label(panel, text="This verifies the installed host files and checks the connection to The Artist.",
+    purpose = "Publish SnapSmack.ca" if publication_sha else "PROX VOX database preview"
+    ttk.Label(panel, text=purpose, font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 10))
+    description = ("This publishes the reviewed SnapSmack.ca pages and image dependencies."
+                   if publication_sha else
+                   "This verifies the installed host files and checks the connection to The Artist.")
+    ttk.Label(panel, text=description,
               wraplength=585).pack(anchor="w")
     form = ttk.Frame(panel)
     form.pack(fill="x", pady=12)
@@ -173,6 +257,7 @@ def main():
     form.columnconfigure(1, weight=1)
     status = tk.StringVar(value="Checking the installed host files…")
     running = False
+    planned = None
 
     def start():
         nonlocal running
@@ -192,17 +277,18 @@ def main():
 
         def work():
             try:
-                upgrade(account, secret, code, events.put)
+                upgrade(account, secret, code, events.put, planned)
             finally:
                 events.put(None)
 
         threading.Thread(target=work, daemon=True).start()
 
     def poll():
-        nonlocal running
+        nonlocal running, planned
         while not events.empty():
             item = events.get()
-            if item == "ready":
+            if isinstance(item, tuple) and item[0] == "ready":
+                planned = item[1]
                 status.set("Ready for the owner to authorize.")
                 button.state(["!disabled"])
                 for entry in entries:
@@ -210,9 +296,10 @@ def main():
                 entries[0].focus_set()
             elif item is None:
                 running = False
-                button.state(["!disabled"])
-                for entry in entries:
-                    entry.state(["!disabled"])
+                if not publication_sha:
+                    button.state(["!disabled"])
+                    for entry in entries:
+                        entry.state(["!disabled"])
             else:
                 status.set(item)
         window.after(150, poll)
@@ -222,12 +309,17 @@ def main():
         reader = RootReadBroker(PVE_HOST, "proxvox-root-ro", audit)
         try:
             pending = prepare(reader)
+            if pending:
+                events.put("The host certificate update must be installed before you enter credentials.")
+                return
+            plan = publication_plan(publication_sha, reader) if publication_sha else None
         except Exception:
             events.put("Could not verify the installed host files. Wait for confirmation.")
             return
-        events.put("The host certificate update must be installed before you enter credentials." if pending else "ready")
+        events.put(("ready", plan))
 
-    button = ttk.Button(panel, text="Authorize and preview", command=start, state="disabled")
+    button = ttk.Button(panel, text="Authorize and publish" if publication_sha else "Authorize and preview",
+                        command=start, state="disabled")
     button.pack(anchor="w")
     ttk.Label(panel, textvariable=status, wraplength=585).pack(anchor="w", pady=12)
     window.protocol("WM_DELETE_WINDOW", lambda: status.set("Please wait for the authorized operation to finish.")
