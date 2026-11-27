@@ -271,4 +271,33 @@ $pass = '{password}';
     assert all(secret not in audit for secret in (password, ticket, nonce, plan["value"]))
 
 
+def test_container_database_namespace_restored_when_connection_fails(monkeypatch):
+    from test_proxvox_writer import _load
+
+    writer = _load()
+    seen = []
+    paths = {"/proc/self/ns/net": 41, "/proc/373/ns/net": 42}
+
+    def pid(argv):
+        assert argv == ["/usr/bin/lxc-info", "--name", "102", "--pid", "--no-humanize"]
+        seen.append("pid")
+        return b"373\n"
+
+    def fake_open(path, flags):
+        assert flags == os.O_RDONLY
+        seen.append(("open", path))
+        return paths[path]
+
+    monkeypatch.setattr(writer, "_run", pid)
+    monkeypatch.setattr(writer.os, "open", fake_open)
+    monkeypatch.setattr(writer.os, "close", lambda fd: seen.append(("close", fd)))
+    monkeypatch.setattr(writer, "_enter_network_namespace", lambda fd: seen.append(("join", fd)))
+    with pytest.raises(RuntimeError, match="fixture connection failure"):
+        with writer._site_network_namespace("102"):
+            seen.append("database")
+            raise RuntimeError("fixture connection failure")
+    assert seen == [("open", "/proc/self/ns/net"), "pid", ("open", "/proc/373/ns/net"),
+                    "pid", ("join", 42), "database", ("join", 41), ("close", 42), ("close", 41)]
+
+
 # ===== SNAPSMACK EOF =====

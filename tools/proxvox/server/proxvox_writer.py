@@ -1177,6 +1177,50 @@ def _read_site_db_config(target, path):
     return data
 
 
+def _container_init_pid(target):
+    result = _run(["/usr/bin/lxc-info", "--name", target, "--pid", "--no-humanize"])
+    match = re.fullmatch(rb"(?:PID:\s*)?([1-9][0-9]*)", result.strip())
+    if not match:
+        raise Refused("The site container is not running.")
+    return match[1].decode("ascii")
+
+
+def _enter_network_namespace(fd):
+    # Proxmox hosts also run Python versions predating os.setns().
+    import ctypes
+
+    setns = ctypes.CDLL(None, use_errno=True).setns
+    setns.argtypes = [ctypes.c_int, ctypes.c_int]
+    setns.restype = ctypes.c_int
+    if setns(fd, 0x40000000) != 0:  # Linux CLONE_NEWNET
+        errno = ctypes.get_errno()
+        raise OSError(errno, os.strerror(errno))
+
+
+@contextmanager
+def _site_network_namespace(target):
+    """Use the site's network identity while keeping writer files on the host."""
+    if target == "host":
+        yield
+        return
+    host_namespace = os.open("/proc/self/ns/net", os.O_RDONLY)
+    try:
+        pid = _container_init_pid(target)
+        container_namespace = os.open(f"/proc/{pid}/ns/net", os.O_RDONLY)
+        try:
+            if pid != _container_init_pid(target):
+                raise Refused("The site container restarted; preview again.")
+            _enter_network_namespace(container_namespace)
+            try:
+                yield
+            finally:
+                _enter_network_namespace(host_namespace)
+        finally:
+            os.close(container_namespace)
+    finally:
+        os.close(host_namespace)
+
+
 def _attested_database(op, user, request):
     from proxvox_database import (
         RowUpdate, UnsafeDatabaseUpdate, apply_row_update, connect_site_database, read_row_fingerprint,
@@ -1199,7 +1243,8 @@ def _attested_database(op, user, request):
             config = _read_site_db_config(target, path)
             config_digest = hashlib.sha256(config).hexdigest()
             attest()
-            with connect_site_database(config, change.database, container=target != "host") as connection:
+            with (_site_network_namespace(target),
+                  connect_site_database(config, change.database, container=target != "host") as connection):
                 del config
                 if op == "preview-db-update":
                     return {"expected": read_row_fingerprint(connection, change)}
