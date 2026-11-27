@@ -84,9 +84,45 @@ function strength_assertions(string $source): int
     // The plainest style in the suite: if the thing is wrong, say so and stop.
     // This also catches process.exit(1), which is how the .cjs files do it.
     $total += preg_match_all('/\bexit\s*\(\s*1\s*\)/', $source);
-    // The JavaScript counterpart of the failures-list append: a counter that
-    // goes up when something is wrong.
-    $total += preg_match_all('/\b(?:fail|fails|failures|failed)\s*(?:\+\+|\+=)/i', $source);
+    // A COUNTER THAT GOES UP WHEN SOMETHING IS WRONG. The JavaScript
+    // counterpart of the failures-list append, and the PHP one too: the
+    // optional quote-and-bracket covers $GLOBALS['fail']++, which is how
+    // archive-query-time-budget-benchmark.php counts. That file recorded zero
+    // assertions and zero asks, so it sat inside the record with nothing
+    // holding it.
+    //
+    // This GENERALISES the idiom rather than adding its helper name to the
+    // short list. Adding bx() would have fixed one file and left the next
+    // two-letter closure invisible, which is the over-fitting this gate exists
+    // to catch; and renaming the helper to match an existing one would be
+    // changing somebody's test to suit my counter.
+    $total += preg_match_all(
+        '/\b(?:fail|fails|failures|failed)\b\s*[\'"]?\s*\]?\s*(?:\+\+|\+=)/i',
+        $source
+    );
+
+    // THE HELPER THIS FILE ASSERTS THROUGH, WHATEVER IT IS CALLED. 158 of the
+    // files in tests/ define a boolean-first helper -- function x(bool $ok,
+    // string $what) -- and they use at least a dozen different names for it:
+    // cx, tx, tt, bx, s_ok, ar_test, check. The short-name list above catches
+    // some by luck. Rather than growing that list one name at a time, which
+    // leaves the NEXT two-letter closure invisible and is the over-fitting
+    // this gate exists to catch, the name is read out of the file's own
+    // definition and its calls are counted.
+    //
+    // This double-counts the names the patterns above already match. That is
+    // fine and deliberate: only the DIRECTION of these numbers is ever read,
+    // never the size, and every baseline is derived by the same code.
+    $helpers = [];
+    preg_match_all('/function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*bool\s/i', $source, $named);
+    foreach ($named[1] ?? [] as $name) { $helpers[] = '\b' . preg_quote($name, '/'); }
+    preg_match_all(
+        '/\$([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:static\s+)?(?:fn|function)\s*\(\s*bool\s/i',
+        $source, $closures);
+    foreach ($closures[1] ?? [] as $name) { $helpers[] = '\$' . preg_quote($name, '/'); }
+    foreach (array_unique($helpers) as $helper) {
+        $total += preg_match_all('/' . $helper . '\s*\(/', $source);
+    }
     return $total;
 }
 
