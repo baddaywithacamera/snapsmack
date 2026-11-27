@@ -16,6 +16,7 @@ Engine calls are the untouched sumna_offline ones.
 """
 
 import threading
+import traceback
 from datetime import datetime
 
 from PySide6.QtCore import QObject, Signal, Qt
@@ -34,7 +35,7 @@ from .widgets import (Accordion, Card, hint, big_button, confirm_post,
 class _SyncBridge(QObject):
     """Thread → UI marshalling for SyncEngine events."""
     progressed = Signal()
-    finished = Signal(int, int)   # ok, total
+    finished = Signal(int, int, object)   # verified count (-1 if interrupted), total, errors
     overwrite_prompt = Signal(object, object)  # post_info, {"event": Event, "choice": str}
 
 
@@ -90,7 +91,13 @@ class BatchRail(QWidget):
         sb.addWidget(self.send_btn)
         self.sync_status = hint("")   # speaks only when something happens
         self.sync_status.setWordWrap(True)
+        self.sync_status.setTextFormat(Qt.PlainText)
         sb.addWidget(self.sync_status)
+        self.send_errors = []
+        self.send_error_btn = QPushButton("View send errors…")
+        self.send_error_btn.clicked.connect(self._show_send_errors)
+        self.send_error_btn.hide()
+        sb.addWidget(self.send_error_btn)
 
         self._bridge = _SyncBridge()
         self._bridge.progressed.connect(self.refresh_drafts)
@@ -293,6 +300,8 @@ class BatchRail(QWidget):
             self.sync_status.setText("Sending cancelled.")
             return
         self._sending = True
+        self.send_errors = []
+        self.send_error_btn.hide()
         self.send_btn.setEnabled(False)
         self.sync_status.setText(f"Sending {len(ready)} {self.item_noun}(s)…")
         self.sync_status.setStyleSheet(f"color: {theme.WARN};")
@@ -304,9 +313,21 @@ class BatchRail(QWidget):
             engine = O.SyncEngine(session, poster,
                                   on_event=lambda *_: bridge.progressed.emit(),
                                   confirm_overwrite_fn=confirm_fn)
-            results = engine.sync_all(ready)
-            ok = sum(1 for r in results.values() if r.ok)
-            bridge.finished.emit(ok, len(results))
+            try:
+                results = engine.sync_all(ready)
+                errors = []
+                for draft in ready:
+                    result = results.get(draft.draft_id)
+                    if result is None:
+                        errors.append((draft.title, "No send confirmation. Check the site before retrying."))
+                    elif not result.ok:
+                        errors.append((draft.title, result.message or "The site did not confirm the send."))
+                ok = len(ready) - len(errors)
+            except Exception as exc:
+                traceback.print_exc()
+                ok = -1
+                errors = [("Send interrupted", str(exc) or type(exc).__name__)]
+            bridge.finished.emit(ok, len(ready), errors)
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -360,15 +381,32 @@ class BatchRail(QWidget):
 
         return _confirm
 
-    def _send_done(self, ok: int, total: int):
+    def _send_done(self, ok: int, total: int, errors: list):
         self._sending = False
-        colour = theme.OK if ok == total else theme.DANGER
-        self.sync_status.setStyleSheet(f"color: {colour};")
-        self.sync_status.setText(
-            f"Sent {ok} of {total} — each one verified against the live site."
-            if ok == total else
-            f"Sent {ok} of {total}. The red cards say exactly what went wrong.")
+        self.send_errors = errors
+        self.send_error_btn.setVisible(bool(errors))
+        self.sync_status.setStyleSheet(f"color: {theme.DANGER if errors else theme.OK};")
+        if ok < 0:
+            summary = "Send interrupted. Check the site before retrying."
+        elif errors:
+            summary = f"Sent {ok} of {total}. {errors[0][1]}"
+        else:
+            summary = f"Sent {ok} of {total}. Verified against the live site."
+        self.sync_status.setText(summary)
+        if errors:
+            self.section.set_expanded(True)
         self.refresh_batches()
+
+    def _show_send_errors(self):
+        if self.send_errors:
+            box = QMessageBox(self.send_box.window())
+            box.setIcon(QMessageBox.Warning)
+            box.setWindowTitle("Send errors")
+            box.setTextFormat(Qt.PlainText)
+            box.setText("\n\n".join(f"{title or '(untitled)'}\n{message}"
+                                     for title, message in self.send_errors))
+            box.setTextInteractionFlags(Qt.TextSelectableByMouse)
+            box.exec()
 
 
 def default_draft_row(session, draft, refresh_cb, *, edit_cb=None,
@@ -390,6 +428,7 @@ def default_draft_row(session, draft, refresh_cb, *, edit_cb=None,
     mid.addWidget(status_badge(draft.status))
     if draft.error:
         err = QLabel(draft.error)
+        err.setTextFormat(Qt.PlainText)
         err.setWordWrap(True)
         err.setStyleSheet(f"color: {theme.DANGER}; font-size: 11px; background: transparent;")
         mid.addWidget(err)

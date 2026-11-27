@@ -1,0 +1,9 @@
+{
+  "post_id": 4,
+  "preserved_public_slug": "start-your-engines",
+  "post_endpoint_requests": 1,
+  "live_network_requests": 0,
+  "attachment_path": "TakeMode._published_post_loaded",
+  "request_builder": "SmacktalkPoster.sync_smacktalk",
+  "outcome": "Offline transport accepted the existing ID and rejected any other request shape."
+}

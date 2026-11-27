@@ -33,7 +33,19 @@ def _set_windows_app_id():
         pass
 
 
+def configure_windows_graphics():
+    """Keep this application's Qt and Chromium previews off the Windows GPU."""
+    if sys.platform != "win32":
+        return
+    os.environ["QT_OPENGL"] = "software"
+    flags = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+    if "--disable-gpu" not in flags.split():
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (flags + " --disable-gpu").strip()
+    print("COLD SNAP graphics: software OpenGL, WebEngine GPU disabled", flush=True)
+
+
 def main() -> int:
+    configure_windows_graphics()
     import snap_single_instance
     if not snap_single_instance.acquire(instance_key(), "COLD SNAP"):
         return 0

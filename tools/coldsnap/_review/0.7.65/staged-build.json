@@ -1,0 +1,13 @@
+{
+  "version": "0.7.65",
+  "source_commit": "6a09ab57370f19bbc40c9b26b3e21bb2061e6f5a",
+  "staged_sha256": "fb002ce677a53875638c36865cebe8400145d56a2a174fa41fb973af40680cf3",
+  "stage_pass": true,
+  "installed_at_hq": true,
+  "installed_blocker": null,
+  "boolean_checks": 61,
+  "active_test_processes_after_gate": 0,
+  "mosaic_semantic_sha256": "d82c4b6d96f88e77b6bd40c8b52fe07a7cb790cc179498809bfdc8e1e534ad01",
+  "mosaic_note": "The executable bundles the same shared engine source, with LF rather than CRLF.",
+  "drag_note": "Qt source widget and target events with a fixture drag transport, not desktop mouse takeover."
+}

@@ -1,7 +1,11 @@
-"""Tests for COLD SNAP 0.7.44 repairs: 28-profile mode discovery, load-failure recovery, and send-path mode check."""
+"""Site mode discovery, profile load recovery, and send-path checks.
+
+# SNAPSMACK_EOF_HEADER
+"""
 
 import os
 import sys
+import threading
 import time
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -197,6 +201,45 @@ def test_instance_key_unique_for_test_builds():
     assert instance_key("0.7.45-test") == "cold-snap-0.7.45-test"
     assert instance_key("0.7.45-test") != instance_key("0.7.41-test")
     assert instance_key("0.7.45") == "cold-snap"
+
+
+def test_stalled_profile_read_times_out_and_late_reply_cannot_replace_retry(monkeypatch):
+    from coldsnap_qt import connect_panel
+
+    _app()
+    first_started = threading.Event()
+    release_first = threading.Event()
+
+    def read_config():
+        if not first_started.is_set():
+            first_started.set()
+            release_first.wait(timeout=5)
+            return {"url": "https://old.example"}
+        return {"url": "https://current.example"}
+
+    monkeypatch.setattr(connect_panel, "SITE_LOAD_TIMEOUT_MS", 100)
+    monkeypatch.setattr(cfg_module, "load", read_config)
+    monkeypatch.setattr(profile_manager, "list_profiles", lambda: ["Current"])
+    monkeypatch.setattr(profile_manager, "load_profile", lambda _name: {
+        "url": "https://current.example",
+        "site_mode": "smacktalk",
+    })
+    panel = ConnectPanel()
+    try:
+        _pump(250)
+        assert first_started.is_set()
+        assert "timed out" in panel.status_lbl.text()
+        assert not panel.retry_btn.isHidden()
+        panel.retry_btn.click()
+        _pump(200)
+        assert panel._profiles_loaded
+        assert panel.config["url"] == "https://current.example"
+    finally:
+        release_first.set()
+        for worker in panel._site_load_workers:
+            worker.join(timeout=2)
+    _pump(100)
+    assert panel.config["url"] == "https://current.example"
 
 
 # ===== SNAPSMACK EOF =====

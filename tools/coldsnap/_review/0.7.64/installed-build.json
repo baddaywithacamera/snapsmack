@@ -1,0 +1,17 @@
+{
+  "version": "0.7.64",
+  "source_commit": "37df65d51be6fa7a9356dfc6e61cc747515a8a68",
+  "installed_executable": "C:\\snapsmack\\coldsnap\\coldsnap.exe",
+  "installed_executable_sha256": "2493f06ccd76c701f4e3a7253700981d3ffe8136a9e1edbccf20ddf66065e915",
+  "previous_executable_sha256": "d896d1324f22c3326a772612378dbfc59ec3d97b756c49202e8c40ad96d1f140",
+  "engine_sha256": "111c7bb1cf2d719c83388f26ba587901f9d2821647c7c2d0f5b51824c067b745",
+  "backup_directory": "C:\\snapsmack\\coldsnap-backups\\0.7.63-before-ss1604-1605",
+  "staged_gate": true,
+  "installed_gate": true,
+  "boolean_checks": 38,
+  "golden_sha256": "8bc63af2bc5a21a9b8f525be968e1f5af16401024f87a7be4d34dc5cf9bf6608",
+  "golden_cases": 350,
+  "focused_pytest_passed": 52,
+  "engine_tests_passed": 17,
+  "fixture": "Generated photographs and a sandbox draft, native Windows rendering"
+}
