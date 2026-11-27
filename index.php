@@ -293,6 +293,19 @@ try {
         require_once __DIR__ . '/core/thomas-uid.php';
         $GLOBALS['snapsmack_consent'] = snapsmack_consent_prepare($pdo, $settings);
 
+        // THE MANIFEST TRAVELS WITH THE REQUEST. The controller needs the
+        // skin's declared signature_surface, and $_active_manifest is already
+        // loaded earlier in this file by load_skin_manifest($active_skin) --
+        // loading it a second time inside the controller would be a second
+        // source of truth for which skin is active. Optional parameter, so the
+        // admin preview caller is unaffected and defaults to light.
+        //
+        // NO LINE NUMBER HERE ON PURPOSE. The first version said "line 232",
+        // which is correct on this branch and on dev -- I checked both, and
+        // Muse's review put it at 437, which is the one nit of hers today I am
+        // not taking. But a line number in a comment goes stale the moment
+        // anybody inserts a line above it, so naming the call is the durable
+        // answer and the disagreement stops mattering.
         $_smacktalk = snapsmack_smacktalk_request($pdo, $settings, [
             'view' => $_GET['view'] ?? '',
             'post_slug' => $_GET['post'] ?? '',
@@ -306,7 +319,7 @@ try {
             'search' => $_GET['q'] ?? $_GET['search'] ?? '',
             'requested_slug' => $requested_slug ?? '',
             'route_aliases' => $skin_view['route_aliases'] ?? [],
-        ]);
+        ], is_array($_active_manifest) ? $_active_manifest : []);
         if (!empty($_smacktalk['handled'])) {
             if (!empty($_smacktalk['redirect'])) {
                 header('Location: ' . $_smacktalk['redirect'], true, (int)($_smacktalk['redirect_status'] ?? 302));

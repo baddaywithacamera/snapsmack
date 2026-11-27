@@ -12,7 +12,8 @@ require_once __DIR__ . '/parser.php';
 require_once __DIR__ . '/public-repository.php';
 require_once __DIR__ . '/public-route-aliases.php';
 
-function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request): array
+function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request,
+                                     array $skin_manifest = []): array
 {
     $base = defined('BASE_URL') ? BASE_URL : '/';
     $view = trim((string)($request['view'] ?? ''));
@@ -175,7 +176,8 @@ function snapsmack_smacktalk_request(PDO $pdo, array $settings, array $request):
     }
 
     if ($post_slug !== '' || $post_id > 0) {
-        $single = snapsmack_smacktalk_single($pdo, $settings, $base, $post_slug, $post_id);
+        $single = snapsmack_smacktalk_single($pdo, $settings, $base, $post_slug, $post_id,
+                                            null, $skin_manifest);
         if ($single !== null) return ['handled' => true, 'kind' => 'single'] + $single;
         if (!$candidate_from_path || trim((string)($request['post_slug'] ?? '')) !== '' || $post_id > 0) {
             return ['handled' => true, 'kind' => 'not_found', 'page_title' => '404 — Not Found'];
@@ -308,7 +310,9 @@ function snapsmack_smacktalk_archive_tiles(PDO $pdo, string $base, int $category
     return $tiles;
 }
 
-function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, string $slug, int $id, ?array $previewPost = null): ?array
+function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, string $slug,
+                                    int $id, ?array $previewPost = null,
+                                    array $skin_manifest = []): ?array
 {
     try {
         $repository = new SnapPublicRepository($pdo);
@@ -343,8 +347,86 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
             $stmt->execute([(int)$post['user_id']]);
             $author = trim((string)($stmt->fetchColumn() ?: $author));
         }
-        if (!empty($post['signature_image_id'])) {
-            $image = $repository->photographById((int)$post['signature_image_id']);
+        // THE SIGNATURE, THROUGH THE CONTRACT. The two surface columns are read
+        // HERE rather than added to the repository's SELECT on purpose: a core
+        // update can reach a site before schema-sync has added them, and a
+        // SELECT naming a missing column would fatal on every post page on that
+        // site. This block already exists to tolerate exactly that, and
+        // snap_signature_resolve() falls back to the legacy field when the
+        // columns are absent, so an un-synced site behaves as it does today.
+        // THE QUERY CARRIES THE VISIBILITY CLAUSE. The first version did not,
+        // and tests/skin-visibility-parity-regression.php refused it -- rightly.
+        // The row has already been vetted by postBySlug/postById, so nothing
+        // was actually broadened, but a bare snap_posts read in a public
+        // controller is the SHAPE that leaks and the ratchet does not care
+        // about my reasoning. It also closes a real gap: if a post is
+        // unpublished between the two reads, this returns no row and the
+        // signature falls back to nothing rather than rendering -- and that is
+        // true because the no-row branch below SETS both surfaces to an
+        // explicit opt-out. It was not true when this comment first said it.
+        //
+        // AN EDITOR PREVIEW IS NOT QUERIED AT ALL. $previewPost is the whole
+        // post array the editor supplied, unsaved and usually a draft, so a
+        // published-only query would find nothing and the preview would
+        // disagree with the page. The preview's own array is used as it stands,
+        // and snap_signature_resolve() falls back to the legacy meaning when it
+        // does not carry the two columns.
+        require_once __DIR__ . '/signature-contract.php';
+        $signature_row = $post;
+        if ($previewPost === null) {
+            try {
+                $sig_q = $pdo->prepare("SELECT signature_light_image_id, signature_dark_image_id
+                                        FROM snap_posts
+                                        WHERE id=? AND status='published' AND created_at <= NOW()
+                                        LIMIT 1");
+                $sig_q->execute([(int)$post['id']]);
+                $surfaces = $sig_q->fetch(PDO::FETCH_ASSOC);
+                if (is_array($surfaces)) {
+                    $signature_row = array_merge($post, $surfaces);
+                } else {
+                    // NO ROW MEANS THE POST IS NOT PUBLICLY VISIBLE RIGHT NOW,
+                    // and both surfaces are set to an explicit opt-out so no
+                    // signature renders. (Muse, on 21401a73.)
+                    //
+                    // Leaving the keys ABSENT instead -- which is what the
+                    // first version did -- made the resolver fall through to
+                    // the legacy field, so a post unpublished between the two
+                    // reads still rendered its legacy signature. My comment
+                    // claimed it fell back to nothing. It did not. Rather than
+                    // narrow the claim I made the code do what I had said,
+                    // because that is the behaviour I would want: the query
+                    // already proved the post is not public, and nothing of a
+                    // non-public post should be on the page.
+                    //
+                    // The query succeeding with no row is a DIFFERENT fact from
+                    // the query failing, which is the un-synced-install case
+                    // below; the two must not be collapsed.
+                    $signature_row = array_merge($post, [
+                        'signature_light_image_id' => 0,
+                        'signature_dark_image_id'  => 0,
+                    ]);
+                }
+            } catch (Throwable $e) {
+                $signature_row = $post;   // columns not added yet: legacy meaning
+            }
+        }
+        // WHICH SURFACE COMES FROM THE SKIN, NOT FROM A GUESS HERE. The skin
+        // manifest declares "signature_surface"; light is the default and no
+        // skin declares anything yet, so every site behaves as before until
+        // one does. PM ruling, 2026-11-27, on Gemini's v2 contract.
+        //
+        // The other surface's id travels alongside it. A client that wants to
+        // offer both, or a skin that switches, needs to know what the unused
+        // one resolves to -- and sending only the chosen one would make the
+        // response depend on the skin in a way a caller cannot see.
+        $signature_surface = snap_signature_surface($skin_manifest);
+        $signature_ids = [
+            'light' => snap_signature_resolve($signature_row, $settings, 'light'),
+            'dark'  => snap_signature_resolve($signature_row, $settings, 'dark'),
+        ];
+        $signature_chosen = $signature_ids[$signature_surface] ?? 0;
+        if ($signature_chosen > 0) {
+            $image = $repository->photographById($signature_chosen);
             if ($image) $signature = ['url' => $base . ltrim((string)$image['img_file'], '/'),
                 'alt' => (string)($image['img_alt'] ?: $image['img_title'])];
         }

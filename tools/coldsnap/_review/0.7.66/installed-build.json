@@ -1,0 +1,11 @@
+{
+  "version": "0.7.66",
+  "executable": "C:/snapsmack/coldsnap/coldsnap.exe",
+  "binary_sha256": "b0d69cacc6674398a84f72112594ef84ce041d69514b6d14ee698e593edebb7d",
+  "source_commit": "d24c4d4a",
+  "parity_checks": 64,
+  "exit_status": 0,
+  "active_processes_after_exit": 0,
+  "backup": "C:/snapsmack/coldsnap-backups/0.7.65-before-visible-send-errors",
+  "live_sends_in_parity": 0
+}

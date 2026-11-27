@@ -167,8 +167,10 @@ def _block_score(items, height, container_width, emphasis, variant) -> float:
     portrait_max = 0.0
     landscape_max = 0.0
     smallest = math.inf
+    largest = 0.0
     lead_area = 0.0
     variant_area = 0.0
+    weight_bonus = 0.0
     variant_order = variant % min(len(items), 3) if items else 0
     for tile in items:
         area = tile["width"] * tile["height"]
@@ -177,6 +179,10 @@ def _block_score(items, height, container_width, emphasis, variant) -> float:
         if tile["order"] == variant_order:
             variant_area = area
         smallest = min(smallest, area)
+        largest = max(largest, area)
+        w = int(tile["image"].get("weight") or 0)
+        if w:
+            weight_bonus += w * area * 25.0
         if image_ar(tile["image"]) < 1.15:
             portrait_max = max(portrait_max, area)
         else:
@@ -194,6 +200,15 @@ def _block_score(items, height, container_width, emphasis, variant) -> float:
 
     score += smallest * 0.2
     score -= abs(height - 850) * container_width * 0.12
+    if weight_bonus:
+        avg_area = sum(t["width"] * t["height"] for t in items) / max(1, len(items))
+        rel_bonus = sum(
+            int(t["image"].get("weight") or 0) * ((t["width"] * t["height"]) - avg_area) * 25.0
+            for t in items
+        )
+        score += rel_bonus
+        if len(items) >= 3 and smallest > 0 and (largest / smallest) < 1.25:
+            score -= 1e12
     return score
 
 
@@ -270,7 +285,7 @@ def _candidate_trees(images, start, end, memo):
     return trees
 
 
-def _solve_block(images, y, container_width, gap, emphasis, enforce_useful_size, variant):
+def _solve_block(images, y, container_width, gap, emphasis, enforce_useful_size, variant, *, ignore_limit: bool = False):
     best = None
     for tree in _candidate_trees(images, 0, len(images), {}):
         trial = []
@@ -280,7 +295,7 @@ def _solve_block(images, y, container_width, gap, emphasis, enforce_useful_size,
         # photograph silently.
         if len(trial) != len(images):
             continue
-        if height <= 0 or any(_tile_exceeds_limit(t) for t in trial):
+        if height <= 0 or (not ignore_limit and any(_tile_exceeds_limit(t) for t in trial)):
             continue
         if enforce_useful_size and (not _block_is_visually_balanced(trial, container_width)
                                     or not _block_matches_emphasis(trial, emphasis)):
@@ -294,9 +309,14 @@ def _solve_block(images, y, container_width, gap, emphasis, enforce_useful_size,
 
 def _preferred_block(images, y, container_width, gap, emphasis, template, variant):
     enforce_useful_size = container_width >= 1200
-    if len(images) >= 5:
-        return _solve_block(images, y, container_width, gap, emphasis,
-                            enforce_useful_size, variant)
+    has_weights = any(int(im.get("weight") or 0) != 0 for im in images)
+    if len(images) >= 5 or has_weights:
+        solved = _solve_block(images, y, container_width, gap, emphasis,
+                              enforce_useful_size, variant)
+        if solved is None and has_weights:
+            solved = _solve_block(images, y, container_width, gap, emphasis,
+                                  False, variant, ignore_limit=True)
+        return solved
     tree = _build_section(images, False, template)
     items = []
     height = _place_node(tree, 0, y, container_width, gap, items)

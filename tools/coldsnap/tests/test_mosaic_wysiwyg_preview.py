@@ -1,15 +1,17 @@
-"""Tests for Build mosaic WYSIWYG preview (#6435):
-- MosaicPreview uses the exact same site/BIGGIE layout geometry (mosaic_cells /
-  mosaic_site_layout.compute_layout) at Desktop (760px) and Phone (360px).
-- Build mosaic dialog is resizable and maximisable (Qt.WindowMaximizeButtonHint).
-"""
+"""Browser-powered dialog and inline mosaic regressions."""
+
+
+# SNAPSMACK_EOF_HEADER
+# Last non-empty line must be the canonical Python EOF marker below.
 
 import os
 import sys
 
 from PIL import Image
+import pytest
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QApplication, QDialog
+from PySide6.QtWidgets import QApplication, QDialog, QPushButton, QSplitter
+from PySide6.QtTest import QTest
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
@@ -20,9 +22,9 @@ if _SHARED not in sys.path:
     sys.path.insert(0, _SHARED)
 
 from coldsnap_qt import theme
-from coldsnap_qt.canvas import mosaic_cells
+from coldsnap_qt.canvas import BiggieCanvas
 from coldsnap_qt.mode_take import MosaicPreview, TakeMode
-from coldsnap_qt.mosaic_site_layout import compute_layout
+from coldsnap_qt.mosaic_clusters import break_cluster_weights, uniform_clusters
 
 
 def _app():
@@ -35,94 +37,156 @@ def _make_photo(path, size, color=(40, 110, 180)):
     return str(path)
 
 
-def test_mosaic_preview_matches_biggie_and_site_geometry(tmp_path):
+def _wait_for(check):
+    for _ in range(400):
+        if check():
+            return
+        QTest.qWait(20)
+    raise AssertionError("Timed out waiting for preview geometry")
+
+
+def test_mosaic_browser_renders_shared_wall_modes(tmp_path):
+    app = _app()
+    sizes = [(900, 600), (600, 900), (800, 800), (1200, 800)]
+    tiles = [(i, _make_photo(tmp_path / f"p{i}.jpg", shape)) for i, shape in enumerate(sizes)]
+    preview = MosaicPreview(content_width=760)
+    preview.show()
+    try:
+        for width in (760, 360):
+            preview.set_content_width(width)
+            for layout in ("asymmetric", "columns", "rows", "square"):
+                preview.set_mosaic(tiles, layout)
+                _wait_for(lambda: len(preview.computed_cells()["items"]) == len(tiles))
+                result = preview.computed_cells()
+                assert [item["id"] for item in result["items"]] == [1, 2, 3, 4]
+                assert max(item["x"] + item["width"] for item in result["items"]) <= width + 1
+                assert preview.height() >= result["height"] + 16
+    finally:
+        preview.close()
+
+
+def test_tile_three_grows_without_a_different_photo_taking_its_place(tmp_path):
     _app()
-    sizes = [
-        (900, 600),   # landscape 3:2
-        (600, 900),   # portrait 2:3
-        (800, 800),   # square 1:1
-        (1200, 800),  # landscape 3:2
-        (600, 800),   # portrait 3:4
-        (900, 600),   # landscape 3:2
+    tiles = [(i, _make_photo(tmp_path / f"equal-{i}.jpg", (900, 600))) for i in range(4)]
+    preview = MosaicPreview(content_width=760)
+    preview.show()
+    try:
+        preview.set_mosaic(tiles, "asymmetric")
+        _wait_for(lambda: len(preview.computed_cells()["items"]) == 4)
+        before = preview.computed_cells()["items"]
+        preview.set_mosaic(tiles, "asymmetric", weights={3: 1})
+        _wait_for(lambda: len(preview.computed_cells()["items"]) == 4)
+        after = preview.computed_cells()["items"]
+        assert [item["id"] for item in after] == [1, 2, 3, 4]
+        assert after[2]["width"] > before[2]["width"] * 1.5
+        assert after[2]["width"] > after[0]["width"]
+    finally:
+        preview.close()
+
+
+def test_two_by_two_detector_requires_four_adjacent_equal_boxes():
+    cells = [
+        {"id": i + 1, "x": (i % 2) * 154, "y": (i // 2) * 104,
+         "width": 150, "height": 100}
+        for i in range(4)
     ]
-    paths = [_make_photo(tmp_path / f"p{i}.jpg", sz) for i, sz in enumerate(sizes)]
-    tiles = [(i, p) for i, p in enumerate(paths)]
+    assert [[cell["id"] for cell in group] for group in uniform_clusters(cells)] == [[1, 2, 3, 4]]
+    assert uniform_clusters([dict(cell, width=230) if cell["id"] == 3 else cell for cell in cells]) == []
 
-    class _FakeCanvas:
-        bucket = paths
-        assets = {}
-
-    for col_width in (760, 360):
-        for layout_name in ("asymmetric", "columns", "rows", "square"):
-            preview = MosaicPreview(content_width=col_width)
-            preview.set_mosaic(tiles, layout_name, gap=4)
-            prev_out = preview.computed_cells()
-
-            data = {"order": list(range(1, len(paths) + 1)), "layout": layout_name, "gap": 4}
-            _, biggie_out = mosaic_cells(_FakeCanvas(), data, col_width)
-
-            assert len(prev_out["items"]) == 6
-            assert len(biggie_out["items"]) == 6
-            assert abs(prev_out["height"] - biggie_out["height"]) < 1e-6
-
-            for pt, bt in zip(prev_out["items"], biggie_out["items"]):
-                assert abs(pt["x"] - bt["x"]) < 1e-6
-                assert abs(pt["y"] - bt["y"]) < 1e-6
-                assert abs(pt["width"] - bt["width"]) < 1e-6
-                assert abs(pt["height"] - bt["height"]) < 1e-6
-
-            # Also verify against mosaic_site_layout.compute_layout directly
-            images = [{"width": w, "height": h, "src": p} for (w, h), p in zip(sizes, paths)]
-            ref_w = 1200.0 if (col_width > 520 and len(images) >= 5) else float(col_width)
-            scale = float(col_width) / ref_w
-            site_out = compute_layout(images, ref_w, 4, "natural", "" if layout_name == "asymmetric" else layout_name)
-            for pt, st in zip(prev_out["items"], site_out["items"]):
-                assert abs(pt["x"] - st["x"] * scale) < 1e-4
-                assert abs(pt["y"] - st["y"] * scale) < 1e-4
-                assert abs(pt["width"] - st["width"] * scale) < 1e-4
-                assert abs(pt["height"] - st["height"] * scale) < 1e-4
+@pytest.mark.parametrize("count", [2, 3, 4, 5, 6])
+def test_break_up_detects_equal_rows_and_contrasts_four_or_more_photos(count):
+    cells = [
+        {"id": i + 1, "x": i * 154, "y": 0, "width": 150, "height": 100}
+        for i in range(count)
+    ]
+    clusters = uniform_clusters(cells)
+    if count == 2:
+        assert not clusters
+    else:
+        assert len(clusters) == 1
+        identities = [cell["id"] for cell in clusters[0]]
+        assert identities == list(range(1, count + 1))
+        assert break_cluster_weights(identities, lambda _identity: 0) == (
+            {1: 1} if count == 3 else {1: 1, count: -1})
+        assert break_cluster_weights(identities, lambda _identity: 2) == {count: 1}
 
 
-def _is_two_by_two(items):
-    """Detect a 2-col x 2-row grid (even within 10% tolerance)."""
-    if len(items) != 4:
-        return False
-    ys = sorted(set(round(t["y"]) for t in items))
-    xs = sorted(set(round(t["x"]) for t in items))
-    # Cluster into <= 2 rows and <= 2 cols
-    row_ys = []
-    for y in ys:
-        if not row_ys or abs(y - row_ys[-1]) > 10:
-            row_ys.append(y)
-    col_xs = []
-    for x in xs:
-        if not col_xs or abs(x - col_xs[-1]) > 10:
-            col_xs.append(x)
-    if len(row_ys) != 2 or len(col_xs) != 2:
-        return False
-    ws = [t["width"] for t in items]
-    hs = [t["height"] for t in items]
-    return (max(ws) - min(ws)) <= 0.1 * max(ws) and (max(hs) - min(hs)) <= 0.1 * max(hs)
-
-
-def test_four_photos_never_produce_two_by_two_grid(tmp_path):
+def test_inline_two_by_two_click_breaks_the_four_landscapes(tmp_path):
     _app()
-    shape_sets = {
-        "landscape": [(900, 600)] * 4,
-        "portrait": [(600, 900)] * 4,
-        "square": [(800, 800)] * 4,
-        "mixed": [(900, 600), (600, 900), (800, 800), (900, 600)],
-    }
-    for label, sizes in shape_sets.items():
-        paths = [_make_photo(tmp_path / f"{label}_{i}.jpg", sz) for i, sz in enumerate(sizes)]
-        tiles = [(i, p) for i, p in enumerate(paths)]
-        for layout_name in ("asymmetric", "columns", "rows", "square"):
-            preview = MosaicPreview(content_width=760)
-            preview.set_mosaic(tiles, layout_name, gap=4)
-            out = preview.computed_cells()
-            assert not _is_two_by_two(out["items"]), (
-                f"4-photo {label}/{layout_name} produced 2x2 grid: {out['items']}"
-            )
+    paths = [_make_photo(tmp_path / f"landscape-{i}.jpg", (900, 600)) for i in range(4)]
+    canvas = BiggieCanvas()
+    canvas.set_preview_width(240)
+    canvas.resize(260, 650)
+    canvas.set_bucket(paths)
+    canvas.insert_mosaic([1, 2, 3, 4], "rows")
+    canvas.show()
+    try:
+        _wait_for(lambda: any(buttons for _, buttons in canvas._inline_mosaic_hits.values()))
+        pos, (tiles, buttons) = next(
+            (pos, item) for pos, item in canvas._inline_mosaic_hits.items() if item[1])
+        assert len({rect.x() for _, rect in tiles.values()}) == 2
+        assert len({rect.y() for _, rect in tiles.values()}) == 2
+        QTest.mouseClick(canvas.viewport(), Qt.LeftButton, pos=buttons[0][0].center())
+        _wait_for(lambda: canvas._object_at(pos)[1].get("weights") == {"1": 1, "4": -1})
+        assert canvas._object_at(pos)[1]["order"] == [1, 2, 3, 4]
+    finally:
+        canvas.close()
+
+
+def test_inline_break_button_changes_mosaic_without_opening_dialog(tmp_path):
+    _app()
+    paths = [_make_photo(tmp_path / f"inline-{i}.jpg", (900, 600)) for i in range(4)]
+    canvas = BiggieCanvas()
+    canvas.set_preview_width(760)
+    canvas.resize(800, 650)
+    canvas.set_bucket(paths)
+    canvas.insert_mosaic([1, 2, 3, 4], "columns")
+    dialog_requests = []
+    canvas.mosaicEditRequested.connect(lambda *args: dialog_requests.append(args))
+    canvas.show()
+    try:
+        _wait_for(lambda: any(buttons for _, buttons in canvas._inline_mosaic_hits.values()))
+        pos, (tiles, buttons) = next(
+            (pos, item) for pos, item in canvas._inline_mosaic_hits.items() if item[1])
+        assert len({rect.y() for _, rect in tiles.values()}) == 1
+        assert next(ids for _rect, ids in buttons if len(ids) == 4) == [1, 2, 3, 4]
+        QTest.mouseClick(canvas.viewport(), Qt.LeftButton, pos=buttons[0][0].center())
+        _wait_for(lambda: canvas._object_at(pos)[1].get("weights") == {"1": 1, "4": -1})
+        _wait_for(lambda: any(
+            len(tiles) == 4 and not badges
+            for tiles, badges in canvas._inline_mosaic_hits.values()))
+        assert canvas._object_at(pos)[1]["order"] == [1, 2, 3, 4]
+        assert dialog_requests == []
+    finally:
+        canvas.close()
+
+
+def test_dialog_break_button_clears_four_photo_row(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    _app()
+    mode = TakeMode(lambda: {"url": "https://example.com"})
+    paths = [_make_photo(tmp_path / f"dialog-{i}.jpg", (900, 600)) for i in range(4)]
+    mode._add_photo_paths(paths, insert=False)
+
+    def exercise_dialog(dialog):
+        dialog.show()
+        preview = dialog.findChild(MosaicPreview)
+        try:
+            _wait_for(lambda: any(len(cluster) == 4 for cluster in preview._clusters))
+            button = next(button for button in preview.findChildren(QPushButton)
+                          if button.text() == "Break up" and button.isVisible())
+            QTest.mouseClick(button, Qt.LeftButton)
+            _wait_for(lambda: preview._weights == {"1": 1, "4": -1}
+                      and len(preview.computed_cells()["items"]) == 4 and not preview._clusters)
+        finally:
+            dialog.reject()
+        return QDialog.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", exercise_dialog)
+    try:
+        mode._mosaic_dialog([], "columns", preselected_order=[0, 1, 2, 3])
+    finally:
+        mode.close()
 
 
 def test_mosaic_dialog_is_maximisable_and_uses_preview_width(monkeypatch, tmp_path):
@@ -164,3 +228,40 @@ def test_mosaic_dialog_is_maximisable_and_uses_preview_width(monkeypatch, tmp_pa
         assert seen["content_width"] == 360
     finally:
         mode.close()
+
+def test_long_dialog_fits_the_site_geometry_beside_the_picker(monkeypatch, tmp_path):
+    monkeypatch.setenv("SNAPSMACK_HOME", str(tmp_path))
+    app = _app()
+    mode = TakeMode(lambda: {"url": "https://mosaic-fixture.invalid"})
+    app.processEvents()
+    mode._preview_width = 800
+    paths = [_make_photo(tmp_path / f"quilt-{i}.jpg", (900, 600)) for i in range(14)]
+    mode._add_photo_paths(paths, insert=False)
+
+    def inspect_dialog(dialog):
+        dialog.resize(1032, 820)
+        dialog.show()
+        preview = dialog.findChild(MosaicPreview)
+        splitter = dialog.findChild(QSplitter)
+        try:
+            _wait_for(lambda: len(preview.computed_cells()["items"]) == 14)
+            assert splitter.orientation() == Qt.Horizontal
+            assert splitter.sizes()[0] > 4 * splitter.sizes()[1]
+            assert splitter.widget(1).verticalScrollBar().maximum() > 0
+            assert preview._content_width == 800 and 0 < preview._fit_scale < 1
+            assert preview.width() <= preview._fit_viewport.width()
+            assert preview.height() <= preview._fit_viewport.height()
+            assert len(preview._rects) == 14
+            assert all(preview.rect().contains(rect) for _, rect in preview._rects)
+        finally:
+            dialog.reject()
+        return QDialog.Rejected
+
+    monkeypatch.setattr(QDialog, "exec", inspect_dialog)
+    try:
+        mode._mosaic_dialog(list(range(14)), "asymmetric")
+    finally:
+        mode.close()
+
+
+# ===== SNAPSMACK EOF =====

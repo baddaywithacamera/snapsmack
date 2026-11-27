@@ -143,13 +143,14 @@ class PhotoThumbTile(QPushButton):
                  is_cover: bool = False, edited: bool = False,
                  in_slapper: bool = False, tile_size: int = 92,
                  asset_uuid: str = "", orientation: str = "",
-                 ratio_text: str = "", parent=None):
+                 ratio_text: str = "", parent=None, *, can_remove=True):
         super().__init__(parent)
         self._index = index
         self._asset_uuid = str(asset_uuid or "")
         self._pixmap = pixmap
         self._selected = selected
         self._is_cover = is_cover
+        self._can_remove = can_remove
         self._edited = edited
         self._in_slapper = in_slapper
         self._orientation = str(orientation or "")
@@ -166,6 +167,11 @@ class PhotoThumbTile(QPushButton):
     def _check_rect(self) -> QRect:
         return QRect(4, 22 if self._edited else 4, 18, 18)
 
+    def set_preview_pixmap(self, pixmap):
+        if pixmap is not None:
+            self._pixmap = pixmap
+            self.update()
+
     def mousePressEvent(self, event):
         w = self.parentWidget()
         while w is not None:
@@ -175,18 +181,24 @@ class PhotoThumbTile(QPushButton):
             w = w.parentWidget()
         if event.button() == Qt.LeftButton:
             self._drag_start = event.position().toPoint()
-            mods = event.modifiers()
-            in_check = self._check_rect().contains(self._drag_start)
-            toggle = bool((mods & (Qt.ControlModifier | Qt.ShiftModifier)) or in_check)
-            self.selectionClicked.emit(self._index, toggle)
         super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        start = self._drag_start
+        self._drag_start = None
+        super().mouseReleaseEvent(event)
+        if event.button() == Qt.LeftButton and start is not None and self.rect().contains(event.position().toPoint()):
+            mods = event.modifiers()
+            toggle = bool((mods & (Qt.ControlModifier | Qt.ShiftModifier)) or self._check_rect().contains(start))
+            self.selectionClicked.emit(self._index, toggle)
 
     def mouseMoveEvent(self, event):
         if ((event.buttons() & Qt.LeftButton) and self._drag_start is not None
                 and (event.position().toPoint() - self._drag_start).manhattanLength()
                 >= QApplication.startDragDistance()):
             self._drag_start = None
-            drag = QDrag(self)
+            self.setDown(False)
+            drag = QDrag(self.window())
             mime = QMimeData()
             payload = json.dumps({"asset_uuid": self._asset_uuid, "index": self._index}).encode("utf-8")
             mime.setData(TRAY_PHOTO_MIME, payload)
@@ -194,6 +206,7 @@ class PhotoThumbTile(QPushButton):
             if not self._pixmap.isNull():
                 drag.setPixmap(self._pixmap.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
             drag.exec(Qt.CopyAction)
+            drag.deleteLater()
             return
         super().mouseMoveEvent(event)
 
@@ -204,6 +217,7 @@ class PhotoThumbTile(QPushButton):
         act_feat.setEnabled(not self._is_cover)
         menu.addSeparator()
         act_rem = menu.addAction("Remove from tray")
+        act_rem.setEnabled(self._can_remove)
         chosen = menu.exec(event.globalPos())
         if chosen is act_feat:
             self.setFeaturedRequested.emit(self._index)

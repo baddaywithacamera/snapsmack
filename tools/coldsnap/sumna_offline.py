@@ -55,6 +55,8 @@ except ImportError:  # pragma: no cover - import shim for dev tree
     import snap_home
     import snap_thumbs
 
+from published_photo_cache import is_cached_original, link_original
+
 
 # ---------------------------------------------------------------------------
 # Versioning — every draft and every export carries these so an old artifact
@@ -227,6 +229,7 @@ class Draft:
     title:      str = ""
     caption:    str = ""                  # body / description — ALWAYS the synced truth
     colophon:   str = ""                  # optional post-production/equipment note
+    signature_enabled: bool = True       # an essay can opt out of its blog signature
     body_blocks: str = ""                 # BIGGIE authoring blocks (JSON array); caption
                                           # is recomputed from these on every save, so a
                                           # BIGGIE-off build always reads a correct body
@@ -760,16 +763,44 @@ class Session:
         self.save_draft(draft)
         return draft
 
+    @staticmethod
+    def _copy_photo_variant(src: str, directory: str, asset_uuid: str) -> str:
+        source = os.path.abspath(src)
+        directory = os.path.abspath(directory)
+        if os.path.normcase(os.path.dirname(source)) == os.path.normcase(directory):
+            return source
+
+        name = os.path.basename(source)
+        stem, suffix = os.path.splitext(name)
+        if not suffix[1:].isascii() or not suffix[1:].isalnum() or len(suffix) > 11:
+            suffix = ".img"
+        asset = hashlib.sha256(str(asset_uuid).encode("utf-8")).hexdigest()[:24]
+        prefix = f"{asset}-"
+        rest = stem.removeprefix(prefix)
+        if stem.startswith(prefix) and len(rest) == 16 and all(c in "0123456789abcdef" for c in rest):
+            identity = rest
+        else:
+            identity = hashlib.sha256(name.encode("utf-8")).hexdigest()[:16]
+        target = os.path.join(directory, f"{prefix}{identity}{suffix}")
+        shutil.copy2(source, target)
+        return target
+
     def _absorb_images(self, draft: Draft) -> None:
         thumbs_dir = os.path.join(self.images_dir, "thumbs")
         os.makedirs(thumbs_dir, exist_ok=True)
         for im in draft.images:
+            shared_original = is_cached_original(im.local_path)
+            shared_thumbs_current = shared_original and image_thumbs_current(im)
+            prefix = hashlib.sha256(str(im.asset_uuid).encode("utf-8")).hexdigest()[:16] + "-" if shared_original else ""
             slapper_sources = {
                 attr: os.path.abspath(str(getattr(im, attr, "") or ""))
                 for attr in ("slapper_base_path", "slapper_edited_path")
             }
             if not im.original_path and im.local_path:
                 im.original_path = os.path.abspath(im.local_path)
+            original_is_local = im.local_path and (
+                os.path.normcase(os.path.abspath(im.original_path))
+                == os.path.normcase(os.path.abspath(im.local_path)))
             # A non-destructive edit makes local_path a derivative. Keep its
             # untouched source inside the session as well, so reopening or
             # moving the session never turns the edit instructions into a
@@ -778,20 +809,23 @@ class Session:
                     and os.path.abspath(im.original_path) != os.path.abspath(im.local_path)):
                 originals_dir = os.path.join(self.images_dir, "originals")
                 os.makedirs(originals_dir, exist_ok=True)
-                original_name = os.path.basename(im.original_path)
-                dst = os.path.join(originals_dir, f"{im.asset_uuid}-{original_name}")
-                if os.path.abspath(im.original_path) != os.path.abspath(dst):
-                    shutil.copy2(im.original_path, dst)
-                im.original_path = dst
+                im.original_path = self._copy_photo_variant(
+                    im.original_path, originals_dir, im.asset_uuid)
             for attr, dest_dir in (("local_path", self.images_dir),
                                    ("thumb_square", thumbs_dir),
                                    ("thumb_aspect", thumbs_dir)):
                 src = getattr(im, attr)
                 if src and os.path.isfile(src):
-                    dst = os.path.join(dest_dir, os.path.basename(src))
+                    basename = os.path.basename(src)
+                    dst = os.path.join(dest_dir, prefix + basename)
                     if os.path.abspath(src) != os.path.abspath(dst):
-                        shutil.copy2(src, dst)
+                        if attr != "local_path" or not link_original(src, dst):
+                            shutil.copy2(src, dst)
                     setattr(im, attr, dst)
+            if original_is_local:
+                im.original_path = im.local_path
+            if shared_thumbs_current:
+                im.thumb_params = thumb_signature(im)
             # The external editor handoff deliberately keeps both versions.
             # Copy them into the session even when one is not the active
             # local_path, otherwise choosing the other version after moving or
@@ -801,11 +835,8 @@ class Session:
                 if not src or not os.path.isfile(src):
                     continue
                 os.makedirs(versions_dir, exist_ok=True)
-                dst = os.path.join(
-                    versions_dir, f"{im.asset_uuid}-{attr}-{os.path.basename(src)}")
-                if os.path.abspath(src) != os.path.abspath(dst):
-                    shutil.copy2(src, dst)
-                setattr(im, attr, dst)
+                setattr(im, attr, self._copy_photo_variant(
+                    src, versions_dir, f"{im.asset_uuid}-{attr}"))
 
     def _dbrows_path(self, draft_id: str) -> str:
         return os.path.join(self.drafts_dir, f"{draft_id}{DBROWS_SUFFIX}")
