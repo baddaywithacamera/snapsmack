@@ -1,0 +1,26 @@
+[
+    {
+        "ticket": "SS-1600",
+        "acceptance": "Configuration, under SECURITY, shows ALBUM SHARING as a two-value select reading OFF on a site that has never saved it. Choosing ON and saving stores it; a fresh load of Configuration still shows ON. With it OFF the cross-site POCKET ALBUM endpoint answers 404 with an album-sharing-not-enabled body; with it ON the same request returns the album payload. The control is not a checkbox, and it is not reachable by a non-administrator account.",
+        "site": "FILL IN: the local site the captures were taken on, e.g. http://127.0.0.1:56266/",
+        "room_message_id": "FILL IN: the room message that posted these captures",
+        "result": "pass",
+        "captures": [
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/album-sharing-off.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/album-sharing-on-after-reload.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/endpoint-404-with-sharing-off.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/endpoint-payload-with-sharing-on.png"
+        ]
+    },
+    {
+        "ticket": "SS-1600",
+        "acceptance": "CRON & JOBS lists POCKET ALBUM refresh beside the other three jobs, with RUN NOW, and with REGISTER or UNREGISTER according to whether this site's crontab line is present. On a site that displays no album from another site the Scheduler row says there is nothing to do, rather than showing a red NEVER FIRED for a job that site does not need. The page is not reachable by a non-administrator account.",
+        "site": "FILL IN: the local site the captures were taken on",
+        "room_message_id": "FILL IN: the room message that posted these captures",
+        "result": "pass",
+        "captures": [
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/cron-jobs-pocket-album-entry.png",
+            "FILL IN: a committed path under opaudits/evidence/1007D/, e.g. opaudits/evidence/1007D/cron-jobs-nothing-to-do.png"
+        ]
+    }
+]
