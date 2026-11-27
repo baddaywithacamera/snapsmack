@@ -3058,6 +3058,11 @@
             2
         ]
     },
+    "telegram-mobile-feed-regression.php": {
+        "assertions": 13,
+        "predicates": 8,
+        "thresholds": []
+    },
     "telegram-mobile-skin-regression.php": {
         "assertions": 17,
         "predicates": 30,

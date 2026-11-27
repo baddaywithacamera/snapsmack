@@ -40,9 +40,12 @@
             <article class="telegram-feed-item">
                 <a href="<?php echo snap_escape_url($post['url']); ?>">
                     <?php if (!empty($post['image_url'])): ?>
-                        <?php echo snap_render_html(snap_render_component('image', ['url' => $post['image_url'], 'alt' => $post['title']])); ?>
+                        <span class="telegram-feed-thumb"><?php echo snap_render_html(snap_render_component('image', ['url' => $post['image_url'], 'alt' => $post['title']])); ?></span>
                     <?php endif; ?>
                     <h2><?php echo snap_escape_html($post['title']); ?></h2>
+                    <?php if (!empty($post['excerpt'])): ?>
+                        <p class="telegram-feed-excerpt"><?php echo snap_escape_html($post['excerpt']); ?></p>
+                    <?php endif; ?>
                 </a>
             </article>
         <?php endforeach; ?>
