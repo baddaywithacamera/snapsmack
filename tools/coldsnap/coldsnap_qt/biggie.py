@@ -206,6 +206,48 @@ _RX = {
 }
 
 
+def image_width_percent(block: dict) -> int | None:
+    """Use the site's explicit width, or the local asset's authored ratio."""
+    width = str(block.get("width") or "").strip().removesuffix("%")
+    if width.isdecimal():
+        return max(20, min(100, int(width)))
+    ratio = block.get("width_ratio") if block.get("asset_uuid") else None
+    if ratio is not None:
+        try:
+            return max(20, min(100, round(float(ratio) * 100)))
+        except (TypeError, ValueError, OverflowError):
+            pass
+    return None
+
+
+def image_drag_percent(initial, delta, column_width, align):
+    """Match the CMS drag increments for left, centered and right-aligned images."""
+    if not delta:
+        return initial
+    factor = {"center": 2, "right": -1}.get(align, 1)
+    desired = initial + 100 * factor * delta / max(1, column_width)
+    stepped = int((desired + 2.5) // 5) * 5
+    return max(20, min(100, stepped))
+
+
+def resize_image_shortcode(shortcode: str, percent: int) -> str:
+    """Replace only the width digits, or insert a width before trailing options."""
+    match = _RX["image"].fullmatch(shortcode)
+    if not match:
+        return shortcode
+    width = str(max(20, min(100, int(percent))))
+    if match.group(6) is not None:
+        start, end = match.span(6)
+        return shortcode[:start] + width + shortcode[end:]
+    group = next((index for index in (5, 4, 3, 2) if match.group(index) is not None), None)
+    if group is None:
+        return shortcode
+    end = match.end(group)
+    while end > match.start(group) and shortcode[end - 1].isspace():
+        end -= 1
+    return shortcode[:end] + "|" + width + shortcode[end:]
+
+
 def _normalise_cell(cell) -> list:
     """Migrate v1 string cells to the nested block model without data loss."""
     if isinstance(cell, list):

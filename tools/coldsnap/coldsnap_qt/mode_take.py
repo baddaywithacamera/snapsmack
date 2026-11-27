@@ -22,7 +22,7 @@ import requests
 
 from concurrent.futures import ThreadPoolExecutor
 from collections import deque
-from PySide6.QtCore import QObject, Qt, QDate, QEvent, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
+from PySide6.QtCore import QObject, Qt, QDate, QEvent, QEventLoop, QMetaObject, QRect, QRegularExpression, QSize, Signal, Slot, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
@@ -55,6 +55,76 @@ from .photo_tray import RightPhotosTray, PhotoThumbTile, photo_orientation_badge
 from .photo_loader import PhotoLoader
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
+
+
+class _ImageWidthPreview(QWidget):
+    """A small TWIGGY preview whose edge uses the same drag rule as BIGGIE."""
+
+    width_changed = Signal(int)
+
+    def __init__(self, canvas, image_id, percent, align, parent=None):
+        super().__init__(parent)
+        self.canvas = canvas
+        self.image_id = image_id
+        self.percent = percent
+        self.align = align
+        self.setMinimumSize(450, 160)
+        self._handle = QRect()
+        self._drag = None
+        self._retry = QTimer(self)
+        self._retry.timeout.connect(self.update)
+        self._retry.start(160)
+        QTimer.singleShot(2000, self._retry.stop)
+
+    def set_percent(self, value):
+        self.percent = value
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        width = max(1, self.width() - 26)
+        image_width = round(width * self.percent / 100)
+        offset = width - image_width
+        left = 13 + (offset if self.align == "right" else offset // 2 if self.align == "center" else 0)
+        box = QRect(left, 12, image_width, self.height() - 24)
+        pixmap = self.canvas.image_pixmap(self.image_id, width)
+        if pixmap is not None and not pixmap.isNull():
+            self._retry.stop()
+            scaled = pixmap.scaled(box.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            painter.drawPixmap(box.center() - scaled.rect().center(), scaled)
+        else:
+            painter.setPen(QColor(theme.DIM))
+            painter.drawRect(box)
+            painter.drawText(box, Qt.AlignCenter | Qt.TextWordWrap, "Preview unavailable")
+        edge = box.left() if self.align == "right" else box.right()
+        self._handle = QRect(edge - 6, box.center().y() - 11, 13, 22)
+        painter.fillRect(self._handle, QColor(theme.ACCENT))
+        painter.end()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self._handle.contains(event.position().toPoint()):
+            self._drag = (event.position().x(), self.percent)
+            self.setCursor(Qt.SizeHorCursor)
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self._drag is not None:
+            start, initial = self._drag
+            percent = biggie.image_drag_percent(initial, event.position().x() - start,
+                                                self.width() - 26, self.align)
+            self.width_changed.emit(percent)
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self._drag is not None and event.button() == Qt.LeftButton:
+            self.mouseMoveEvent(event)
+            self._drag = None
+            self.unsetCursor()
+            return
+        super().mouseReleaseEvent(event)
 
 
 class _PublishedPostBridge(QObject):
@@ -1369,6 +1439,8 @@ class TakeMode(QWidget):
                         lambda: bar._list("ol")),
             BlockAction("IMG", "Image", "PLACE", "Choose an unplaced photo from this post",
                         self._pick_tray_photo),
+            BlockAction("WIDTH", "Image width", "PLACE", "Resize the image at the text cursor",
+                        self._resize_text_image),
             BlockAction("COL 2", "2 columns", "PLACE", "[columns=2]…[/columns]",
                         lambda: bar._columns(2)),
             BlockAction("COL 3", "3 columns", "PLACE", "[columns=3]…[/columns]",
@@ -1380,6 +1452,59 @@ class TakeMode(QWidget):
                         "[mosaic=1,2 layout=asymmetric] (built from the photo picker)",
                         self._insert_mosaic),
         ]
+
+    def _text_image_at_cursor(self):
+        editor = self.body.editor
+        caret = editor.textCursor().position()
+        document = editor.document()
+        pattern = QRegularExpression(r"\[img:[^\]\r\n]+\]", QRegularExpression.CaseInsensitiveOption)
+        start = document.findBlock(caret).position()
+        hit = document.find(pattern, start)
+        while not hit.isNull() and hit.selectionStart() <= caret:
+            if hit.selectionEnd() >= caret:
+                raw = hit.selectedText()
+                blocks = biggie.parse_body(raw)
+                if len(blocks) == 1 and blocks[0].get("type") == "image":
+                    return hit, raw, blocks[0]
+                break
+            hit = document.find(pattern, hit.selectionEnd())
+        return None
+
+    def _resize_text_image(self):
+        selected = self._text_image_at_cursor()
+        if selected is None:
+            QMessageBox.information(self, "Image width", "Place the text cursor inside an image shortcode.")
+            return
+        cursor, raw, block = selected
+        align = str(block.get("align") or "center")
+        initial = biggie.image_width_percent(block)
+        if initial is None:
+            initial = {"full": 100, "wall": 60, "small": 36}.get(block.get("size") or "full", 100)
+            if initial < 100 and align in ("left", "right"):
+                initial = 36
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Image width")
+        layout = QVBoxLayout(dialog)
+        identity = "g" + block["img_id"] if block.get("gallery") else block["img_id"]
+        preview = _ImageWidthPreview(self.body.canvas, identity, initial, align, dialog)
+        layout.addWidget(preview)
+        percent = QSpinBox(dialog)
+        percent.setAccessibleName("Image width")
+        percent.setRange(20, 100)
+        percent.setSingleStep(5)
+        percent.setSuffix("%")
+        percent.setValue(initial)
+        preview.width_changed.connect(percent.setValue)
+        percent.valueChanged.connect(preview.set_percent)
+        layout.addWidget(percent)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel, parent=dialog)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        if dialog.exec() == QDialog.Accepted and percent.value() != initial:
+            cursor.insertText(biggie.resize_image_shortcode(raw, percent.value()))
+            self.body.editor.setTextCursor(cursor)
+        dialog.deleteLater()
 
     # -- rail rows -----------------------------------------------------------
     def _rows(self, session, refresh_cb):
@@ -4282,6 +4407,9 @@ class TakeMode(QWidget):
                 show_cap = bool(out.get("show_caption"))
                 cap_text = str(out.get("caption") or "").strip()
                 if out.get("asset_uuid"):
+                    width = biggie.image_width_percent(out)
+                    if width is not None:
+                        out["width"] = str(width)
                     pos = positions.get(str(out["asset_uuid"]))
                     if pos:
                         out["img_id"] = f"bucket:{pos}"

@@ -289,9 +289,11 @@ class _Objects(QPyTextObject):
         placement = data.get("placement", "")
         align = {"wrap-left": "left", "wrap-right": "right"}.get(
             placement, data.get("align", "center"))
-        ratio = max(0.25, min(1.0, float(data.get("width_ratio", 0) or 0)))
-        if data.get("asset_uuid"):
-            iw = int(col_w * ratio)
+        width = biggie.image_width_percent(data)
+        if width is not None:
+            iw = round(col_w * width / 100)
+        elif data.get("asset_uuid"):
+            iw = col_w
         else:
             iw = col_w if size == "full" else (int(col_w * 0.6) if size == "wall" else int(col_w * 0.36))
             if align in ("left", "right") and size != "full":
@@ -843,6 +845,8 @@ class BiggieCanvas(QTextEdit):
         self.allow_mosaic = allow_mosaic
         self.bucket = []                 # ordered local paths of the post's photos
         self.assets = {}                 # immutable asset UUID -> local preview path
+        self._image_resize_handle = None
+        self._image_resize_drag = None
         self._image_resolver = None      # callable(img_id, width) -> QPixmap|None
         self._site_provider = None       # callable() -> site url; unlocks the gallery picker
         self._pending_obj_pos = None     # document position of a mosaic being edited
@@ -1853,11 +1857,57 @@ class BiggieCanvas(QTextEdit):
                 painter.setPen(QColor("#ffffff"))
                 painter.drawText(close_r, Qt.AlignCenter, "✕")
                 self._block_close_rect = close_r
+
+        self._image_resize_handle = None
+        if self._selected_obj_pos is not None:
+            hit = self._object_at(self._selected_obj_pos)
+            if hit and hit[0] == "image":
+                self._paint_image_resize(painter, hit, scale)
         painter.end()
+
+    def _paint_image_resize(self, painter, hit, scale):
+        _, data, position = hit
+        block = self._block_selection_rect(position)
+        if block is None:
+            return
+        width = self._objects._width(self.document())
+        image_width, _, align, _, _ = self._objects._image_box_metrics(data, width)
+        left = block.left()
+        x = left if align == "left" else left + round((width - image_width) * scale * (.5 if align == "center" else 1))
+        edge = x if align == "right" else x + round(image_width * scale) - 1
+        handle = QRect(max(0, edge - 6), block.center().y() - 11, 13, 22)
+        initial = biggie.image_width_percent(data) or round(100 * image_width / width)
+        self._image_resize_handle = (handle, position, initial, width * scale, align)
+        painter.fillRect(handle, QColor(theme.ACCENT))
+        if self._image_resize_drag is not None:
+            _, _, _, _, _, percent = self._image_resize_drag
+            preview = round(width * scale * percent / 100)
+            offset = (round(width * scale) - preview) * (.5 if align == "center" else 1 if align == "right" else 0)
+            new_rect = QRect(left + round(offset), block.top(), preview, block.height())
+            painter.setPen(QPen(QColor(theme.ACCENT), 1, Qt.DashLine))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRect(new_rect)
+            painter.drawText(new_rect, Qt.AlignCenter, f"{percent}%")
+
+    def _set_image_width(self, position, percent):
+        hit = self._object_at(position)
+        if hit and hit[0] == "image":
+            data = dict(hit[1])
+            if data.get("raw"):
+                data["raw"] = biggie.resize_image_shortcode(data["raw"], percent)
+            data["width"] = str(percent)
+            self._insert_object("image", data, replace_at=hit[2])
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             pt = event.position().toPoint()
+            handle = self._image_resize_handle
+            if handle and handle[0].contains(pt):
+                _, position, initial, column_width, align = handle
+                self._image_resize_drag = (position, pt.x(), initial, column_width, align, initial)
+                self.viewport().setCursor(Qt.SizeHorCursor)
+                event.accept()
+                return
             document_point = self._unscale_point(event.position()).toPoint()
             for pos, (_tiles, buttons) in self._inline_mosaic_hits.items():
                 for rect, identities in buttons:
@@ -1887,9 +1937,26 @@ class BiggieCanvas(QTextEdit):
         super().mousePressEvent(self._unscale_mouse_event(event))
 
     def mouseMoveEvent(self, event):
+        if self._image_resize_drag is not None:
+            position, start, initial, column_width, align, _ = self._image_resize_drag
+            percent = biggie.image_drag_percent(initial, event.position().x() - start, column_width, align)
+            self._image_resize_drag = (position, start, initial, column_width, align, percent)
+            self.viewport().update()
+            event.accept()
+            return
         super().mouseMoveEvent(self._unscale_mouse_event(event))
 
     def mouseReleaseEvent(self, event):
+        if self._image_resize_drag is not None and event.button() == Qt.LeftButton:
+            position, start, initial, column_width, align, _ = self._image_resize_drag
+            self._image_resize_drag = None
+            self.viewport().unsetCursor()
+            percent = biggie.image_drag_percent(initial, event.position().x() - start, column_width, align)
+            if percent != initial:
+                self._set_image_width(position, percent)
+            self.viewport().update()
+            event.accept()
+            return
         super().mouseReleaseEvent(self._unscale_mouse_event(event))
 
     def _remove_block_at(self, pos: int):
@@ -2183,11 +2250,10 @@ class BiggieCanvas(QTextEdit):
             return
         data = dict(hit[1])
         presets = (.25, .33, .5, .67, 1.0)
-        current = float(data.get("width_ratio", 1.0) or 1.0)
+        current = (biggie.image_width_percent(data) or 100) / 100
         index = min(range(len(presets)), key=lambda i: abs(presets[i] - current))
         index = max(0, min(len(presets) - 1, index + (1 if delta > 0 else -1)))
-        data["width_ratio"] = presets[index]
-        self._insert_object("image", data, replace_at=hit[2])
+        self._set_image_width(pos, round(100 * presets[index]))
 
     def set_preview_width(self, width):
         """Lock the document column to the target preview width (e.g. Desktop 760 / Phone 360)."""

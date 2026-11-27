@@ -1342,6 +1342,9 @@ class SmacktalkPoster:
                     show_cap = bool(out.get("show_caption"))
                     cap_text = str(out.get("caption") or "").strip()
                     if out.get("asset_uuid"):
+                        width = biggie.image_width_percent(out)
+                        if width is not None:
+                            out["width"] = str(width)
                         pos = positions.get(str(out["asset_uuid"]))
                         if pos:
                             out["img_id"] = f"bucket:{pos}"
