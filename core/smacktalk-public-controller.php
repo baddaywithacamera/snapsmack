@@ -350,15 +350,34 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         // site. This block already exists to tolerate exactly that, and
         // snap_signature_resolve() falls back to the legacy field when the
         // columns are absent, so an un-synced site behaves as it does today.
+        // THE QUERY CARRIES THE VISIBILITY CLAUSE. The first version did not,
+        // and tests/skin-visibility-parity-regression.php refused it -- rightly.
+        // The row has already been vetted by postBySlug/postById, so nothing
+        // was actually broadened, but a bare snap_posts read in a public
+        // controller is the SHAPE that leaks and the ratchet does not care
+        // about my reasoning. It also closes a real gap: if a post is
+        // unpublished between the two reads, this returns no row and the
+        // signature falls back to nothing rather than rendering.
+        //
+        // AN EDITOR PREVIEW IS NOT QUERIED AT ALL. $previewPost is the whole
+        // post array the editor supplied, unsaved and usually a draft, so a
+        // published-only query would find nothing and the preview would
+        // disagree with the page. The preview's own array is used as it stands,
+        // and snap_signature_resolve() falls back to the legacy meaning when it
+        // does not carry the two columns.
         require_once __DIR__ . '/signature-contract.php';
         $signature_row = $post;
-        try {
-            $sig_q = $pdo->prepare("SELECT signature_light_image_id, signature_dark_image_id
-                                    FROM snap_posts WHERE id=? LIMIT 1");
-            $sig_q->execute([(int)$post['id']]);
-            $signature_row = array_merge($post, $sig_q->fetch(PDO::FETCH_ASSOC) ?: []);
-        } catch (Throwable $e) {
-            $signature_row = $post;   // columns not added yet: legacy meaning
+        if ($previewPost === null) {
+            try {
+                $sig_q = $pdo->prepare("SELECT signature_light_image_id, signature_dark_image_id
+                                        FROM snap_posts
+                                        WHERE id=? AND status='published' AND created_at <= NOW()
+                                        LIMIT 1");
+                $sig_q->execute([(int)$post['id']]);
+                $signature_row = array_merge($post, $sig_q->fetch(PDO::FETCH_ASSOC) ?: []);
+            } catch (Throwable $e) {
+                $signature_row = $post;   // columns not added yet: legacy meaning
+            }
         }
         // The server renders the LIGHT surface. Which surface a reader is on is
         // a skin-side question and there is no signal for it yet, so the dark
