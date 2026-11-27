@@ -334,12 +334,19 @@ class SnapSmackRecovery {
         // phase needs the identical check and HAVING TWO COPIES IS WHAT CAUSED
         // THIS. I wrote this helper by copying the manifest phase's guard, so
         // I copied its bug too, and repairing one left the other holding the
-        // same hole. One implementation, THREE callers on this line of
-        // development: restoreImages(), restoreBranding() and the manifest
-        // phase. The branch this was split out of said two, because its media
-        // phase was one function; corrected rather than carried over, since a
-        // comment that miscounts its own callers is how the second copy got
-        // missed in the first place.
+        // same hole. One implementation, FIVE callers on this line of
+        // development: restoreImages(), restoreMediaAssets(), restoreBranding()
+        // and regenerateAndChecksum() through safeRelativeTarget(), plus the
+        // manifest phase calling pathStaysInsideBase() directly.
+        //
+        // THIS COMMENT HAS NOW BEEN WRONG TWICE, WHICH IS THE POINT OF IT. The
+        // branch this was split out of said TWO, because its media phase was
+        // one function. I corrected it to THREE, then added the guards to
+        // restoreMediaAssets() and regenerateAndChecksum() and did not come
+        // back to it -- so it shipped naming three of five, in the very commit
+        // whose message says a comment that miscounts its own callers is how
+        // the second copy got missed. Muse caught it on review. If you add a
+        // sixth caller, change this line in the same edit.
         return $this->pathStaysInsideBase($norm, $why);
     }
 
