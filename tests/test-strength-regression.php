@@ -70,11 +70,59 @@ function strength_assertions(string $source): int
     $total += preg_match_all('/\b[A-Za-z0-9_]*(?:expect|assert|check|verify|_test|test_)[A-Za-z0-9_]*\s*\(/i', $source);
     // The short helper names the rest of the suite uses, matched whole so
     // that ordinary words containing them (token, hook, lookup) do not count.
-    $total += preg_match_all('/\b(?:test|ok|fail|failure)\s*\(/i', $source);
+    // cx is the two-letter closure five of the .cjs files assert through;
+    // measured across tests/, not guessed, same as the rest of this list.
+    $total += preg_match_all('/\b(?:test|ok|fail|failure|cx)\s*\(/i', $source);
+    // node:assert, which is a DOTTED call -- assert.equal(...) -- so the
+    // identifier pattern above never sees it followed by a bracket. Without
+    // this, jive-border-geometry-browser.cjs recorded zero assertions and zero
+    // predicates: in the record and unprotected by it, which is the one
+    // outcome worse than being left out.
+    $total += preg_match_all('/\b(?:assert|expect)\s*\.\s*[A-Za-z0-9_]+\s*\(/i', $source);
     $total += preg_match_all('/\bthrow\s+new\s+\w*(?:Exception|Error)\b/i', $source);
     $total += preg_match_all('/\$(?:failures|problems|errors|dirty)\s*\[\s*\]\s*=/i', $source);
     // The plainest style in the suite: if the thing is wrong, say so and stop.
+    // This also catches process.exit(1), which is how the .cjs files do it.
     $total += preg_match_all('/\bexit\s*\(\s*1\s*\)/', $source);
+    // A COUNTER THAT GOES UP WHEN SOMETHING IS WRONG. The JavaScript
+    // counterpart of the failures-list append, and the PHP one too: the
+    // optional quote-and-bracket covers $GLOBALS['fail']++, which is how
+    // archive-query-time-budget-benchmark.php counts. That file recorded zero
+    // assertions and zero asks, so it sat inside the record with nothing
+    // holding it.
+    //
+    // This GENERALISES the idiom rather than adding its helper name to the
+    // short list. Adding bx() would have fixed one file and left the next
+    // two-letter closure invisible, which is the over-fitting this gate exists
+    // to catch; and renaming the helper to match an existing one would be
+    // changing somebody's test to suit my counter.
+    $total += preg_match_all(
+        '/\b(?:fail|fails|failures|failed)\b\s*[\'"]?\s*\]?\s*(?:\+\+|\+=)/i',
+        $source
+    );
+
+    // THE HELPER THIS FILE ASSERTS THROUGH, WHATEVER IT IS CALLED. 158 of the
+    // files in tests/ define a boolean-first helper -- function x(bool $ok,
+    // string $what) -- and they use at least a dozen different names for it:
+    // cx, tx, tt, bx, s_ok, ar_test, check. The short-name list above catches
+    // some by luck. Rather than growing that list one name at a time, which
+    // leaves the NEXT two-letter closure invisible and is the over-fitting
+    // this gate exists to catch, the name is read out of the file's own
+    // definition and its calls are counted.
+    //
+    // This double-counts the names the patterns above already match. That is
+    // fine and deliberate: only the DIRECTION of these numbers is ever read,
+    // never the size, and every baseline is derived by the same code.
+    $helpers = [];
+    preg_match_all('/function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*bool\s/i', $source, $named);
+    foreach ($named[1] ?? [] as $name) { $helpers[] = '\b' . preg_quote($name, '/'); }
+    preg_match_all(
+        '/\$([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:static\s+)?(?:fn|function)\s*\(\s*bool\s/i',
+        $source, $closures);
+    foreach ($closures[1] ?? [] as $name) { $helpers[] = '\$' . preg_quote($name, '/'); }
+    foreach (array_unique($helpers) as $helper) {
+        $total += preg_match_all('/' . $helper . '\s*\(/', $source);
+    }
     return $total;
 }
 
@@ -89,13 +137,35 @@ function strength_assertions(string $source): int
  * This over-counts — the same functions get used in setup code — and that is
  * fine. Only the direction is read, never the size.
  */
-function strength_predicates(string $source): int
+function strength_predicates(string $source, bool $isJs): int
 {
-    return preg_match_all(
+    $total = preg_match_all(
         '/\b(?:str_contains|str_starts_with|str_ends_with|substr_count|strpos|stripos'
         . '|preg_match|preg_match_all|in_array|array_key_exists|isset)\s*\(/i',
         $source
     );
+    // The same idea in JavaScript, for the .cjs and .js tests. Several of them
+    // never call a helper at all -- they build a list of {ok, name} objects and
+    // print it -- so without these they would record a zero, and a ratchet at
+    // zero holds nothing up. That would be the worst outcome of widening this
+    // gate: a file inside the record that the record cannot protect.
+    $total += preg_match_all(
+        '/\.(?:includes|startsWith|endsWith|indexOf|match|matchAll)\s*\(/',
+        $source
+    );
+    $total += preg_match_all('/\b(?:Array\.isArray|RegExp)\s*\(/', $source);
+
+    // IDENTITY COMPARISONS ARE COUNTED FOR JAVASCRIPT ONLY, and the reason is
+    // the point of this whole gate. PHP uses === everywhere, so counting it
+    // moved 469 existing baselines upward and DILUTED them: one file went from
+    // 1 predicate to 6, so deleting its single real check would read as 6 to 5
+    // instead of 1 to 0. Widening the record must not weaken the half of it
+    // that already worked. The .cjs files need it because several of them
+    // compare values directly with no helper at all.
+    if ($isJs) {
+        $total += preg_match_all('/[A-Za-z0-9_$\)\]\'"]\s*(?:===|!==)\s*/', $source);
+    }
+    return $total;
 }
 
 /**
@@ -123,14 +193,30 @@ function strength_thresholds(string $source): array
     return array_values($found);
 }
 
+// THE BROWSER AND GEOMETRY TESTS ARE IN THE RECORD NOW. (PM, 2026-11-27, with
+// Codex agreeing it affects his evidence too.) This gate globbed tests/*.php
+// only, so all 29 .cjs and .js files sat outside it and a check could be
+// deleted from any of them unnoticed. Those are the tests that measure what
+// actually reaches the owner -- geometry on a rendered page -- which made the
+// gap the wrong way round: the tripwire guarded the half of the suite that
+// reads markup and not the half that measures pixels.
+//
+// tools/browser-tests/ is NOT globbed. Codex owns that directory and its
+// runners, and it is not tests/.
+$paths = [];
+foreach (['php', 'cjs', 'js', 'mjs'] as $extension) {
+    foreach (glob($root . '/tests/*.' . $extension) ?: [] as $path) { $paths[] = $path; }
+}
+
 $current = [];
-foreach (glob($root . '/tests/*.php') ?: [] as $path) {
+foreach ($paths as $path) {
     $name = basename($path);
+    $isJs = !str_ends_with($name, '.php');
     if ($name === basename(__FILE__)) continue;   // this file is not a check of the code
     $source = (string)file_get_contents($path);
     $current[$name] = [
         'assertions' => strength_assertions($source),
-        'predicates' => strength_predicates($source),
+        'predicates' => strength_predicates($source, $isJs),
         'thresholds' => strength_thresholds($source),
     ];
 }
@@ -145,6 +231,25 @@ if ($updating || !is_file($fixturePath)) {
     $verb = $updating ? 'Updated' : 'Created';
     echo "{$verb} the strength record for " . count($current) . " test files.\n";
     echo "Read the diff before committing it. A number going down is a check going away.\n";
+    // A FILE THAT RECORDS ZERO AND ZERO IS IN THE RECORD AND NOT PROTECTED BY
+    // IT: a ratchet at zero cannot go down, so every check in that file could
+    // be deleted and this gate would still pass. Before the .cjs files were
+    // adopted there were FOUR such PHP files and nobody knew, because the gate
+    // never said. It says now. This reports rather than refuses, because the
+    // honest fix is to recognise that file's idiom, not to fail the suite over
+    // a file somebody wrote in good faith.
+    $unprotected = [];
+    foreach ($current as $name => $counts) {
+        if ((int)$counts['assertions'] === 0 && (int)$counts['predicates'] === 0) {
+            $unprotected[] = $name;
+        }
+    }
+    if ($unprotected !== []) {
+        echo "\nIN THE RECORD BUT NOT PROTECTED BY IT (zero assertions, zero asks):\n";
+        foreach ($unprotected as $name) { echo "  - {$name}\n"; }
+        echo "A ratchet at zero holds nothing. Each of these asserts in a way\n"
+           . "strength_assertions() does not recognise; teach it that idiom.\n";
+    }
     // ===== SNAPSMACK EOF =====
     return;
 }

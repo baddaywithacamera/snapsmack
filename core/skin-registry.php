@@ -583,11 +583,20 @@ function skin_registry_compare(array $registry, array $local): array {
         $is_installed = isset($local[$slug]);
         $local_ver    = $local[$slug]['version'] ?? null;
         $remote_ver   = $remote['version'] ?? '0.0';
+        // THE EPOCH, or a re-baselined skin never reaches a site that holds the
+        // old bigger number. IMPACT PRINTER 2.1.30 -> 0.7.31 is NEWER only
+        // because the remote entry declares version_epoch 1; compared as plain
+        // semver it reads as a downgrade and the site stays behind for ever
+        // with nobody told. snap_version_with_epoch() adds nothing when there
+        // is no epoch, so every skin published before the re-baseline behaves
+        // exactly as it did.
+        $remote_cmp   = snap_version_with_epoch($remote);
+        $local_cmp    = snap_version_with_epoch($local[$slug] ?? []);
 
         $result[$slug] = array_merge($remote, [
             'installed'        => $is_installed,
             'local_version'    => $local_ver,
-            'update_available' => $is_installed && snap_version_compare($remote_ver, $local_ver, '>'),
+            'update_available' => $is_installed && snap_version_compare($remote_cmp, $local_cmp, '>'),
             'installable'      => ($remote['status'] ?? 'stable') !== 'development',
         ]);
     }

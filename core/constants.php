@@ -101,7 +101,35 @@ define('SNAPSMACK_GRID_IMAGE_SIZES', '100vw');
 //
 // Usage: snap_version_compare('0.7.123', '0.7.123', '>') => true
 //        snap_version_compare('0.7.9p', '0.7.9n', '>') => true (legacy)
+//
+// --- THE EPOCH, AND WHY A NUMBER CAN GO DOWN ---
+//
+// SnapSmack is in alpha and every version is meant to be 0.7.x, but several
+// skins and tools drifted to 1.x and 2.x. Sean asked for that to stop and it
+// carried on, so the numbers are being brought back: IMPACT PRINTER 2.1.30
+// becomes 0.7.31, RATIONAL GEO 2.1.46 becomes 0.7.47, and so on.
+//
+// Semver says 2.1.30 is NEWER than 0.7.31, so without something else every
+// site holding the old number would refuse the re-baselined release for ever
+// and silently stay behind. That something else is an EPOCH: an integer that
+// is compared BEFORE the version, written as "epoch:version" the way Debian
+// and RPM have done it for twenty years.
+//
+//   snap_version_compare('1:0.7.31', '0:2.1.30', '>')  => true
+//
+// A version with no colon is epoch 0, so every existing call and every
+// installed copy keeps behaving exactly as it did. The epoch only ever rises,
+// and only when Sean re-bases a series; it is not a version number and nobody
+// sets it per release.
 function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
+    $split = function (string $v): array {
+        // "1:0.7.31" → [1, '0.7.31']. No colon → epoch 0, which is what every
+        // version in the wild before the re-baseline is.
+        if (preg_match('/^\s*(\d+)\s*:\s*(.*)$/', $v, $m) === 1) {
+            return [(int)$m[1], $m[2]];
+        }
+        return [0, $v];
+    };
     $normalise = function (string $v): string {
         // Strip non-numeric prefix (e.g. 'Alpha 0.7.182' → '0.7.182').
         $v = preg_replace('/^[^0-9]+/', '', $v);
@@ -110,7 +138,28 @@ function snap_version_compare(string $v1, string $v2, string $op = '>'): bool {
         }
         return $v . '.0';
     };
-    return version_compare($normalise($v1), $normalise($v2), $op);
+    [$e1, $r1] = $split($v1);
+    [$e2, $r2] = $split($v2);
+    if ($e1 !== $e2) {
+        // The epoch decides, and the version is not consulted at all: that is
+        // the whole point of having one.
+        return version_compare((string)$e1, (string)$e2, $op);
+    }
+    return version_compare($normalise($r1), $normalise($r2), $op);
+}
+
+/**
+ * The comparable version of a package entry, epoch included.
+ *
+ * Pass this, not $entry['version'], wherever a REMOTE package is compared
+ * against an INSTALLED one. A registry entry or manifest declares its epoch as
+ * version_epoch; absent means 0, which is every release made before the
+ * re-baseline.
+ */
+function snap_version_with_epoch(array $entry, string $version_key = 'version'): string {
+    $version = (string)($entry[$version_key] ?? '0.0');
+    $epoch = (int)($entry['version_epoch'] ?? 0);
+    return $epoch > 0 ? $epoch . ':' . $version : $version;
 }
 
 // --- THE AGE OF A READING ---

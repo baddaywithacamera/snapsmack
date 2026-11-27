@@ -587,15 +587,18 @@ function updater_check_status(string $installed_version, array $release_info, st
     if (isset($release_info['error'])) {
         return 'error';
     }
-    if (snap_version_compare($release_info['version'], $installed_version, '>')) {
+    // Epoch-aware for the core too: a re-baselined core release would
+    // otherwise read as older than what is installed.
+    $remote_cmp = snap_version_with_epoch($release_info);
+    if (snap_version_compare($remote_cmp, $installed_version, '>')) {
         return 'update_available';
     }
     // Same version number — check whether the package was rebuilt (checksum changed).
     // This lets force-pushed tags propagate to spokes without inflating the version.
     // Only applies when versions are exactly equal — never trigger on a remote version
     // that is older than what is installed (avoids false "update available" on stale servers).
-    $versions_equal = !snap_version_compare($release_info['version'], $installed_version, '<')
-                   && !snap_version_compare($release_info['version'], $installed_version, '>');
+    $versions_equal = !snap_version_compare($remote_cmp, $installed_version, '<')
+                   && !snap_version_compare($remote_cmp, $installed_version, '>');
     if ($versions_equal
         && $installed_checksum !== ''
         && !empty($release_info['checksum_sha256'])
@@ -2538,7 +2541,13 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
 
         if (isset($local[$slug]) &&
             isset($skin['version'], $local[$slug]['version']) &&
-            snap_version_compare($skin['version'], $local[$slug]['version'], '>')
+            // Epoch-aware: see the note in core/skin-registry.php. A
+            // re-baselined skin must not read as a downgrade.
+            snap_version_compare(
+                snap_version_with_epoch($skin),
+                snap_version_with_epoch($local[$slug]),
+                '>'
+            )
         ) {
             // Installed skin has an update
             $updated_skins[] = [
@@ -2575,7 +2584,11 @@ function updater_check_skin_registry(PDO $pdo, bool $fast = false): array {
     $mobile_missing  = $mobile_slug !== '' && !is_dir($mobile_dir);
     $mobile_outdated = $mobile_slug !== '' && !$mobile_missing
         && isset($mobile_entry['version'], $local[$mobile_slug]['version'])
-        && snap_version_compare($mobile_entry['version'], $local[$mobile_slug]['version'], '>');
+        && snap_version_compare(
+            snap_version_with_epoch($mobile_entry),
+            snap_version_with_epoch($local[$mobile_slug]),
+            '>'
+        );
 
     if (($mobile_missing || $mobile_outdated) && !empty($mobile_entry['download_url'])) {
         skin_registry_install(
