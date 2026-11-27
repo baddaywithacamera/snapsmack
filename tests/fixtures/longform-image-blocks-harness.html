@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Longform image blocks harness</title>
+<!--
+  The longform editor's image-block panel, served on its own.
+
+  The markup below is the panel from smack-post-long.php:522-530 with the PHP
+  echoes filled in: the textarea starts empty, and data-base is "/" because this
+  harness serves the image files from its own root. Nothing else is changed, so
+  what the real script finds here is what it finds in the editor.
+
+  Why a harness at all: SS-1610 says the CMS has no drag-to-resize, and the
+  source says the longform editor has had a drag handle all along. Reading
+  cannot settle that. This page needs no database, so the handle can be put
+  under a real pointer in a real browser.
+-->
+<style>
+  body { margin: 0; padding: 20px; background: #111; color: #eee;
+         font-family: system-ui, sans-serif; }
+  :root { --border: #444; --accent: #64d94f; --input-bg: #111; --dim: #888; }
+  textarea { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<textarea id="long-content" name="content" rows="10"
+          style="width:100%;box-sizing:border-box;font-family:monospace;font-size:13px;"
+          placeholder="Write something worth saying."></textarea>
+<section id="long-image-blocks" data-base="/" style="margin-top:18px;display:none;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;">
+        <strong style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;">Image blocks</strong>
+        <span class="dim" style="font-size:11px;">Drag a block edge or use its width slider. Text stays in the shortcode editor.</span>
+    </div>
+    <div id="long-image-block-list" style="display:grid;gap:12px;"></div>
+</section>
+
+<script src="/assets/js/smack-longform-image-blocks.js"></script>
+</body>
+</html>

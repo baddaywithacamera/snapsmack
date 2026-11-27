@@ -27,6 +27,7 @@
         rx.lastIndex = 0;
         while ((match = rx.exec(ta.value)) !== null) {
             blocks.push({
+                ordinal: blocks.length,   // SS-1626: survives a rewrite; offsets do not
                 start: match.index,
                 end: rx.lastIndex,
                 gallery: !!match[1],
@@ -43,13 +44,40 @@
         return '[img:' + (block.gallery ? 'g' : '') + block.id + '|' + block.size + '|' + block.align + '|' + block.width + ']';
     }
 
+    /**
+     * SS-1626. A block's start and end are where its shortcode WAS when the
+     * card was drawn. The moment a width is written the shortcode may change
+     * length -- [img:g7|40] comes back as [img:g7|full|center|40], twelve
+     * characters longer -- and the card list only redraws on the 120ms input
+     * debounce below. A second change inside that window cut the text at the
+     * old offsets and left the tail of the previous shortcode in the body as
+     * ordinary prose: measured as "[img:g7|full|center|50]l|center|45]".
+     *
+     * So offsets are re-derived from the text at WRITE time, by ordinal: this
+     * is the Nth image shortcode in the body, whatever it currently looks like
+     * and wherever it now sits. parse() is the same function that numbered the
+     * cards, so the Nth card and the Nth match are the same image.
+     */
+    function currentBounds(block) {
+        var blocks = parse();
+        var live = blocks[block.ordinal];
+        if (!live || live.id !== block.id || live.gallery !== block.gallery) {
+            return null;   // the body changed under us: write nothing
+        }
+        return live;
+    }
+
     function replace(block, next) {
-        ta.value = ta.value.substring(0, block.start) + shortcode(next) + ta.value.substring(block.end);
+        var at = currentBounds(block);
+        if (!at) { return; }
+        ta.value = ta.value.substring(0, at.start) + shortcode(next) + ta.value.substring(at.end);
         ta.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
     function remove(block) {
-        ta.value = (ta.value.substring(0, block.start) + ta.value.substring(block.end))
+        var at = currentBounds(block);
+        if (!at) { return; }
+        ta.value = (ta.value.substring(0, at.start) + ta.value.substring(at.end))
             .replace(/\n{3,}/g, '\n\n');
         ta.dispatchEvent(new Event('input', { bubbles: true }));
     }
@@ -77,7 +105,17 @@
                 '<div data-stage style="position:relative;width:100%;min-height:90px;background:var(--input-bg,#111);overflow:hidden;">' +
                     '<div data-visual style="position:relative;width:' + block.width + '%;max-width:100%;margin:' + (block.align === 'left' ? '0 auto 0 0' : block.align === 'right' ? '0 0 0 auto' : '0 auto') + ';">' +
                         (imageUrl(image) ? '<img src="' + esc(imageUrl(image)) + '" alt="" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#111;">' : '<div style="height:110px;display:grid;place-items:center;color:var(--dim,#888);font-size:11px;">IMAGE #' + block.id + '</div>') +
-                        '<button type="button" data-handle title="Drag to resize" style="position:absolute;right:-8px;top:0;width:16px;height:100%;border:0;border-radius:3px;background:var(--accent,#64d94f);opacity:.88;cursor:ew-resize;touch-action:none;"></button>' +
+                        // SS-1625. This was right:-8px, which hung half of the
+                        // bar outside [data-visual]. [data-stage] clips with
+                        // overflow:hidden, so at 100% width the outer half was
+                        // cut away and the bar's VISIBLE CENTRE sat exactly on
+                        // the clip edge: measured in a browser, a pointer there
+                        // produced no pointerdown on it at all and the width
+                        // never changed. Pressing 4px in from its left edge
+                        // worked. The control was there, it worked, and it
+                        // could not be hit where it looked like it should be.
+                        // right:0 keeps the whole bar inside the block.
+                        '<button type="button" data-handle title="Drag to resize" style="position:absolute;right:0;top:0;width:16px;height:100%;border:0;border-radius:3px;background:var(--accent,#64d94f);opacity:.88;cursor:ew-resize;touch-action:none;"></button>' +
                     '</div>' +
                 '</div>' +
                 '<div style="display:grid;grid-template-columns:minmax(150px,1fr) 72px 120px;gap:10px;align-items:center;margin-top:10px;">' +
