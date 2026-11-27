@@ -229,6 +229,208 @@ class SnapSmackRecovery {
     }
 
     // =================================================================
+    // PATH CONTAINMENT -- SECAUDIT 047, SS-1426/1431
+    //
+    // SPLIT OUT OF claude/ss1433-kit-account-credentials FOR 1009D on the PM's
+    // instruction. That branch also changes what a recovery kit CONTAINS, which
+    // is waiting on an owner decision about second factors; this carries only
+    // the containment repair, which waits on nothing.
+    //
+    // WHAT WAS WRONG ON THIS LINE OF DEVELOPMENT, measured on dev before any
+    // change and worse than the audit finding said:
+    //
+    //   restoreImages()    took img_file straight from the database onto
+    //                      baseDir with NO check of any kind -- no "..", no
+    //                      absolute path, no NUL, no containment -- then
+    //                      mkdir -p and copy. On the admin kit-import path
+    //                      those rows come from the kit's own SQL dump, so the
+    //                      value is attacker controlled.
+    //   restoreBranding()  the same, for three settings values.
+    //   the manifest phase HAD a containment check and it FAILED OPEN: it was
+    //                      wrapped in `if (realpath(dirname(...)) !== false)`,
+    //                      and realpath() returns false for a directory that
+    //                      does not exist yet, so restoring into a directory
+    //                      the kit is about to create skipped the check
+    //                      entirely. Codex proved the escape on 63fb53d1.
+    //
+    // ONE IMPLEMENTATION, THREE CALLERS. The hole existed twice over because
+    // the second guard was written by copying the first, so repairing one left
+    // the other holding it. Everything now walks through pathStaysInsideBase().
+    // =================================================================
+
+    /**
+     * Is this database-supplied relative path safe to write inside baseDir?
+     *
+     * CODEX'S SS-1426/1431 FAIL, AND THE FAULT IS MINE. restoreImages(),
+     * restoreMediaAssets() and restoreBranding() have always joined
+     * baseDir . '/' . <value from the database> and copied, with no
+     * containment check. That was survivable while their ONLY caller was
+     * install.php, where the rows come from a fresh install.
+     *
+     * I wired all three into the kit-import path. The rows then come from the
+     * KIT'S OWN SQL DUMP, which is attacker-controlled. Codex proved it: a
+     * snap_images.img_file of "../escaped.php" plus a matching file beside the
+     * manifest writes a PHP file OUTSIDE the site root and reports
+     * restored: 1 with no errors. I reproduced it before changing anything.
+     *
+     * I took a helper that was safe in its context and made it unsafe by
+     * handing it hostile input -- and I did it four lines from the manifest
+     * phase's own SECAUDIT 047 containment check, which I had read and quoted
+     * while studying that code. Seeing a guard is not the same as noticing it
+     * is missing next door.
+     *
+     * THE RULES ARE THE MANIFEST PHASE'S, deliberately, rather than a second
+     * opinion about what is dangerous: no empty value, no NUL, no "..", no
+     * absolute or drive-lettered path, no dotfile, no executable extension in
+     * ANY dot-separated token, and the resolved parent directory must sit
+     * under baseDir -- which is what catches a symlink the string tests miss.
+     *
+     * @param string $rel the stored relative path
+     * @param string $why set to a reason when the answer is false
+     */
+    private function safeRelativeTarget(string $rel, string &$why = ''): bool {
+        $why = '';
+        $norm = str_replace('\\', '/', trim($rel));
+        if ($norm === '') { $why = 'empty path'; return false; }
+        if (strpos($norm, "\0") !== false) { $why = 'NUL byte in path'; return false; }
+        if (strpos($norm, '..') !== false) { $why = 'parent-directory traversal'; return false; }
+        if ($norm[0] === '/' || preg_match('#^[a-zA-Z]:#', $norm)) {
+            $why = 'absolute path'; return false;
+        }
+
+        $baseName = strtolower(basename($norm));
+        if ($baseName === '' || $baseName[0] === '.') { $why = 'dotfile'; return false; }
+
+        // EVERY dot-separated token, not just the final extension: Apache's
+        // AddHandler matches ".php" anywhere in the name, so "shell.php.jpg"
+        // would otherwise execute. Same list as the manifest phase.
+        $blockedExt = ['php','php3','php4','php5','php7','php8','phtml','pht',
+                       'phar','phps','cgi','pl','asp','aspx','jsp','sh','htaccess'];
+        if (array_intersect(explode('.', $baseName), $blockedExt)) {
+            $why = 'executable file extension'; return false;
+        }
+
+        // Defence in depth, and the part with the teeth. None of the string
+        // tests above can see a symbolic link or a Windows junction: an
+        // ancestor directory inside the site can point anywhere on the disk,
+        // and "link/new/proof.jpg" escapes without containing one "..".
+        //
+        // THE COMMENT THAT USED TO BE HERE WAS WRONG, and Codex proved it on
+        // 63fb53d1. It said a path whose parent does not exist yet cannot
+        // escape because ".." is refused. With "link" an existing junction to
+        // a sibling directory and "link/new" not yet created,
+        // realpath(dirname(...)) returned false, so the whole check was
+        // SKIPPED, restoreImages() created "new" THROUGH the junction and
+        // copied the file outside the site: restored 1, blocked 0, errors
+        // none. I reproduced that before changing anything, and the
+        // reproduction is in the regression.
+        //
+        // The repair is to stop asking about the parent and walk the path:
+        // every component that already exists must resolve back inside
+        // baseDir. The first component that does not exist ends the walk,
+        // because nothing beneath a directory that is not there can exist.
+        //
+        // The walk itself is in pathStaysInsideBase(), because the manifest
+        // phase needs the identical check and HAVING TWO COPIES IS WHAT CAUSED
+        // THIS. I wrote this helper by copying the manifest phase's guard, so
+        // I copied its bug too, and repairing one left the other holding the
+        // same hole. One implementation, FIVE callers on this line of
+        // development: restoreImages(), restoreMediaAssets(), restoreBranding()
+        // and regenerateAndChecksum() through safeRelativeTarget(), plus the
+        // manifest phase calling pathStaysInsideBase() directly.
+        //
+        // THIS COMMENT HAS NOW BEEN WRONG TWICE, WHICH IS THE POINT OF IT. The
+        // branch this was split out of said TWO, because its media phase was
+        // one function. I corrected it to THREE, then added the guards to
+        // restoreMediaAssets() and regenerateAndChecksum() and did not come
+        // back to it -- so it shipped naming three of five, in the very commit
+        // whose message says a comment that miscounts its own callers is how
+        // the second copy got missed. Muse caught it on review. If you add a
+        // sixth caller, change this line in the same edit.
+        return $this->pathStaysInsideBase($norm, $why);
+    }
+
+    /**
+     * Is this relative path contained inside baseDir once the filesystem has
+     * had its say?
+     *
+     * THE ONLY CONTAINMENT CHECK IN THIS FILE. Both the media phase
+     * (safeRelativeTarget) and the manifest phase call it. It assumes the
+     * caller has already run the string tests -- no "..", no absolute path, no
+     * NUL -- and answers the one question those cannot: where does this
+     * actually land.
+     *
+     * None of the string tests can see a symbolic link or a Windows junction.
+     * An ancestor directory inside the site can point anywhere on the disk,
+     * and "link/new/proof.jpg" escapes without containing one "..". That is
+     * not hypothetical for a host either: moving a media directory onto a
+     * bigger volume with a link is an ordinary hosting arrangement.
+     *
+     * WHAT THE OLD CHECK DID, in both copies: realpath(dirname($target)),
+     * skipped when that returned false. With "link" an existing junction and
+     * "link/new" not yet created, realpath() returns false, so the check was
+     * SKIPPED -- not failed, skipped -- and the copy then created the missing
+     * directory THROUGH the link and wrote outside the site. Measured both
+     * times before changing anything: the media phase reported restored 1,
+     * blocked 0, errors none; the manifest phase reported files_restored 1
+     * with nothing blocked. Codex found the first; I found the second while
+     * auditing my own repair.
+     *
+     * SO IT WALKS. Every component that already exists must resolve back
+     * inside baseDir. The first component that does not exist ends the walk,
+     * because nothing beneath a directory that is not there can exist -- and
+     * ending the walk rather than refusing is what keeps an ordinary new
+     * photograph four directories deep working.
+     *
+     * is_link() is deliberately NOT the test. On Windows it returns false for
+     * a junction -- measured, with is_link() and is_dir() both false while
+     * realpath() pointed straight out of the site. A guard written on is_link()
+     * passes on Linux and ships the hole on Windows. Resolution is the only
+     * test that sees symlink, junction and directory-symlink alike.
+     *
+     * @param string $norm  forward-slashed relative path, string tests passed
+     * @param string $why   set to a reason when the answer is false
+     */
+    private function pathStaysInsideBase(string $norm, string &$why = ''): bool {
+        $baseReal = realpath($this->baseDir);
+        if ($baseReal === false) {
+            $why = 'site directory cannot be resolved';
+            return false;
+        }
+        $needle = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
+        $walked = rtrim($baseReal, '/\\');
+
+        foreach (explode('/', $norm) as $piece) {
+            if ($piece === '' || $piece === '.') { continue; }
+            $walked .= DIRECTORY_SEPARATOR . $piece;
+
+            // Nothing here yet, so nothing below it either. A link whose
+            // target is gone is caught by the next test, not this one:
+            // file_exists() is false for a broken link but is_link() is true.
+            if (!file_exists($walked) && !is_link($walked)) { break; }
+
+            $pieceReal = realpath($walked);
+            if ($pieceReal === false) {
+                // It exists but resolves nowhere -- a broken link, or a name
+                // the filesystem will not resolve. Refuse rather than guess.
+                //
+                // NOT EXERCISED ON WINDOWS, and measured rather than assumed:
+                // after its target is removed a junction reports file_exists
+                // false, is_link false and realpath false, so the break above
+                // takes it and this line is unreachable. It is reachable with
+                // a real symlink, which is what a Linux or macOS host has.
+                $why = 'path component cannot be resolved';
+                return false;
+            }
+            if (strncmp($pieceReal . DIRECTORY_SEPARATOR, $needle, strlen($needle)) !== 0) {
+                $why = 'resolves outside the site directory';
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // =================================================================
     // IMAGE FILE RESTORATION
     // =================================================================
 
@@ -243,12 +445,26 @@ class SnapSmackRecovery {
         $restored = 0;
         $in_place = 0;
         $missing  = 0;
+        $blocked  = 0;
         $errors   = [];
 
         $images = $this->pdo->query("SELECT id, img_file FROM snap_images ORDER BY id")->fetchAll();
 
         foreach ($images as $img) {
             $rel_path = $img['img_file'];
+
+            // SECAUDIT 047 / SS-1426/1431. These rows come from the kit's own
+            // SQL dump on the admin import path, so the value is attacker
+            // controlled. Checked BEFORE any join, mkdir, file_exists or copy:
+            // a check after the concatenation is a check after the damage.
+            $why = '';
+            if (!$this->safeRelativeTarget((string)$rel_path, $why)) {
+                $blocked++;
+                $this->streamProgress('BLOCKED unsafe image path (' . $why . '): '
+                    . htmlspecialchars((string)$rel_path), 'error');
+                continue;
+            }
+
             $abs_path = $this->baseDir . '/' . $rel_path;
 
             // Already in the correct location?
@@ -288,7 +504,10 @@ class SnapSmackRecovery {
             $this->streamProgress("MISSING: " . htmlspecialchars($rel_path) . " (id:{$img['id']})", 'warn');
         }
 
-        return compact('restored', 'in_place', 'missing', 'errors');
+        // 'blocked' IS REPORTED, not swallowed. A restore that refused to write
+        // something must say so: a silent refusal looks identical to a file
+        // that was never in the kit, and the owner needs to know the difference.
+        return compact('restored', 'in_place', 'missing', 'blocked', 'errors');
     }
 
     // =================================================================
@@ -315,6 +534,24 @@ class SnapSmackRecovery {
         $this->streamProgress("Processing {$total} images in batches of {$batch_size}...", 'info');
 
         foreach ($images as $idx => $img) {
+            // SECAUDIT 047, AND THIS SITE IS BEYOND WHAT THE SOURCE BRANCH
+            // GUARDED. I am adding it rather than leaving it, and saying so.
+            //
+            // Blocking a path in restoreImages() does not remove the row: the
+            // unsafe img_file is still in snap_images afterwards. This function
+            // then builds a thumbs directory beside it and WRITES TWO FILES
+            // there, so the escape stays reachable through the thumbnail
+            // regenerator even once the restore refuses it. It needs the source
+            // file to exist, which makes it narrower than the restore paths and
+            // not narrow enough to leave.
+            $why = '';
+            if (!$this->safeRelativeTarget((string)$img['img_file'], $why)) {
+                $skipped++;
+                $this->streamProgress('SKIPPED unsafe image path (' . $why . '): '
+                    . htmlspecialchars((string)$img['img_file']), 'error');
+                continue;
+            }
+
             $file = $this->baseDir . '/' . $img['img_file'];
 
             if (!file_exists($file)) {
@@ -428,15 +665,27 @@ class SnapSmackRecovery {
         $restored = 0;
         $in_place = 0;
         $missing  = 0;
+        $blocked  = 0;
 
         try {
             $assets = $this->pdo->query("SELECT id, asset_path FROM snap_assets ORDER BY id")->fetchAll();
         } catch (PDOException $e) {
             $this->streamProgress("snap_assets table not found — skipping media assets.", 'warn');
-            return compact('restored', 'in_place', 'missing');
+            return compact('restored', 'in_place', 'missing', 'blocked');
         }
 
         foreach ($assets as $asset) {
+            // SECAUDIT 047. snap_assets comes out of the kit's SQL dump just as
+            // snap_images does, so asset_path is attacker controlled on the
+            // admin import path. Checked before the join, as everywhere else.
+            $why = '';
+            if (!$this->safeRelativeTarget((string)$asset['asset_path'], $why)) {
+                $blocked++;
+                $this->streamProgress('BLOCKED unsafe asset path (' . $why . '): '
+                    . htmlspecialchars((string)$asset['asset_path']), 'error');
+                continue;
+            }
+
             $abs_path = $this->baseDir . '/' . $asset['asset_path'];
 
             if (file_exists($abs_path)) {
@@ -476,7 +725,7 @@ class SnapSmackRecovery {
             }
         }
 
-        return compact('restored', 'in_place', 'missing');
+        return compact('restored', 'in_place', 'missing', 'blocked');
     }
 
     // =================================================================
@@ -492,6 +741,7 @@ class SnapSmackRecovery {
         $restored = 0;
         $in_place = 0;
         $missing  = 0;
+        $blocked  = 0;
 
         $keys = ['header_logo_url', 'favicon_url', 'site_logo'];
 
@@ -500,6 +750,20 @@ class SnapSmackRecovery {
             if (empty($val)) continue;
 
             $rel_path = ltrim($val, '/');
+
+            // SECAUDIT 047. A restored SETTING value, equally kit-controlled:
+            // the kit's SQL dump carries snap_settings, so these three keys are
+            // as attacker-controlled as img_file. The ltrim() above strips a
+            // leading slash, which makes an absolute path LOOK relative; it is
+            // not a containment check and never was.
+            $why = '';
+            if (!$this->safeRelativeTarget($rel_path, $why)) {
+                $blocked++;
+                $this->streamProgress('BLOCKED unsafe branding path for ' . $key
+                    . ' (' . $why . '): ' . htmlspecialchars($rel_path), 'error');
+                continue;
+            }
+
             $abs_path = $this->baseDir . '/' . $rel_path;
 
             if (file_exists($abs_path)) {
@@ -524,7 +788,7 @@ class SnapSmackRecovery {
             $this->streamProgress("MISSING BRANDING: {$key} → " . htmlspecialchars($rel_path), 'warn');
         }
 
-        return compact('restored', 'in_place', 'missing');
+        return compact('restored', 'in_place', 'missing', 'blocked');
     }
 
     // =================================================================
@@ -756,17 +1020,31 @@ class SnapSmackRecovery {
             $sourcePath = $kitRoot . '/' . $manifestKey;
             $targetPath = $this->baseDir . '/' . $restoreTo;
 
-            // Defense-in-depth: the resolved target directory must stay under
-            // baseDir (catches symlink tricks that the string checks miss).
-            $baseReal = realpath($this->baseDir);
-            $parentReal = realpath(dirname($targetPath));
-            if ($baseReal !== false && $parentReal !== false) {
-                $needle = rtrim($baseReal, '/\\') . DIRECTORY_SEPARATOR;
-                if (strncmp($parentReal . DIRECTORY_SEPARATOR, $needle, strlen($needle)) !== 0) {
-                    $result['errors'][] = "Restore target escapes base dir: {$restoreTo}";
-                    $this->streamProgress("BLOCKED path escape: {$restoreTo}", 'warn');
-                    continue;
-                }
+            // SECAUDIT 047. THIS IS THE CHECK THAT FAILED OPEN, and it is the
+            // whole reason this branch exists. It used to read:
+            //
+            //   $parentReal = realpath(dirname($targetPath));
+            //   if ($baseReal !== false && $parentReal !== false) { ...check... }
+            //
+            // realpath() returns false for a directory that does not exist yet,
+            // so restoring into a directory the kit is about to create skipped
+            // the check ENTIRELY, and the comment above it asserted that could
+            // not happen because ".." is refused. With "link" an existing
+            // junction pointing outside the site and "link/new" not yet
+            // created, mkdir -p created "new" THROUGH the junction and the copy
+            // landed outside: restored 1, blocked 0, no errors. Codex proved it
+            // on 63fb53d1.
+            //
+            // It no longer asks about the parent. pathStaysInsideBase() walks
+            // every component that exists and stops at the first that does not,
+            // because nothing beneath a directory that is not there can exist.
+            // Same function as the four other callers, so a repair here cannot
+            // drift from a repair there.
+            $escapeWhy = '';
+            if (!$this->pathStaysInsideBase($relTarget, $escapeWhy)) {
+                $result['errors'][] = "Restore target escapes base dir ({$escapeWhy}): {$restoreTo}";
+                $this->streamProgress("BLOCKED path escape ({$escapeWhy}): {$restoreTo}", 'warn');
+                continue;
             }
 
             if (!file_exists($sourcePath)) {

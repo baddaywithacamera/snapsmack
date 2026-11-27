@@ -1500,6 +1500,14 @@
             409
         ]
     },
+    "kit-manifest-cannot-escape-the-site-regression.php": {
+        "assertions": 21,
+        "predicates": 11,
+        "thresholds": [
+            2,
+            2
+        ]
+    },
     "kit-preflight-guards-regression.php": {
         "assertions": 46,
         "predicates": 20,
@@ -2423,6 +2431,14 @@
         "predicates": 11,
         "thresholds": [
             3,
+            6
+        ]
+    },
+    "recovery-restore-paths-cannot-escape-regression.php": {
+        "assertions": 25,
+        "predicates": 4,
+        "thresholds": [
+            2,
             6
         ]
     },
