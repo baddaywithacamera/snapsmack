@@ -323,6 +323,13 @@ include 'core/sidebar.php';
                 </div>
             <?php endif; ?>
             <textarea id="page-content" name="content" rows="20"><?php echo htmlspecialchars($edit_page['content'] ?? ''); ?></textarea>
+            <section id="long-image-blocks" data-target="page-content" data-base="<?php echo htmlspecialchars(BASE_URL, ENT_QUOTES); ?>" style="margin-top:18px;display:none;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:10px;">
+                    <strong style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;">Image blocks</strong>
+                    <span class="dim" style="font-size:11px;">Drag a block edge or use its width slider. Text stays in the shortcode editor.</span>
+                </div>
+                <div id="long-image-block-list" style="display:grid;gap:12px;"></div>
+            </section>
 
             <div class="form-action-row">
                 <button type="submit" name="save_page" class="master-update-btn">COMMIT TO DATABASE</button>
@@ -385,6 +392,7 @@ include 'core/sidebar.php';
 
 <script src="assets/js/smack-asset-picker.js"></script>
 <script src="assets/js/shortcode-toolbar.js"></script>
+<script src="assets/js/smack-longform-image-blocks.js?v=<?php echo SNAPSMACK_VERSION_SHORT; ?>"></script>
 <script src="assets/js/ss-engine-page-import.js"></script>
 <?php include 'core/admin-footer.php'; ?>
 <?php // ===== SNAPSMACK EOF =====

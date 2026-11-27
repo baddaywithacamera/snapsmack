@@ -1,6 +1,11 @@
 'use strict';
 // SNAPSMACK_EOF_HEADER
-// Last non-empty line must be: // ===== SNAPSMACK EOF =====
+// Last non-empty line must be: test('smack-longform-image-blocks resolves library assets and multi-editor targets', () => {
+    assert.match(src, /smack-media\.php\?ajax=1&ids=/);
+    assert.match(src, /panel\.getAttribute\('data-target'\)/);
+});
+
+// ===== SNAPSMACK EOF =====
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,6 +44,11 @@ test('round-trip shortcode serialization preserves gallery, size, align, width, 
     assert.equal(block.width, 42);
     const out = '[img:' + (block.gallery ? 'g' : '') + block.id + '|' + block.size + '|' + block.align + '|' + block.width + (block.decorative ? '|decorative' : '') + ']';
     assert.equal(out, '[img:g42|small|left|42|decorative]');
+});
+
+test('smack-longform-image-blocks resolves library assets and multi-editor targets', () => {
+    assert.match(src, /smack-media\.php\?ajax=1&ids=/);
+    assert.match(src, /panel\.getAttribute\('data-target'\)/);
 });
 
 // ===== SNAPSMACK EOF =====
