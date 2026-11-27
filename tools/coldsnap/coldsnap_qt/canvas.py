@@ -484,6 +484,7 @@ class _Objects(QPyTextObject):
         """
         if not path:
             return None
+        path = self.canvas._local_preview_paths.get(path, path)
         stat_cache = getattr(self.canvas, "_mosaic_stat_cache", None)
         if stat_cache is not None and path in stat_cache:
             stamp = stat_cache[path]
@@ -858,6 +859,7 @@ class BiggieCanvas(QTextEdit):
         self.setMinimumHeight(260)
         QPixmapCache.setCacheLimit(65536)
         self._mosaic_loader = PhotoLoader(self)
+        self._local_preview_paths = {}
         self._mosaic_retry_scheduled = False
         self._mosaic_layout_cache = {}
         self._mosaic_size_cache = {}
@@ -1068,6 +1070,10 @@ class BiggieCanvas(QTextEdit):
         self._sync_canvas_height()
         self.viewport().update()
 
+    def set_local_preview_paths(self, paths):
+        """Keep full-size asset identities while painting their smaller previews."""
+        self._local_preview_paths = dict(paths)
+
     def set_image_resolver(self, fn):
         self._image_resolver = fn
 
@@ -1084,25 +1090,30 @@ class BiggieCanvas(QTextEdit):
 
     def image_pixmap(self, img_id: str, width: int):
         try:
+            side = max(64, int(width))
             sid = str(img_id).strip().lower()
             if sid.startswith("asset:"):
                 from .widgets import load_pixmap
                 path = self.assets.get(sid[6:])
-                return load_pixmap(path, max(64, int(width))) if path else None
+                if path in self._local_preview_paths:
+                    return self._objects._cached_cell_pixmap(path, QSize(side, side))
+                return load_pixmap(path, side) if path else None
             if sid.startswith("bucket:") and sid[7:].isdigit():
                 n = int(sid[7:])
                 if 1 <= n <= len(self.bucket):
                     from .widgets import load_pixmap
-                    return load_pixmap(self.bucket[n - 1], max(64, int(width)))
+                    path = self.bucket[n - 1]
+                    if path in self._local_preview_paths:
+                        return self._objects._cached_cell_pixmap(path, QSize(side, side))
+                    return load_pixmap(path, side)
                 return None
             if self._image_resolver is not None:
                 return self._image_resolver(img_id, width)
             site = self._site()
             if site:
                 from .gallery_picker import gallery_thumb_path
-                from .widgets import load_pixmap
                 path = gallery_thumb_path(site, img_id)
-                return load_pixmap(path, max(64, int(width))) if path else None
+                return self._objects._cached_cell_pixmap(path, QSize(side, side)) if path else None
         except Exception:  # noqa: BLE001 — a preview must never break typing
             return None
         return None

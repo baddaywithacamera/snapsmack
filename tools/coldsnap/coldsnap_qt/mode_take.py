@@ -21,6 +21,7 @@ import uuid
 import requests
 
 from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 from PySide6.QtCore import QObject, Qt, QDate, QEvent, QEventLoop, QMetaObject, QRect, QSize, Signal, Slot, QTimer, QSettings
 from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
@@ -30,8 +31,10 @@ from PySide6.QtWidgets import (
     QSplitter, QFormLayout, QSpinBox, QSizePolicy, QRadioButton, QSlider, QDateEdit,
     QMenu, QCheckBox, QInputDialog,
 )
+from shiboken6 import isValid
 
 import sumna_offline as O
+import published_photo_cache
 import snap_library
 from snap_home import site_key
 from sumna_post import AuthorizationExpiredError, SmacktalkPoster
@@ -49,6 +52,7 @@ from .slapper_handoff import (ReturnWatch, find_executable,
 from .body_editor import BodyEditor
 from .block_tray import BlockAction, BlockTray
 from .photo_tray import RightPhotosTray, PhotoThumbTile, photo_orientation_badge
+from .photo_loader import PhotoLoader
 from .drafts_panel import BatchRail, default_draft_row
 from .mosaic_layout import tile_rects as _tile_rects
 
@@ -61,6 +65,7 @@ class _PublishedPostBridge(QObject):
     loaded = Signal(object)
     failed = Signal(object)
     progress = Signal(object, int, int)
+    cache_cleared = Signal(object)
 
 
 class MosaicPreview(QWidget):
@@ -407,6 +412,7 @@ class TakeMode(QWidget):
         self._published_load_active = False
         self._published_cancel = None
         self._published_progress = None
+        self._published_cache_clearing = False
         self._published_choose_fn = None
         self._published_bridge = _PublishedPostBridge(self)
         self._published_bridge.list_loaded.connect(self._published_list_loaded)
@@ -414,6 +420,12 @@ class TakeMode(QWidget):
         self._published_bridge.loaded.connect(self._published_post_loaded)
         self._published_bridge.failed.connect(self._published_post_failed)
         self._published_bridge.progress.connect(self._published_photo_progress)
+        self._published_bridge.cache_cleared.connect(self._published_cache_cleared)
+        self._tray_loader = PhotoLoader(self)
+        self._tray_previews = deque()
+        self._tray_preview_timer = QTimer(self)
+        self._tray_preview_timer.setInterval(60)
+        self._tray_preview_timer.timeout.connect(self._load_tray_previews)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -2891,7 +2903,7 @@ class TakeMode(QWidget):
         self.save_state.setText(f"Opened draft \"{draft.title or 'Untitled'}\" ({n_blocks} blocks)")
 
     def _open_published(self, *, choose_fn=None):
-        if self._published_list_active or self._published_load_active:
+        if self._published_list_active or self._published_load_active or self._published_cache_clearing:
             return
         # A pending autosave must be durable before the first network request.
         self._autosave.stop()
@@ -2908,6 +2920,39 @@ class TakeMode(QWidget):
             return
         self._published_choose_fn = choose_fn
         self._start_published_list(poster)
+
+    def clear_published_photo_cache(self):
+        site = str((self.app_config() or {}).get("url") or "").strip()
+        if not site:
+            self.save_state.setText("Select a site before clearing its published photo cache")
+            return
+        if self._published_load_active or self._published_list_active or self._published_cache_clearing:
+            self.save_state.setText("Finish opening the published post before clearing its photo cache")
+            return
+        if QMessageBox.question(self, "Clear published photo cache?",
+                                "Published photos for this site will download again when reopened. "
+                                "Saved drafts keep their photos.",
+                                QMessageBox.Yes | QMessageBox.Cancel,
+                                QMessageBox.Cancel) != QMessageBox.Yes:
+            return
+        self._published_cache_clearing = True
+        self.save_state.setText("Clearing cached published photos…")
+
+        def clear():
+            try:
+                result = published_photo_cache.prune(site, clear=True)
+            except OSError as exc:
+                result = exc
+            self._published_bridge.cache_cleared.emit(result)
+
+        threading.Thread(target=clear, name="coldsnap-clear-published-cache", daemon=True).start()
+
+    def _published_cache_cleared(self, result):
+        self._published_cache_clearing = False
+        if isinstance(result, OSError):
+            self.save_state.setText("Could not clear the published photo cache")
+            return
+        self.save_state.setText(f"Cleared {result} cached photos. Saved drafts keep their photos.")
 
     def _start_published_list(self, poster) -> None:
         """Fetch chooser data without blocking the GUI thread."""
@@ -2972,6 +3017,8 @@ class TakeMode(QWidget):
         if self._published_load_active:
             return
         self._published_load_active = True
+        selected_site = str((self.app_config() or {}).get("url") or "").strip()
+        site = str(getattr(poster, "base_url", "") or selected_site).strip()
         self.save_state.setText("Loading published post… your draft is safe")
         cancel = threading.Event()
         self._published_cancel = cancel
@@ -2982,6 +3029,7 @@ class TakeMode(QWidget):
         progress.setAutoClose(False)
         progress.setAutoReset(False)
         progress.canceled.connect(cancel.set)
+        progress.rejected.connect(cancel.set)
         progress.canceled.connect(lambda: self.save_state.setText(
             "Canceled opening the post — your draft is safe"))
         self._published_progress = progress
@@ -2993,13 +3041,10 @@ class TakeMode(QWidget):
                 draft = None
                 if action != "attach" and not cancel.is_set():
                     draft = self._draft_from_remote(
-                        post, cancel=cancel, progress=lambda done, total:
+                        post, site=site, cancel=cancel, progress=lambda done, total:
                         self._published_bridge.progress.emit(cancel, done, total),
                     )
-                if draft is not None and not cancel.is_set() and (
-                    (getattr(draft, "caption", "") or "").strip()
-                    or (getattr(draft, "body_blocks", "") or "").strip()
-                ):
+                if draft is not None and draft.images and not cancel.is_set():
                     session._absorb_images(draft)
                 self._published_bridge.loaded.emit({
                     "post": post,
@@ -3007,6 +3052,7 @@ class TakeMode(QWidget):
                     "action": action,
                     "session": session,
                     "active_id": active_id,
+                    "selected_site": selected_site,
                     "cancel": cancel,
                 })
             except Exception as exc:  # noqa: BLE001
@@ -3042,8 +3088,9 @@ class TakeMode(QWidget):
         if cancel is not None:
             if cancel.is_set():
                 return
-            if str(self._editing_id or "") != result["active_id"]:
-                self.save_state.setText("Open canceled because you switched drafts")
+            current_site = str((self.app_config() or {}).get("url") or "").strip()
+            if str(self._editing_id or "") != result["active_id"] or current_site != result["selected_site"]:
+                self.save_state.setText("Open canceled because you switched sites or drafts")
                 return
             self._autosave.stop()
             if self._autosave_now() is False:
@@ -3064,7 +3111,7 @@ class TakeMode(QWidget):
             self.save_state.setText("Draft attached — changes will update the published post")
         else:
             draft = result["draft"]
-            if cancel is not None and (draft.caption.strip() or draft.body_blocks.strip()):
+            if cancel is not None and (draft.caption.strip() or draft.body_blocks.strip() or draft.images):
                 try:
                     session.add_draft(draft, copy_images=False)
                 except Exception as exc:  # noqa: BLE001
@@ -3088,7 +3135,7 @@ class TakeMode(QWidget):
             return
         QMessageBox.critical(self, "Could not open post", str(error))
 
-    def _draft_from_remote(self, post, *, cancel=None, progress=None):
+    def _draft_from_remote(self, post, *, site=None, cancel=None, progress=None):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
                         mode=self.SUITE_MODE)
         draft.remote_post_id = int(post.get("id") or 0)
@@ -3115,10 +3162,8 @@ class TakeMode(QWidget):
         draft.category_ids = [int(value) for value in (post.get("cat_ids") or [])]
         draft.album_ids = [int(value) for value in (post.get("album_ids") or [])]
         cover_id = int(post.get("featured_image_id") or 0)
-        cache = os.path.join(tempfile.gettempdir(), "coldsnap-published",
-                             str(draft.remote_post_id))
-        os.makedirs(cache, exist_ok=True)
         rows = list(post.get("bucket") or [])
+        site = site or (self.app_config() or {}).get("url") or ""
 
         def _fetch_one(item):
             if cancel is not None and cancel.is_set():
@@ -3127,25 +3172,34 @@ class TakeMode(QWidget):
             image_id = int(row.get("id") or 0)
             source_url = str(row.get("url") or row.get("thumb_url") or "")
             filename = os.path.basename(source_url.split("?", 1)[0]) or f"image-{image_id}.jpg"
-            target = os.path.join(cache, f"{image_id}-{filename}")
-            if not os.path.isfile(target) and source_url:
+
+            def fetch():
                 response = requests.get(source_url, timeout=(10, 30))
                 response.raise_for_status()
-                if cancel is not None and cancel.is_set():
-                    return None
-                with open(target, "wb") as handle:
-                    handle.write(response.content)
+                return response.content if cancel is None or not cancel.is_set() else None
+
+            target = published_photo_cache.get_full_size(site, image_id, source_url, fetch) if source_url else None
+            if cancel is not None and cancel.is_set():
+                return None
+            local_path = str(target) if target else ""
             image = O.DraftImage(
-                local_path=target, original_path=target, filename=filename,
+                local_path=local_path, original_path=local_path, filename=filename,
                 width=int(row.get("width") or 0), height=int(row.get("height") or 0),
                 alt=str(row.get("img_alt") or ""), title=str(row.get("img_title") or ""),
                 remote_path=str(row.get("img_file") or ""), remote_image_id=image_id,
                 sort_position=pos, is_cover=(image_id == cover_id))
-            if (cancel is None or not cancel.is_set()) and os.path.isfile(target):
-                O.generate_image_thumbs(image)
+            if target is not None:
+                thumbs = target.parent / "thumbs"
+                square, aspect = thumbs / f"t_{target.name}", thumbs / f"a_{target.name}"
+                if image.width > 0 and image.height > 0 and square.is_file() and aspect.is_file():
+                    image.thumb_square, image.thumb_aspect = str(square), str(aspect)
+                    image.thumb_params = O.thumb_signature(image)
+                elif not O.generate_image_thumbs(image):
+                    raise ValueError(f"Could not prepare a preview for {filename}.")
             return image
 
         if rows:
+            published_photo_cache.prune(site)
             if progress is not None:
                 progress(0, len(rows))
             with ThreadPoolExecutor(max_workers=4) as pool:
@@ -3948,10 +4002,28 @@ class TakeMode(QWidget):
                 self._set_slapper_state("idle")
 
     def _sync_body_assets(self):
+        self.body.canvas.set_local_preview_paths({
+            im.local_path: im.thumb_aspect for im in self._bucket if im.local_path and im.thumb_aspect
+        })
         self.body.set_bucket([im.local_path for im in self._bucket])
         self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
 
+    def _load_tray_previews(self):
+        while self._tray_previews:
+            path, size, target, setter = self._tray_previews[0]
+
+            def ready(pixmap, target=target, setter=setter):
+                if pixmap is not None and isValid(target):
+                    setter(pixmap)
+
+            if not self._tray_loader.request(path, size, ready):
+                return
+            self._tray_previews.popleft()
+        self._tray_preview_timer.stop()
+
     def _refresh_bucket(self, *, sync_assets=True):
+        self._tray_preview_timer.stop()
+        self._tray_previews.clear()
         while self.bucket_col.count():
             item = self.bucket_col.takeAt(0)
             w = item.widget()
@@ -3986,7 +4058,8 @@ class TakeMode(QWidget):
         for p in mosaic_paths[:5]:
             thumb = QLabel()
             thumb.setFixedSize(18, 18)
-            thumb.setPixmap(load_pixmap(p, 18))
+            preview = self.body.canvas._local_preview_paths.get(p, p)
+            self._tray_previews.append((preview, 18, thumb, thumb.setPixmap))
             self.in_mosaics_thumbs.addWidget(thumb)
         self.in_mosaics_bar.setVisible(bool(mosaic_paths))
 
@@ -4051,10 +4124,9 @@ class TakeMode(QWidget):
                 self._slapper_state == "waiting"
                 and str(getattr(im, "asset_uuid", "")) == self._slapper_asset_uuid
             )
-            pix = load_pixmap(im.thumb_aspect or im.local_path, tile_px)
             ori_code, ratio = photo_orientation_badge(im.width, im.height, im.local_path)
             tile = PhotoThumbTile(
-                i, pix, selected=is_selected, is_cover=is_cover,
+                i, QPixmap(), selected=is_selected, is_cover=is_cover,
                 edited=edited, in_slapper=in_slapper, tile_size=tile_px,
                 asset_uuid=str(getattr(im, "asset_uuid", "")),
                 orientation=ori_code)
@@ -4067,12 +4139,15 @@ class TakeMode(QWidget):
             tile.setFeaturedRequested.connect(self._set_featured_photo)
             tile.removeRequested.connect(lambda idx: self._remove_from_tray([idx]))
             self.bucket_col.addWidget(tile, visible_pos // cols, visible_pos % cols)
+            self._tray_previews.append((im.thumb_aspect or im.local_path, tile_px, tile, tile.set_preview_pixmap))
             visible_pos += 1
         if visible_pos == 0:
             self.bucket_col.addWidget(
                 hint("All photos are placed on the page — remove one from the page to return it here."),
                 0, 0)
         self._populate_photo_tools()
+        if self._tray_previews:
+            self._tray_preview_timer.start()
 
     def _ai_fill(self):
         if not self._bucket:

@@ -167,6 +167,11 @@ class PhotoThumbTile(QPushButton):
     def _check_rect(self) -> QRect:
         return QRect(4, 22 if self._edited else 4, 18, 18)
 
+    def set_preview_pixmap(self, pixmap):
+        if pixmap is not None:
+            self._pixmap = pixmap
+            self.update()
+
     def mousePressEvent(self, event):
         w = self.parentWidget()
         while w is not None:

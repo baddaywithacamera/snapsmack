@@ -55,6 +55,8 @@ except ImportError:  # pragma: no cover - import shim for dev tree
     import snap_home
     import snap_thumbs
 
+from published_photo_cache import is_cached_original, link_original
+
 
 # ---------------------------------------------------------------------------
 # Versioning — every draft and every export carries these so an old artifact
@@ -787,6 +789,9 @@ class Session:
         thumbs_dir = os.path.join(self.images_dir, "thumbs")
         os.makedirs(thumbs_dir, exist_ok=True)
         for im in draft.images:
+            shared_original = is_cached_original(im.local_path)
+            shared_thumbs_current = shared_original and image_thumbs_current(im)
+            prefix = hashlib.sha256(str(im.asset_uuid).encode("utf-8")).hexdigest()[:16] + "-" if shared_original else ""
             slapper_sources = {
                 attr: os.path.abspath(str(getattr(im, attr, "") or ""))
                 for attr in ("slapper_base_path", "slapper_edited_path")
@@ -811,12 +816,16 @@ class Session:
                                    ("thumb_aspect", thumbs_dir)):
                 src = getattr(im, attr)
                 if src and os.path.isfile(src):
-                    dst = os.path.join(dest_dir, os.path.basename(src))
+                    basename = os.path.basename(src)
+                    dst = os.path.join(dest_dir, prefix + basename)
                     if os.path.abspath(src) != os.path.abspath(dst):
-                        shutil.copy2(src, dst)
+                        if attr != "local_path" or not link_original(src, dst):
+                            shutil.copy2(src, dst)
                     setattr(im, attr, dst)
             if original_is_local:
                 im.original_path = im.local_path
+            if shared_thumbs_current:
+                im.thumb_params = thumb_signature(im)
             # The external editor handoff deliberately keeps both versions.
             # Copy them into the session even when one is not the active
             # local_path, otherwise choosing the other version after moving or
