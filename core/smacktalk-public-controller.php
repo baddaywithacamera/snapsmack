@@ -357,7 +357,9 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
         // controller is the SHAPE that leaks and the ratchet does not care
         // about my reasoning. It also closes a real gap: if a post is
         // unpublished between the two reads, this returns no row and the
-        // signature falls back to nothing rather than rendering.
+        // signature falls back to nothing rather than rendering -- and that is
+        // true because the no-row branch below SETS both surfaces to an
+        // explicit opt-out. It was not true when this comment first said it.
         //
         // AN EDITOR PREVIEW IS NOT QUERIED AT ALL. $previewPost is the whole
         // post array the editor supplied, unsaved and usually a draft, so a
@@ -374,7 +376,32 @@ function snapsmack_smacktalk_single(PDO $pdo, array $settings, string $base, str
                                         WHERE id=? AND status='published' AND created_at <= NOW()
                                         LIMIT 1");
                 $sig_q->execute([(int)$post['id']]);
-                $signature_row = array_merge($post, $sig_q->fetch(PDO::FETCH_ASSOC) ?: []);
+                $surfaces = $sig_q->fetch(PDO::FETCH_ASSOC);
+                if (is_array($surfaces)) {
+                    $signature_row = array_merge($post, $surfaces);
+                } else {
+                    // NO ROW MEANS THE POST IS NOT PUBLICLY VISIBLE RIGHT NOW,
+                    // and both surfaces are set to an explicit opt-out so no
+                    // signature renders. (Muse, on 21401a73.)
+                    //
+                    // Leaving the keys ABSENT instead -- which is what the
+                    // first version did -- made the resolver fall through to
+                    // the legacy field, so a post unpublished between the two
+                    // reads still rendered its legacy signature. My comment
+                    // claimed it fell back to nothing. It did not. Rather than
+                    // narrow the claim I made the code do what I had said,
+                    // because that is the behaviour I would want: the query
+                    // already proved the post is not public, and nothing of a
+                    // non-public post should be on the page.
+                    //
+                    // The query succeeding with no row is a DIFFERENT fact from
+                    // the query failing, which is the un-synced-install case
+                    // below; the two must not be collapsed.
+                    $signature_row = array_merge($post, [
+                        'signature_light_image_id' => 0,
+                        'signature_dark_image_id'  => 0,
+                    ]);
+                }
             } catch (Throwable $e) {
                 $signature_row = $post;   // columns not added yet: legacy meaning
             }

@@ -340,6 +340,51 @@ check(snap_signature_resolve(
     'an install without the two columns keeps today behaviour');
 
 // ---------------------------------------------------------------------------
+// A POST THAT IS NO LONGER PUBLIC SHOWS NO SIGNATURE. (Muse, on 21401a73.)
+//
+// The controller re-reads the two surface columns with a published-only
+// clause. When that returns no row the post is not publicly visible any more,
+// and the controller sets BOTH surfaces to an explicit opt-out before
+// resolving. The first version left the keys absent instead, which sent the
+// resolver down the legacy branch, so a post unpublished between the two reads
+// still rendered its legacy signature -- while the comment above it claimed it
+// rendered nothing.
+//
+// This drives the resolver with the two row shapes the controller builds, so
+// the claim is held by a check rather than by a comment that was wrong.
+$withLegacy = ['signature_image_id' => 77];
+
+check(snap_signature_resolve($withLegacy, $blog, 'light') === 77,
+    'a visible post with only a legacy signature still renders it');
+check(snap_signature_resolve(
+        array_merge($withLegacy, ['signature_light_image_id' => 0,
+                                  'signature_dark_image_id'  => 0]),
+        $blog, 'light') === 0,
+    'THE NO-ROW SHAPE RENDERS NOTHING, even though the legacy field is set');
+check(snap_signature_resolve(
+        array_merge($withLegacy, ['signature_light_image_id' => 0,
+                                  'signature_dark_image_id'  => 0]),
+        $blog, 'dark') === 0,
+    'and nothing on the dark surface either');
+// The shape that was wrong: keys absent, legacy field honoured. Kept as the
+// statement of what the controller must NOT build on a no-row result.
+check(snap_signature_resolve($withLegacy, $blog, 'light') !== 0,
+    'leaving the keys absent would have rendered the legacy signature -- which is why it is not done');
+
+// The controller's two no-row branches are different facts and must not be
+// collapsed: a query that FAILS means the columns are not there yet, and that
+// install keeps today's behaviour.
+check(snap_signature_resolve($withLegacy, $blog, 'light') === 77,
+    'an un-synced install still renders its legacy signature, which is today behaviour');
+
+$controller_src = (string)file_get_contents($root . '/core/smacktalk-public-controller.php');
+check(str_contains($controller_src, "'signature_light_image_id' => 0,")
+    && str_contains($controller_src, "'signature_dark_image_id'  => 0,"),
+    'the controller sets both surfaces to an opt-out on a no-row result');
+check(str_contains($controller_src, "status='published' AND created_at <= NOW()"),
+    'and its re-read carries the publication clause');
+
+// ---------------------------------------------------------------------------
 // THE ADMIN CONTROL EXISTS AND RENDERS, driven rather than grepped. It must
 // offer NONE, mark the stored choice, and say so when the stored image is gone.
 // ---------------------------------------------------------------------------
