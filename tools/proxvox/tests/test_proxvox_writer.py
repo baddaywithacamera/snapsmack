@@ -1132,4 +1132,29 @@ def test_dedicated_pve_account_still_needs_host_attested_totp(tmp_path, monkeypa
         w._check_write_session("sean@pam", ticket)
 
 
+def test_host_proxmox_context_keeps_chain_verification_for_legacy_ca(w, monkeypatch, tmp_path):
+    import ssl
+    from types import SimpleNamespace
+
+    cafile = tmp_path / "pve-ca.pem"
+    cafile.touch()
+    monkeypatch.setattr(w, "PVE_CA_CANDIDATES", (str(cafile),))
+    original_flags = ssl.VERIFY_X509_TRUSTED_FIRST | ssl.VERIFY_X509_STRICT
+    context = SimpleNamespace(
+        verify_flags=original_flags, verify_mode=ssl.CERT_REQUIRED, check_hostname=True,
+    )
+    seen = []
+
+    def create_context(*, cafile):
+        seen.append(cafile)
+        return context
+
+    monkeypatch.setattr(ssl, "create_default_context", create_context)
+    assert w._pve_ssl_context() is context
+    assert seen == [str(cafile)]
+    assert context.verify_mode == ssl.CERT_REQUIRED
+    assert context.verify_flags == original_flags & ~ssl.VERIFY_X509_STRICT
+    assert context.check_hostname is False
+
+
 # ===== SNAPSMACK EOF =====

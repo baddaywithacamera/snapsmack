@@ -606,6 +606,10 @@ def _pve_ssl_context():
             continue
         context.check_hostname = False
         context.verify_mode = ssl.CERT_REQUIRED
+        # Python 3.13 enables strict RFC 5280 checks by default. The Proxmox
+        # cluster CA predates the required Key Usage extension. Keep chain,
+        # expiry and purpose verification against only the configured node CA.
+        context.verify_flags &= ~ssl.VERIFY_X509_STRICT
         return context
     return None
 
