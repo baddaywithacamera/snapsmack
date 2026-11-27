@@ -1018,6 +1018,38 @@ def _run_capture(out, app, retire_views, overlap):
     composer_mode.show()
     app.processEvents()
     checks.update(take_composer_checks(composer_mode, paths, check_renderer=True))
+
+    from coldsnap_qt import biggie
+    from sumna_offline import Draft, KIND_SMACKTALK, MODE_SMACKTALK
+    from sumna_post import SmacktalkPoster
+
+    site_body = (
+        "<p>Before [mosaic:752] after</p>\n"
+        "<figure>[img:57|full|center]<figcaption>Pontiac RPM</figcaption></figure>"
+    )
+    fixture_path = os.environ.get("COLD_SNAP_PARITY_PUBLISHED_BODY")
+    if fixture_path:
+        site_body = Path(fixture_path).read_bytes().decode("utf-8")
+    imported_canvas = composer_mode.body.canvas
+    imported_canvas.from_blocks(biggie.parse_site_html(site_body))
+    app.processEvents()
+    imported_blocks = composer_mode.body.authoring_blocks()
+    canvas_text = imported_canvas.toPlainText()
+    checks["published_mosaics_are_placeholders"] = (
+        sum(block["type"] == "site_mosaic" for block in imported_blocks)
+        == (5 if fixture_path else 1)
+        and "[mosaic:" not in canvas_text and "<p>" not in canvas_text
+    )
+    checks["published_figure_retains_caption"] = any(
+        block["type"] == "image" and block.get("show_caption")
+        and "Pontiac RPM" in block.get("caption", "")
+        for block in imported_blocks
+    )
+    imported = Draft(draft_id="parity-import", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                     body_blocks=biggie.blocks_to_json(imported_blocks))
+    content, _ = SmacktalkPoster._wire_body(imported)
+    checks["published_unchanged_send_preserves_body"] = content == site_body
+    imported_canvas.grab().save(str(out / "published-import-parity.png"), "PNG")
     composer_mode.close()
 
     checks["one_mosaic_browser_at_a_time"] = not overlap
