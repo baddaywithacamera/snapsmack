@@ -52,16 +52,69 @@ if (!$args['slug'] && !$args['all']) {
     echo "Usage:\n";
     echo "  php package-skin.php <slug>               Package one skin\n";
     echo "  php package-skin.php --all                Package all skins\n";
-    echo "  php package-skin.php --all --output DIR   Output to specific directory\n\n";
+    echo "  php package-skin.php --all --output DIR   Output to a specific directory\n";
+    echo "  php package-skin.php --all --output=DIR   Same; either spelling works\n\n";
+    echo "Packages are written OUTSIDE the checkout, never into it.\n";
+    echo "Default: \$SNAPSMACK_BUILD_DIR, or a snapsmack-builds folder beside the repository.\n\n";
     echo "Examples:\n";
     echo "  php package-skin.php galleria\n";
     echo "  php package-skin.php --all --output ./packages/\n\n";
     exit(0);
 }
 
-$output_dir = $args['output'] ?? $project_root;
-if (!is_dir($output_dir)) {
-    mkdir($output_dir, 0755, true);
+// WHERE THE PACKAGES GO.
+//
+// This used to default to the PROJECT ROOT, so running the packager with no
+// --output dropped zips straight into the checkout. I did exactly that while
+// testing and had to delete tilez-0.2.79.zip out of the working tree. Sean's
+// rule is no scattered files, and a build artifact in the source tree is the
+// scattered-file problem at its most avoidable. PM ruling, room 8472: default
+// to a build directory OUTSIDE the checkout, never the project root.
+//
+// SNAPSMACK_BUILD_DIR wins if it is set, so a machine with an established
+// build location keeps using it. Otherwise the default is one predictable
+// sibling folder next to the checkout -- one folder, not a scatter.
+$default_output = getenv('SNAPSMACK_BUILD_DIR') ?: null;
+if ($default_output === null || trim($default_output) === '') {
+    // THE SIBLING OF THE MAIN REPOSITORY, not of this directory. The first
+    // version of this used dirname($project_root), and run from a git worktree
+    // that resolves to .claude/worktrees/snapsmack-builds -- INSIDE the
+    // repository's own internals, which is the scatter this change exists to
+    // stop. Measured from this worktree, not reasoned about. git tells us
+    // where the real repository is; without git we fall back to the sibling.
+    $common = @shell_exec('git -C ' . escapeshellarg($project_root) . ' rev-parse --git-common-dir 2>&1');
+    $main_root = null;
+    if (is_string($common)) {
+        $common = trim($common);
+        if ($common !== '' && strpos($common, 'fatal') === false) {
+            // "<root>/.git" for a normal checkout and for a worktree alike.
+            if (!preg_match('~^(?:[a-zA-Z]:|/)~', $common)) {
+                $common = $project_root . '/' . $common;
+            }
+            $resolved = realpath($common);
+            if ($resolved !== false) { $main_root = dirname($resolved); }
+        }
+    }
+    $base = $main_root ?? $project_root;
+    $default_output = dirname($base) . '/' . basename($base) . '-builds';
+}
+$output_dir = $args['output'] ?? $default_output;
+
+// AND NEVER THE CHECKOUT, even when asked explicitly. A zip in the source
+// tree gets committed by accident, and the next person wonders why the
+// repository holds a build.
+$resolved_output = realpath($output_dir);
+$resolved_root = realpath($project_root);
+if ($resolved_output !== false && $resolved_root !== false
+    && rtrim($resolved_output, '/\\') === rtrim($resolved_root, '/\\')) {
+    echo "REFUSED: the output directory is the checkout itself.\n";
+    echo "        Packages belong outside the source tree -- pass --output DIR,\n";
+    echo "        or set SNAPSMACK_BUILD_DIR. The default is {$default_output}.\n";
+    exit(1);
+}
+if (!is_dir($output_dir) && !@mkdir($output_dir, 0755, true) && !is_dir($output_dir)) {
+    echo "REFUSED: could not create the output directory {$output_dir}\n";
+    exit(1);
 }
 
 // ─── BUILD SKIN LIST ────────────────────────────────────────────────────────
@@ -340,6 +393,11 @@ function smackback_build_eof_signature(string $content): ?string {
 function parse_args(array $argv): array {
     $result = ['slug' => null, 'all' => false, 'output' => null];
 
+    // BOTH SPELLINGS. --output=DIR used to fall through every branch and be
+    // SILENTLY IGNORED, so the packager wrote to its default and said nothing.
+    // That is how a zip ended up in the checkout while I believed I had sent
+    // it elsewhere. An argument the tool does not understand is now an error,
+    // because silence is what made the first mistake invisible.
     $skip_next = false;
     for ($i = 1; $i < count($argv); $i++) {
         if ($skip_next) { $skip_next = false; continue; }
@@ -348,10 +406,24 @@ function parse_args(array $argv): array {
 
         if ($arg === '--all') {
             $result['all'] = true;
-        } elseif ($arg === '--output' && isset($argv[$i + 1])) {
+        } elseif (str_starts_with($arg, '--output=')) {
+            $value = substr($arg, strlen('--output='));
+            if (trim($value) === '') {
+                echo "REFUSED: --output= was given with no directory.\n";
+                exit(1);
+            }
+            $result['output'] = $value;
+        } elseif ($arg === '--output') {
+            if (!isset($argv[$i + 1]) || str_starts_with((string)$argv[$i + 1], '-')) {
+                echo "REFUSED: --output needs a directory after it.\n";
+                exit(1);
+            }
             $result['output'] = $argv[$i + 1];
             $skip_next = true;
-        } elseif (!str_starts_with($arg, '-') && $result['slug'] === null) {
+        } elseif (str_starts_with($arg, '-')) {
+            echo "REFUSED: unknown option {$arg}.\n";
+            exit(1);
+        } elseif ($result['slug'] === null) {
             $result['slug'] = $arg;
         }
     }

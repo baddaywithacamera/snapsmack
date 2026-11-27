@@ -153,6 +153,95 @@ foreach (glob($out . '/*') ?: [] as $leftover) { @unlink($leftover); }
 $check('the packages were written to a temporary directory, not the tree',
     glob($root . '/*.zip') === []);
 
+// ---------------------------------------------------------------------------
+// WHERE THE PACKAGES GO. PM ruling, room 8472: outside the checkout, never the
+// project root, and both spellings of --output must work.
+//
+// This exists because the old default WAS the project root and --output=DIR was
+// SILENTLY IGNORED, so I believed I had sent a zip elsewhere and it landed in
+// the checkout instead. Both halves of that are checked here.
+// ---------------------------------------------------------------------------
+$raw = static function (array $args) use ($root): array {
+    $cmd = escapeshellarg(PHP_BINARY) . ' '
+        . escapeshellarg($root . '/tools/_build/package-skin.php');
+    foreach ($args as $arg) { $cmd .= ' ' . escapeshellarg($arg); }
+    $lines = [];
+    $code = 1;
+    exec($cmd . ' 2>&1', $lines, $code);
+    return [$code, implode("\n", $lines)];
+};
+
+$eqDir = $out . '-equals';
+@mkdir($eqDir, 0777, true);
+[$code, $output] = $raw(['tilez', '--output=' . $eqDir]);
+$check('--output=DIR is honoured, not silently ignored',
+    $code === 0 && glob($eqDir . '/tilez-*.zip') !== []);
+foreach (glob($eqDir . '/*') ?: [] as $leftoverZip) { @unlink($leftoverZip); }
+@rmdir($eqDir);
+
+[$code, $output] = $raw(['tilez', '--output=' . $root]);
+$check('the CHECKOUT is refused as an output directory', $code !== 0);
+$check('and the refusal says packages belong outside the source tree',
+    stripos($output, 'outside the source tree') !== false);
+$check('and it names the environment variable that sets the default',
+    stripos($output, 'SNAPSMACK_BUILD_DIR') !== false);
+
+[$code, $output] = $raw(['tilez', '--output=.']);
+$check('the checkout is refused however it is spelled', $code !== 0);
+
+[$code, $output] = $raw(['tilez', '--oputput=' . $out]);
+$check('AN UNKNOWN OPTION IS AN ERROR, not silence', $code !== 0);
+$check('and it names the option it did not understand', str_contains($output, '--oputput'));
+
+[$code, $output] = $raw(['tilez', '--output']);
+$check('--output with no directory is an error', $code !== 0);
+[$code, $output] = $raw(['tilez', '--output=']);
+$check('--output= with nothing after it is an error', $code !== 0);
+
+// The default must resolve OUTSIDE the repository. Run from a git worktree, the
+// first version resolved to .claude/worktrees/snapsmack-builds -- inside the
+// repository's own internals, which is the scatter this change exists to stop.
+[$code, $output] = $raw(['tilez', '--output=' . $root]);
+if (preg_match('~default is (.+?)\.?$~m', $output, $m) === 1) {
+    $defaultPath = trim($m[1], " .\t\r\n");
+    $normalised = str_replace('\\', '/', $defaultPath);
+    $rootNorm = str_replace('\\', '/', (string)realpath($root));
+    $check('the default output directory is OUTSIDE the checkout: ' . $defaultPath,
+        $normalised !== '' && strncmp($normalised, $rootNorm, strlen($rootNorm)) !== 0);
+    $check('and not inside the repository internals either',
+        !str_contains($normalised, '/.claude/') && !str_contains($normalised, '/.git/'));
+} else {
+    $check('the refusal states the default output directory', false);
+}
+
+
+// THE DEFAULT, RUN FOR REAL. The checks above read the default out of the
+// refusal message, which is a variable and not a behaviour -- a mutant that
+// put the default back to the project root SURVIVED them, and its zip was only
+// caught by the cleanliness check on the NEXT run. So this runs the packager
+// with NO --output at all and looks at the tree immediately.
+$zipsBefore = glob($root . '/*.zip') ?: [];
+[$code, $output] = $raw(['tilez']);
+$zipsAfter = glob($root . '/*.zip') ?: [];
+$newInTree = array_values(array_diff($zipsAfter, $zipsBefore));
+$check('RUNNING WITH NO --output PUTS NOTHING IN THE CHECKOUT: '
+    . ($newInTree ? implode(', ', array_map('basename', $newInTree)) : 'nothing'),
+    $newInTree === []);
+$check('and it still packaged the skin somewhere', $code === 0);
+// Remove only what this run created, wherever it went, and nothing else: that
+// directory is a real build location with other people's artifacts in it.
+if (preg_match('~Output directory: (.+)$~m', $output, $m) === 1) {
+    $where = trim($m[1]);
+    $check('it reports where it wrote', $where !== '');
+    $made = $where . DIRECTORY_SEPARATOR . 'tilez-0.2.79.zip';
+    if (is_file($made)) { @unlink($made); }
+    $check('the package this run created was cleaned up', !is_file($made));
+} else {
+    $check('it reports where it wrote', false);
+}
+foreach ($newInTree as $stray) { @unlink($stray); }
+
+
 echo "\n";
 if ($fails) {
     echo "FAILED (" . count($fails) . "):\n";
