@@ -1610,6 +1610,11 @@ class BiggieCanvas(QTextEdit):
             payload["weights"] = {str(k): int(v) for k, v in weights.items() if int(v or 0) != 0}
         if mirrors:
             payload["mirrors"] = list(mirrors)
+        existing = self._object_at(pos)
+        if existing and existing[0] == "mosaic" and existing[1].get("remote_mosaic"):
+            for key in ("mosaic_id", "gap", "remote_mosaic"):
+                if key in existing[1]:
+                    payload[key] = existing[1][key]
         self._insert_object("mosaic", payload, replace_at=pos)
 
     def insert_image(self, img_id: str, size: str = "full", align: str = "center",
@@ -2746,6 +2751,9 @@ def _export_block(block, nested: bool = False) -> list:
                 data = _data(f)
                 if okind == "mosaic":
                     blk = {"type": "mosaic"}
+                    for key in ("mosaic_id", "gap", "remote_mosaic"):
+                        if key in data:
+                            blk[key] = data[key]
                     if data.get("order"):
                         blk["order"] = list(data["order"])
                         blk["layout"] = str(data.get("layout") or "asymmetric")

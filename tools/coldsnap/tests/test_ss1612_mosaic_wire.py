@@ -97,4 +97,25 @@ def test_imported_pair_roundtrip_and_half_edits(change, expected, monkeypatch):
     assert site.posts[0]["content"] == expected
 
 
+def test_canvas_mosaic_replacement_preserves_its_existing_site_identity():
+    from test_coldsnap_ss1557_mosaic_arrangement import _app
+    from coldsnap_qt import biggie
+    from coldsnap_qt.canvas import BiggieCanvas
+
+    _app()
+    canvas = BiggieCanvas()
+    origin = {"revision": "fixture"}
+    canvas.from_blocks([{"type": "mosaic", "order": [1, 2], "layout": "rows",
+                         "mosaic_id": 753, "gap": 7, "remote_mosaic": origin}])
+    canvas._pending_obj_pos = canvas.document().begin().position()
+    canvas.replace_mosaic([2, 1], "asymmetric", weights={"2": 2})
+    block, = canvas.to_blocks()
+    assert block["order"] == [2, 1]
+    assert block["weights"] == {"2": 2}
+    assert block["gap"] == 7
+    assert block["remote_mosaic"] == origin
+    assert biggie.serialize_block(block) == "[mosaic:753]"
+    canvas.close()
+
+
 # ===== SNAPSMACK EOF =====

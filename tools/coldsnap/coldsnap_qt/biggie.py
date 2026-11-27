@@ -111,6 +111,8 @@ def serialize_block(b: dict) -> str:
     if t == "spacer":
         return f"[spacer:{max(1, min(100, int(b.get('px', 20) or 20)))}]"
     if t == "mosaic":
+        if b.get("mosaic_id") and b.get("remote_mosaic"):
+            return f"[mosaic:{int(b['mosaic_id'])}]"
         order = [int(i) for i in (b.get("order") or [])
                  if str(i).strip().isdigit() and int(i) >= 1]
         if not order:
