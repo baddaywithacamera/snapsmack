@@ -1803,6 +1803,22 @@
             200
         ]
     },
+    "mosaic-read-and-update-contract-regression.php": {
+        "assertions": 39,
+        "predicates": 11,
+        "thresholds": [
+            2,
+            2,
+            2,
+            6,
+            10,
+            20,
+            25,
+            75,
+            100,
+            409
+        ]
+    },
     "mosaic-shuffle-render-regression.php": {
         "assertions": 4,
         "predicates": 3,
@@ -3366,7 +3382,7 @@
         ]
     },
     "telegram-mobile-feed-regression.php": {
-        "assertions": 13,
+        "assertions": 14,
         "predicates": 8,
         "thresholds": []
     },
