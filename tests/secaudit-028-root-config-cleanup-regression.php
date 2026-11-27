@@ -10,7 +10,7 @@ $scratch = sys_get_temp_dir() . '/snapsmack-root-config-cleanup-' . bin2hex(rand
 mkdir($scratch . '/core', 0777, true);
 mkdir($scratch . '/smack-central', 0777, true);
 
-foreach (['updater.php', 'diaglog.php', 'release-pubkey.php'] as $file) {
+foreach (['updater.php', 'diaglog.php', 'release-pubkey.php', 'version-series.php'] as $file) {
     copy($source . '/core/' . $file, $scratch . '/core/' . $file);
 }
 
