@@ -107,6 +107,23 @@ function snap_dupe_corroborates(array $a, array $b): bool {
 }
 
 /**
+ * Does this candidate set hold two different capture dates?
+ *
+ * One set is one photograph, so it has at most one capture date. Rows with no
+ * date do not contradict anything -- they are what the dimensions arm is for.
+ *
+ * @param array<int,array<string,mixed>> $members
+ */
+function snap_dupe_set_has_contradiction(array $members): bool {
+    $dates = [];
+    foreach ($members as $row) {
+        $date = snap_dupe_date_of($row);
+        if ($date !== '') { $dates[$date] = true; }
+    }
+    return count($dates) > 1;
+}
+
+/**
  * Partition fetched rows into duplicate sets. THE RULE LIVES HERE.
  *
  * Rows need at least: id, dup_key, img_date, img_width, img_height.
@@ -137,24 +154,71 @@ function snap_dupe_partition(array $rows): array {
         // breaks apart into nothing. Corroboration is followed transitively:
         // A and B agree on the date, B and C on the dimensions, so all three
         // are the same picture.
-        $n      = count($items);
+        $n = count($items);
+
+        // AMBIGUOUS DATELESS ROWS JOIN NOTHING. (Muse, on bc76944f.)
+        //
+        // Corroboration being pairwise and then followed transitively left a
+        // bridge wide open: same filename, all 4000x3000, one dated 2014, one
+        // with no date, one dated 2019. The dateless row corroborates with
+        // BOTH on dimensions, so the union put all three in one set and the
+        // contradicted-dates guard never saw the pair it was written for --
+        // 2014 and 2019 were never compared to each other. Measured on the
+        // real function: one set of three, two photographs five years apart.
+        //
+        // A dateless row that matches two DIFFERENT capture dates on
+        // dimensions alone cannot be the same photograph as both, and nothing
+        // here can say which. So it is the same photograph as neither, and it
+        // joins nothing at all rather than being assigned to whichever row the
+        // loop reached first. That also makes the result independent of row
+        // order, which a refuse-on-merge rule would not have been.
+        $ambiguous = [];
+        for ($i = 0; $i < $n; $i++) {
+            if (snap_dupe_date_of($items[$i]) !== '') { continue; }
+            $seen = [];
+            for ($j = 0; $j < $n; $j++) {
+                if ($j === $i) { continue; }
+                $other = snap_dupe_date_of($items[$j]);
+                if ($other === '') { continue; }
+                if (snap_dupe_corroborates($items[$i], $items[$j])) { $seen[$other] = true; }
+            }
+            if (count($seen) > 1) { $ambiguous[$i] = true; }
+        }
+
         $parent = range(0, $n - 1);
         $find   = static function (int $i) use (&$parent): int {
             while ($parent[$i] !== $i) { $i = $parent[$i] = $parent[$parent[$i]]; }
             return $i;
         };
         for ($i = 0; $i < $n; $i++) {
+            if (isset($ambiguous[$i])) { continue; }
             for ($j = $i + 1; $j < $n; $j++) {
+                if (isset($ambiguous[$j])) { continue; }
                 if (!snap_dupe_corroborates($items[$i], $items[$j])) { continue; }
                 $ri = $find($i);
                 $rj = $find($j);
                 if ($ri !== $rj) { $parent[$ri] = $rj; }
             }
         }
+        // An ambiguous row is never unioned, so it is always its own component
+        // of one and the count test below drops it. It needs no skip of its
+        // own here; the first version of this had one and mutation proof showed
+        // it could not affect any outcome, which is the definition of dead
+        // code.
         $components = [];
         for ($i = 0; $i < $n; $i++) { $components[$find($i)][] = $items[$i]; }
+
         foreach ($components as $members) {
-            if (count($members) >= 2) { $sets[] = $members; }
+            if (count($members) < 2) { continue; }
+            // BELT AND BRACES, AND DELIBERATELY UNREACHABLE: no set may hold
+            // two different capture dates. The pre-pass above makes this
+            // impossible, so no input can reach it and no mutation of it can
+            // change an answer -- it is checked directly as a unit instead, in
+            // the regression. It is here so that a later change which does
+            // make a contradicted set possible drops that set rather than
+            // offering it to the owner with a delete box beside it.
+            if (snap_dupe_set_has_contradiction($members)) { continue; }
+            $sets[] = $members;
         }
     }
     return $sets;

@@ -193,6 +193,122 @@ check(sets_of($pdo) === ['50,51'], 'a mixed bucket splits to the corroborated pa
 check(snap_manage_duplicate_extra_count($pdo) === 1,
     'the banner counts one removable copy, not two');
 
+// ---------------------------------------------------------------------------
+// THE BRIDGE. (Muse, on bc76944f.) Same filename, all 4000x3000, one dated
+// 2014, one with NO date, one dated 2019. The dateless row corroborates with
+// both on dimensions, so following corroboration transitively put all three in
+// one set and the contradicted-dates guard never saw the pair it was written
+// for: 2014 and 2019 were never compared to each other. Measured on the real
+// function before the fix -- one set of three, two photographs five years
+// apart, with a delete box next to one of them.
+//
+// A dateless row that matches two different dates on dimensions alone cannot
+// be the same photograph as both, so it is the same photograph as neither.
+// ---------------------------------------------------------------------------
+$pdo = dupe_db();
+img($pdo, 200, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2014-06-02 11:04:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 201, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 202, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2019-11-18 16:40:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+check(sets_of($pdo) === [],
+    'A DATELESS ROW CANNOT BRIDGE TWO CONTRADICTED DATES: no set at all');
+check(snap_manage_duplicate_extra_count($pdo) === 0,
+    'and the banner offers nothing to remove');
+
+// Row order must not change the answer. The same three rows inserted so the
+// dateless one is reached FIRST by the loop. A refuse-on-merge rule would have
+// given a different answer here; excluding the ambiguous row does not.
+$pdo = dupe_db();
+img($pdo, 210, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 211, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2014-06-02 11:04:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 212, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2019-11-18 16:40:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+check(sets_of($pdo) === [], 'and the row order does not change that');
+
+// A ROW IS ONLY AMBIGUOUS ABOUT DATES IT COULD ACTUALLY BE. Same filename,
+// three rows: 2014 at 4000x3000, a dateless one at 4000x3000, and 2019 at
+// 1000x800. The dateless row matches the first on size and the second on
+// nothing at all, so there is exactly one date it could be and it is not
+// ambiguous. A scan that counted every date in the bucket instead of the ones
+// it corroborates with would throw this real pair away -- safe, and wrong.
+$pdo = dupe_db();
+img($pdo, 250, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2014-06-02 11:04:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 251, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 252, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2019-11-18 16:40:00',
+                'img_width' => 1000, 'img_height' => 800]);
+check(sets_of($pdo) === ['250,251'],
+    'a date the dateless row could NOT be does not make it ambiguous');
+
+// ONE dated row and a dateless one is NOT ambiguous -- there is only one date
+// it could be -- so that pair must still group. The fix must not have closed
+// the bridge by switching the dimensions arm off.
+$pdo = dupe_db();
+img($pdo, 220, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2014-06-02 11:04:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 221, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '',
+                'img_width' => 4000, 'img_height' => 3000]);
+check(sets_of($pdo) === ['220,221'],
+    'ONE date plus a dateless row is still a duplicate pair');
+
+// Two dateless rows at the same size still group: there is no date to
+// contradict, and that is the re-import case the dimensions arm exists for.
+$pdo = dupe_db();
+img($pdo, 230, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 231, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '',
+                'img_width' => 4000, 'img_height' => 3000]);
+check(sets_of($pdo) === ['230,231'], 'two dateless rows at one size still group');
+
+// ---------------------------------------------------------------------------
+// WHICH DEFENCE IS DOING THE WORK. There are two: excluding the ambiguous row
+// before any union, and dropping a set that still holds two dates. On every
+// shape above they agree, so removing EITHER left the answers unchanged and
+// four mutants survived -- the test could not tell which one was working.
+//
+// This shape separates them. Four rows, one filename:
+//   1  dated 2014, 4000x3000
+//   2  dated 2014, 1000x800   -- the same photograph, re-imported resized
+//   3  NO DATE,    4000x3000  -- matches 1 and 4 on size, so it is ambiguous
+//   4  dated 2019, 4000x3000  -- a different photograph entirely
+//
+// Excluding row 3 first leaves the genuine pair 1+2, joined by their shared
+// date. Letting row 3 bridge instead merges all four, and the set-level guard
+// then throws the whole thing away -- including the real duplicate. Both
+// answers are safe; only one is right.
+// ---------------------------------------------------------------------------
+$pdo = dupe_db();
+img($pdo, 240, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2014-06-02 11:04:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 241, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2014-06-02 11:04:00',
+                'img_width' => 1000, 'img_height' => 800]);
+img($pdo, 242, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '',
+                'img_width' => 4000, 'img_height' => 3000]);
+img($pdo, 243, ['img_source_file' => 'DSC_0042.JPG', 'img_date' => '2019-11-18 16:40:00',
+                'img_width' => 4000, 'img_height' => 3000]);
+check(sets_of($pdo) === ['240,241'],
+    'THE AMBIGUOUS ROW IS EXCLUDED BEFORE ANY UNION, so the real pair survives');
+check(snap_manage_duplicate_extra_count($pdo) === 1,
+    'and exactly one copy is offered for removal, not none and not three');
+
+// The set-level guard is its own statement of the invariant, driven directly --
+// it is unreachable through the partition by design, so a unit check is the
+// only honest way to hold it.
+check(snap_dupe_set_has_contradiction([
+        ['img_date' => '2014-06-02 11:04:00'],
+        ['img_date' => '2019-11-18 16:40:00'],
+    ]) === true, 'a set holding two different dates is a contradiction');
+check(snap_dupe_set_has_contradiction([
+        ['img_date' => '2014-06-02 11:04:00'],
+        ['img_date' => ''],
+        ['img_date' => '2014-06-02 11:04:00'],
+    ]) === false, 'a dateless row in a set contradicts nothing');
+
 // TRANSITIVE. A and B agree on the date, B and C only on dimensions because C
 // has no date. All three are the same photograph.
 $pdo = dupe_db();
