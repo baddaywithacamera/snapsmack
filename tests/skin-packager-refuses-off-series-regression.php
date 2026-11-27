@@ -535,6 +535,121 @@ $check('a skin still packages with no git available',
 foreach (glob($noGitOut . '/*') ?: [] as $leftover) { @unlink($leftover); }
 @rmdir($noGitOut);
 
+// ---------------------------------------------------------------------------
+// A NESTED STANDALONE CLONE. (SS-1600D, second blocker, reported by Codex when
+// the guarded v0.7.1007D tag run stopped.)
+//
+// The agreement check above runs from WHEREVER THIS SUITE HAPPENS TO SIT, so
+// it only ever exercised the shape of that one checkout. In a clone nested
+// inside another checkout the two answers came apart, and the suite could not
+// see it: measured before the fix, from the nested clone, with git the default
+// was <...>/outer/nested-builds and without git it was <...>/outer-builds.
+//
+// WHY, and it is not the floor this time. A clone sitting inside another
+// checkout is its OWN repository, so its builds belong beside it -- which is
+// what git answers. The climb asked only "does this look like a checkout" and
+// so sailed past the clone into the containing tree. "The outermost checkout
+// on this path" and "my own repository" are different questions, and this is
+// where they diverge.
+//
+// A .git DIRECTORY marks a standalone repository root while a linked
+// worktree's .git is a FILE, so the ceiling is a filesystem fact and the
+// no-git path stays genuinely git-free.
+//
+// THIS RELOCATES THE SHIPPED TOOL RATHER THAN RE-IMPLEMENTING IT. The packager
+// and core/ are COPIED OUT OF THIS CHECKOUT at run time, so the thing under
+// test is the file on disk now, not a snapshot of what it said when the check
+// was written. That is the distinction this file has already been corrected
+// for once: a local copy of the RULE would pass while the tool stayed broken;
+// a relocated copy of the TOOL cannot.
+$nestRoot = sys_get_temp_dir() . '/ss-nested-clone-' . bin2hex(random_bytes(6));
+$nestInner = $nestRoot . '/outer/nested';
+$copyTree = static function (string $src, string $dst) use (&$copyTree): void {
+    @mkdir($dst, 0777, true);
+    foreach (scandir($src) ?: [] as $entry) {
+        if ($entry === '.' || $entry === '..') { continue; }
+        is_dir($src . '/' . $entry)
+            ? $copyTree($src . '/' . $entry, $dst . '/' . $entry)
+            : @copy($src . '/' . $entry, $dst . '/' . $entry);
+    }
+};
+try {
+    // The container only has to LOOK like a checkout; it is not a repository.
+    @mkdir($nestRoot . '/outer/skins', 0777, true);
+    @mkdir($nestRoot . '/outer/core', 0777, true);
+    @file_put_contents($nestRoot . '/outer/index.php', "<?php\n");
+    // The nested checkout is a real standalone repository with the real tool.
+    @mkdir($nestInner . '/skins', 0777, true);
+    @mkdir($nestInner . '/tools/_build', 0777, true);
+    @file_put_contents($nestInner . '/index.php', "<?php\n");
+    $copyTree($root . '/core', $nestInner . '/core');
+    @copy($root . '/tools/_build/package-skin.php', $nestInner . '/tools/_build/package-skin.php');
+
+    $initCode = 1;
+    $initLines = [];
+    exec('git -C ' . escapeshellarg($nestInner) . ' init -q . 2>&1', $initLines, $initCode);
+    $isRepo = $initCode === 0 && is_dir($nestInner . '/.git');
+
+    if (!$isRepo) {
+        // UNKNOWN IS NEVER A PASS. Without a git binary the nested repository
+        // cannot be created, so the case is unobservable here and says so
+        // instead of reporting a green it did not earn.
+        echo "NOT CHECKED the nested-standalone-clone agreement: git could not "
+           . "initialise the fixture repository\n";
+    } else {
+        $nestedPackager = $nestInner . '/tools/_build/package-skin.php';
+        $readDefault = static function (string $extraEnv) use ($nestedPackager, $nestInner): string {
+            $previous = getenv('SNAPSMACK_GIT_BIN');
+            if ($extraEnv !== '') { putenv('SNAPSMACK_GIT_BIN=' . $extraEnv); }
+            else { putenv('SNAPSMACK_GIT_BIN'); }
+            try {
+                $lines = [];
+                $code = 1;
+                exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($nestedPackager)
+                    . ' tilez --output=' . escapeshellarg($nestInner) . ' 2>&1', $lines, $code);
+                $text = implode("\n", $lines);
+                return preg_match('~default is (.+?)\.?$~m', $text, $mm) === 1
+                    ? rtrim(str_replace(chr(92), '/', trim($mm[1], " .\t\r\n")), '/')
+                    : '';
+            } finally {
+                if ($previous === false) { putenv('SNAPSMACK_GIT_BIN'); }
+                else { putenv('SNAPSMACK_GIT_BIN=' . $previous); }
+            }
+        };
+        $nestedWithGit    = $readDefault('');
+        $nestedWithoutGit = $readDefault($nestRoot . '/no-such-git-binary');
+
+        $check('the nested clone states its default with git', $nestedWithGit !== '');
+        $check('the nested clone states its default without git', $nestedWithoutGit !== '');
+        // The correct answer is the clone's own sibling, which is what git says.
+        $expected = rtrim(str_replace(chr(92), '/', $nestInner), '/') . '-builds';
+        $check('WITH GIT a nested standalone clone builds beside ITSELF: ' . $nestedWithGit,
+            $nestedWithGit === $expected);
+        $check('WITHOUT GIT it reaches the SAME answer and does not climb into the '
+            . 'containing checkout: ' . $nestedWithoutGit,
+            $nestedWithoutGit === $expected);
+        // Named separately, because this exact pair of values is what stopped
+        // the tag run and it should be legible in the output when it recurs.
+        $check('so the two defaults AGREE in a nested standalone clone',
+            $nestedWithGit !== '' && $nestedWithGit === $nestedWithoutGit);
+    }
+} finally {
+    $rmTree = static function (string $dir) use (&$rmTree): void {
+        if (!is_dir($dir)) { return; }
+        foreach (scandir($dir) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') { continue; }
+            $path = $dir . '/' . $entry;
+            @chmod($path, 0777);
+            is_dir($path) ? $rmTree($path) : @unlink($path);
+        }
+        @rmdir($dir);
+    };
+    $rmTree($nestRoot);
+    // CHECKED, not assumed: this fixture is several megabytes and leaving it
+    // behind on every suite run would fill the temp directory.
+    $check('the nested-clone fixture was removed', !is_dir($nestRoot));
+}
+
 
 echo "\n";
 if ($fails) {
