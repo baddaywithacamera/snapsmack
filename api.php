@@ -22,7 +22,8 @@
 // api/desktop-auth, api/v1, api/pixelfed and oauth -- nothing else. Every
 // other pretty /api/<x> path falls through to the HTTPS redirect and then to
 // index.php's HTML 404, which is what POCKET ALBUM's documented example did.
-// Seven comments in this file and core/ advertised paths that could not work;
+// Seven comments in THIS FILE advertised paths that could not work (Muse's
+// nit on 6f4ade7e: all seven were here, not spread across core/);
 // they now name api.php?route=<x>, which is what every real client uses.
 // tests/documented-api-paths-reach-the-dispatcher-regression.php keeps it so.
 $route = '';

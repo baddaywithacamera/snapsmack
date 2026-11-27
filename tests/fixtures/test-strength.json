@@ -558,9 +558,10 @@
         ]
     },
     "documented-api-paths-reach-the-dispatcher-regression.php": {
-        "assertions": 14,
-        "predicates": 20,
+        "assertions": 21,
+        "predicates": 25,
         "thresholds": [
+            2,
             50
         ]
     },

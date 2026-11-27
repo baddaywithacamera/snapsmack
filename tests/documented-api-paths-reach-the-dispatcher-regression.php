@@ -31,8 +31,47 @@ $check = static function (string $what, bool $ok) use (&$fails): void {
 // ---------------------------------------------------------------------------
 // What .htaccess actually rewrites into a dispatcher.
 // ---------------------------------------------------------------------------
-$htaccess = (string)@file_get_contents($root . '/.htaccess');
-$check('.htaccess is in the build', $htaccess !== '');
+// THE TRACKED TEMPLATE, not the live .htaccess. Muse's condition on 6f4ade7e,
+// and she is right that it broke the test: .htaccess is GITIGNORED and absent
+// from a clean checkout, so this read an untracked file that happened to exist
+// in my working tree. Four checks would have failed on a fresh clone and my
+// "13 checks pass" only held here. core/htaccess-template IS tracked and is
+// what the updater installs and self-heals from, so it is the authority for
+// which paths a site will actually route.
+$template = $root . '/core/htaccess-template';
+$htaccess = (string)@file_get_contents($template);
+$check('the tracked htaccess template is in the build', $htaccess !== '');
+// THE PATH ACTUALLY READ must be tracked, not a hard-coded name. Pointing
+// $template back at .htaccess passed this check while it named the template
+// literally, because my working tree has a local .htaccess -- the mutant
+// survived. It now asks git about $template itself.
+// Built with DIRECTORY_SEPARATOR rather than a literal backslash: writing one
+// in a quoted string is how the previous two edits of mine ended up with a
+// stray escape and a parse error.
+$templateReal = (string)realpath($template);
+$rootReal = (string)realpath($root);
+$relative = $templateReal !== '' && $rootReal !== ''
+    ? str_replace(DIRECTORY_SEPARATOR, '/', substr($templateReal, strlen($rootReal) + 1))
+    : '';
+$tracked = trim((string)@shell_exec('git -C ' . escapeshellarg($root)
+    . ' ls-files --error-unmatch ' . escapeshellarg($relative) . ' 2>&1'));
+$check('the file this test reads (' . $relative . ') is TRACKED, so it works on a clean checkout',
+    $tracked === $relative);
+
+// The LIVE file is checked too when it happens to be present, because a site
+// whose .htaccess has drifted from the template is a real condition -- but its
+// absence is not a failure.
+$live = $root . '/.htaccess';
+if (is_file($live)) {
+    $liveText = (string)file_get_contents($live);
+    foreach (['api/desktop-auth', 'api/v([12])', 'api/pixelfed'] as $needle) {
+        $check('the live .htaccess still carries ' . $needle,
+            str_contains($liveText, $needle));
+    }
+} else {
+    echo "     (no local .htaccess; template-only check, which is the clean-checkout case)
+";
+}
 // THE TARGET MATTERS, not just the pattern. My first version collected
 // patterns only, and reported api/pocket-album as reachable because
 // ^(.*)$ -> https://%{HTTP_HOST}/$1 matched it -- the HTTPS redirect, which
@@ -63,7 +102,7 @@ $rewritten = static function (string $path) use ($rules): bool {
 
 $check('the rules that DO exist are recognised by this check',
     $rewritten('api/desktop-auth/status') && $rewritten('api/v1/anything')
-    && $rewritten('oauth/token'));
+    && $rewritten('api/pixelfed/v1/anything') && $rewritten('oauth/token'));
 $check('and a path with no rule is not', !$rewritten('api/pocket-album'));
 
 // ---------------------------------------------------------------------------
@@ -108,7 +147,14 @@ foreach ($sources as $file) {
             // evidence, and flagging it would push someone to delete the
             // evidence to quiet the test. The fault class is advertising a
             // path as USABLE, so only those count.
-            if (preg_match('~404|does not exist|never existed|unreachable~i', $line) === 1) {
+            // TIGHTER THAN "the line mentions 404 somewhere". Muse's nit: the
+            // first version would excuse a line that genuinely advertised an
+            // unreachable path as long as 404 appeared anywhere on it. An
+            // ADVERTISEMENT names a method -- "GET /api/x" -- so a line doing
+            // that is never excused, however it is annotated.
+            $advertises = preg_match('~(?:GET|POST|PUT|PATCH|DELETE)\s+/api/~i', $line) === 1;
+            $records_absence = preg_match('~404|does not exist|never existed|unreachable~i', $line) === 1;
+            if ($records_absence && !$advertises) {
                 continue;
             }
             $documented++;
@@ -137,6 +183,28 @@ $check('the display docblock documents it too',
     str_contains($display, 'api.php?route=pocket-album'));
 $check('the dispatcher comment documents it too',
     str_contains($dispatcher, 'api.php?route=pocket-album'));
+// Muse's nit: an advertised path must not be excused by an annotation. This is
+// the positive control for the rule above -- if somebody writes
+// "GET /api/nope -- 404 for now", it is still an advertisement.
+// The exemption DECISION, driven on sample lines. Testing the regex alone let
+// a mutant that dropped the advertises-check survive, because no line in the
+// tree happens to both advertise a path and mention 404 -- so the repo could
+// not tell the two rules apart. These samples can.
+$excused = static function (string $line): bool {
+    $advertises = preg_match('~(?:GET|POST|PUT|PATCH|DELETE)\s+/api/~i', $line) === 1;
+    $records_absence = preg_match('~404|does not exist|never existed|unreachable~i', $line) === 1;
+    return $records_absence && !$advertises;
+};
+$check('a line recording that a path 404s IS excused',
+    $excused(' *   /api/albums/191                        with 404'));
+$check('a line that ADVERTISES a path is NOT excused, even mentioning 404',
+    !$excused(' * GET /api/nope?x=1 -- returns 404 for now'));
+$check('an advertisement with no annotation is not excused',
+    !$excused(' * GET /api/nope?x=1'));
+$check('a line with neither is not excused', !$excused(' * just prose about the api'));
+$check('the exemption in the scan above uses the same two rules',
+    str_contains((string)file_get_contents(__FILE__), '$records_absence && !$advertises'));
+
 $check('the docblock explains why the pretty path did not work, not just what to type',
     stripos($api, 'RewriteRule') !== false || stripos($api, 'rewrite') !== false);
 
