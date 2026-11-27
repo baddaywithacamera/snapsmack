@@ -43,6 +43,8 @@ from PySide6.QtWidgets import (
     QSpinBox, QMessageBox, QCheckBox,
 )
 
+from shiboken6 import isValid
+
 from . import theme
 from . import biggie
 from .mosaic_browser import MosaicBrowser
@@ -509,7 +511,7 @@ class _Objects(QPyTextObject):
         in_sync = [True]
 
         def _on_ready(pix):
-            if pix is None or pix.isNull():
+            if not isValid(self.canvas) or pix is None or pix.isNull():
                 return
             scaled = pix.scaled(cell_size, Qt.KeepAspectRatio, Qt.FastTransformation)
             QPixmapCache.insert(ckey, scaled)
@@ -524,7 +526,7 @@ class _Objects(QPyTextObject):
                     if vp is not None:
                         vp.update()
 
-                QTimer.singleShot(0, _flush_repaint)
+                QTimer.singleShot(0, self.canvas, _flush_repaint)
 
         accepted = loader.request(path, bucket, _on_ready)
         in_sync[0] = False
@@ -539,7 +541,7 @@ class _Objects(QPyTextObject):
                 if vp is not None:
                     vp.update()
 
-            QTimer.singleShot(50, _retry_paint)
+            QTimer.singleShot(50, self.canvas, _retry_paint)
         return None
 
     def _mosaic_footer(self, painter, r, count, layout, clusters=0):

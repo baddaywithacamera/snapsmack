@@ -28,18 +28,24 @@ if "--cli" in _cli_sys.argv:
 if "--parity-capture" in _cli_sys.argv:
     if _cli_os.name == "nt" and _cli_os.environ.get("SNAPSMACK_PARITY_RUNNER") != "1":
         raise SystemExit("Run Windows parity through parity_run_windows.py.")
-    import parity_capture as _parity_capture
     _capture_index = _cli_sys.argv.index("--parity-capture")
     if _capture_index + 1 >= len(_cli_sys.argv):
         raise SystemExit("--parity-capture requires an output directory")
     _capture_dir = _cli_sys.argv[_capture_index + 1]
     try:
+        import parity_capture as _parity_capture
         _capture_status = _parity_capture.run(_capture_dir)
     except Exception:
         from pathlib import Path
         import traceback
-        (Path(_capture_dir) / "capture-error.txt").write_text(traceback.format_exc(), encoding="utf-8")
-        raise
+
+        try:
+            error_file = Path(_capture_dir) / "capture-error.txt"
+            error_file.write_text(traceback.format_exc(), encoding="utf-8")
+        except OSError:
+            pass
+        # An unhandled exception in a frozen windowed build opens a desktop dialog.
+        raise SystemExit(1) from None
     raise SystemExit(_capture_status)
 
 from _version import BUILD_VERSION  # noqa: E402
