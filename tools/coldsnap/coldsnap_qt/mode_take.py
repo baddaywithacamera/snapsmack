@@ -448,6 +448,8 @@ class TakeMode(QWidget):
         # Existing media gallery images can still be edited on the canvas.
         self.body.canvas.set_site_provider(
             lambda: ((self.app_config() or {}).get("url") or "").strip())
+        self.body.canvas.signature_default = lambda: self._signature_default(
+            ((self.app_config() or {}).get("url") or "").strip())
 
         scroll = QScrollArea()
         scroll.setObjectName("CanvasWell")
@@ -1348,6 +1350,8 @@ class TakeMode(QWidget):
                         lambda: canvas.insert_columns(3)),
             BlockAction("IMG", "Image", "PLACE", "Choose an unplaced photo from this post",
                         self._pick_tray_photo),
+            BlockAction("SIG", "Signature", "PLACE", "Insert the blog signature",
+                        canvas.insert_signature),
         ]
 
     def _text_block_actions(self):

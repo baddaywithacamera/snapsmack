@@ -253,4 +253,43 @@ class TheBlockIsOfferedAndSurvivesTheEditor(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
+def test_canvas_paints_signs_moves_and_removes_signature():
+    from PySide6.QtGui import QColor, QPixmap
+    from PySide6.QtWidgets import QApplication
+    from coldsnap_qt.canvas import BiggieCanvas
+
+    app = QApplication.instance() or QApplication([])
+    canvas = BiggieCanvas()
+    canvas.resize(460, 300)
+    canvas.signature_default = lambda: 413
+    signature = QPixmap(85, 36)
+    fixture_color = QColor("#00961c")
+    signature.fill(fixture_color)
+    observed = []
+
+    def resolve(image_id, width):
+        observed.append(image_id)
+        return signature
+
+    canvas.set_image_resolver(resolve)
+    canvas.from_blocks([{"type": "para", "text": "Body"}])
+    canvas.insert_signature()
+    canvas.show()
+    app.processEvents()
+    image = canvas.viewport().grab().toImage()
+    assert "413" in observed
+    assert any(image.pixelColor(x, y) == fixture_color
+               for y in range(image.height()) for x in range(image.width()))
+    assert canvas.to_blocks()[1]["type"] == "signature"
+    assert biggie.serialize_blocks(canvas.to_blocks()) == "Body"
+
+    position = canvas.document().firstBlock().next().position()
+    assert canvas._can_move_object(position, -1)
+    canvas._move_object(position, -1)
+    assert canvas.to_blocks()[0]["type"] == "signature"
+    canvas._remove_object(canvas.document().firstBlock().position())
+    assert all(block["type"] != "signature" for block in canvas.to_blocks())
+    canvas.close()
+
+
 # ===== SNAPSMACK EOF =====
