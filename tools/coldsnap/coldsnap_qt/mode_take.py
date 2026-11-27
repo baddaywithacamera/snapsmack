@@ -572,8 +572,6 @@ class TakeMode(QWidget):
         self.colophon_edit.setPlaceholderText("Equipment or production note (optional)")
         self.colophon_edit.setAccessibleName("Colophon")
         colophon_label.setBuddy(self.colophon_edit)
-        card_col.addWidget(colophon_label)
-        card_col.addWidget(self.colophon_edit)
 
         signature_row = QHBoxLayout()
         self.signature_check = QCheckBox("Include blog signature")
@@ -609,6 +607,8 @@ class TakeMode(QWidget):
         card_col.addSpacing(6)
 
         card_col.addWidget(self.body, 1)
+        card_col.addWidget(colophon_label)
+        card_col.addWidget(self.colophon_edit)
 
         add_row = QHBoxLayout()
         add_row.addStretch(1)
@@ -3317,7 +3317,12 @@ class TakeMode(QWidget):
                 response.raise_for_status()
                 return response.content if cancel is None or not cancel.is_set() else None
 
-            target = published_photo_cache.get_full_size(site, image_id, source_url, fetch) if source_url else None
+            try:
+                target = published_photo_cache.get_full_size(site, image_id, source_url, fetch) if source_url else None
+            except requests.RequestException:
+                # A missing original must not prevent the post and its other
+                # photos from opening. Keep the existing site image identity.
+                target = None
             if cancel is not None and cancel.is_set():
                 return None
             local_path = str(target) if target else ""
@@ -4146,6 +4151,10 @@ class TakeMode(QWidget):
                 self._set_slapper_state("idle")
 
     def _sync_body_assets(self):
+        self.body.canvas.set_published_image_paths({
+            str(im.remote_image_id): im.thumb_aspect or im.local_path for im in self._bucket
+            if im.remote_image_id and (im.thumb_aspect or im.local_path)
+        })
         self.body.canvas.set_local_preview_paths({
             im.local_path: im.thumb_aspect for im in self._bucket if im.local_path and im.thumb_aspect
         })
