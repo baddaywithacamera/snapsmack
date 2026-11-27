@@ -119,11 +119,33 @@ class BadInputCannotBecomeAnOptOut(unittest.TestCase):
     """A typo must not read as "no signature"."""
 
     def test_an_unknown_mode_falls_back_to_inherit(self):
-        for mode in ("", "nope", None, "OFF ", 7):
+        for mode in ("", "nope", None, 7, [], {}):
             clean = biggie.signature_block_normalise({"mode": mode})
-            self.assertIn(clean["mode"], biggie.SIGNATURE_MODES)
-            if mode != "OFF ":
-                self.assertEqual(clean["mode"], "inherit", repr(mode))
+            self.assertEqual(clean["mode"], "inherit", repr(mode))
+
+    def test_SURROUNDING_WHITESPACE_DOES_NOT_CHANGE_THE_ANSWER(self):
+        """Muse's nit on 73fa2028, and my test had excused it.
+
+        "OFF " fell through to inherit, so an author who said NO SIGNATURE
+        silently got the blog's one. The direction is what makes it a defect
+        rather than a tidiness issue. The original version of this test had an
+        `if mode != "OFF "` exemption around the assertion, which is how it
+        passed while the behaviour was wrong.
+        """
+        tab_and_newline = chr(9) + "off" + chr(10)
+        for mode, expected in (("OFF ", "off"), (" off", "off"), ("  OFF  ", "off"),
+                               ("Custom ", "custom"), (" inherit", "inherit"),
+                               (tab_and_newline, "off")):
+            self.assertEqual(biggie.signature_block_normalise({"mode": mode})["mode"],
+                             expected, repr(mode))
+
+    def test_a_padded_opt_out_really_sends_zero(self):
+        # The end of the chain, not just the normaliser: " off " must produce
+        # an opt-out payload, because that is what the author asked for.
+        fields = biggie.signature_fields({"type": "signature", "mode": " off "})
+        self.assertEqual(fields["signature_image_id"], 0)
+        self.assertEqual(fields["signature_light_image_id"], 0)
+        self.assertEqual(fields["signature_dark_image_id"], 0)
 
     def test_a_mode_is_case_insensitive(self):
         self.assertEqual(biggie.signature_block_normalise({"mode": "OFF"})["mode"], "off")
@@ -190,6 +212,33 @@ class TheBlockIsOfferedAndSurvivesTheEditor(unittest.TestCase):
         fields = biggie.signature_fields(row.to_block())
         self.assertEqual(fields["signature_light_image_id"], 7)
         self.assertIsNone(fields["signature_dark_image_id"])
+
+    def test_the_id_FIELDS_ARE_DEAD_UNLESS_YOU_ARE_CHOOSING(self):
+        """Muse's nit on 73fa2028: a control that does nothing.
+
+        In inherit and off modes signature_fields() ignores the id fields
+        entirely, so leaving them editable invites an author to type an id that
+        is then thrown away. That is the dead-control fault class this project
+        has spent weeks on, so the fields follow the dropdown.
+
+        Mutation added this: forcing them always-enabled left the suite green.
+        """
+        for mode, enabled in (("inherit", False), ("off", False), ("custom", True)):
+            editor, _out = self._round_trip({"type": "signature", "mode": mode})
+            row = editor._rows[0]
+            self.assertEqual(row.sig_light.isEnabled(), enabled, mode)
+            self.assertEqual(row.sig_dark.isEnabled(), enabled, mode)
+
+    def test_the_fields_follow_the_dropdown_as_it_changes(self):
+        editor, _out = self._round_trip({"type": "signature", "mode": "inherit"})
+        row = editor._rows[0]
+        self.assertFalse(row.sig_light.isEnabled())
+        row.sig_mode.setCurrentIndex(2)                      # Choose images
+        self.assertTrue(row.sig_light.isEnabled())
+        self.assertTrue(row.sig_dark.isEnabled())
+        row.sig_mode.setCurrentIndex(1)                      # No signature
+        self.assertFalse(row.sig_light.isEnabled())
+        self.assertFalse(row.sig_dark.isEnabled())
 
     def test_adding_one_from_the_tray_gives_a_usable_block(self):
         editor = biggie.BiggieEditor(allow_mosaic=True)
