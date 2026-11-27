@@ -2408,6 +2408,9 @@ body.blog, body.single, body.archive { background: #fff; }
 :root { --telegram-column:46rem; }
 html,body { background:#fff; }
 .navigation { width: min(var(--telegram-column), calc(100% - 28px)); margin: 0 auto; background: transparent; border-bottom: 1px solid #ececec; }
+.mobile-menu { border-top: 1px solid #ececec; padding: 8px 0; background: #fff; }
+.mobile-menu a { color: var(--tilez-ink, #111); padding: 12px 4px; font-size: 0.9rem; letter-spacing: 0.04em; }
+.mobile-menu a:hover { color: #555; }
 .header { max-width:var(--telegram-column); padding:18px 0 14px; width:calc(100% - 28px); margin: 0 auto; }
 .header-image { display:none; }
 .site-header .site-title { display:block; font-family:Georgia,'Times New Roman',serif; font-size:1.35rem; font-weight:700; line-height:1.2; letter-spacing:-0.01em; text-transform:none; color:var(--tilez-ink); text-decoration:none; }

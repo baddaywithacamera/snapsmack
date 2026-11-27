@@ -128,8 +128,8 @@
             "manifest_css_sha256": "79996a16f5aaad1ff09769a0188d5b3a3663bf239bc30d3ed854c84eb20d08b1"
         },
         "telegram": {
-            "version": "0.1.12",
-            "files_sha256": "89f4259303c59cb23a1364c1855d181b11bd77ffb8ce94e410f6f19f2860fb34",
+            "version": "0.1.13",
+            "files_sha256": "f4fc84afc1dac6d4234bf2d712138b8e3faff3d8f88f0fceb7847274745117a1",
             "manifest_css_sha256": "355acaa76a8b27c202de6090980326edcf78f2ddc2af94a00498378dae67d7db"
         },
         "the-grid": {
