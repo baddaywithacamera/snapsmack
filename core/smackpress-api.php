@@ -426,6 +426,115 @@ if (($settings['site_mode'] ?? '') === 'smackthemup') {
     smackpress_error(409, 'SMACKTHEMUP publishes from SNAP SLAPPER (desktop) only — this API is not available for this mode.');
 }
 
+/**
+ * Look up an existing snap_images row by SHA-256 content hash, checking both
+ * snap_images.img_checksum and snap_media_content_hashes (raw upload hash
+ * recorded before GD re-encoding).
+ */
+function smackpress_find_media_by_hash(PDO $pdo, string $content_hash): ?array {
+    if (!preg_match('/^[a-f0-9]{64}$/', $content_hash)) {
+        return null;
+    }
+
+    $stmt = $pdo->prepare('SELECT id, img_thumb_square, img_title FROM snap_images WHERE img_checksum = ? LIMIT 1');
+    $stmt->execute([$content_hash]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        return $row;
+    }
+
+    $pdo->exec('CREATE TABLE IF NOT EXISTS snap_media_content_hashes (
+        content_hash VARCHAR(64) NOT NULL PRIMARY KEY,
+        image_id INTEGER NOT NULL
+    )');
+    $hstmt = $pdo->prepare('SELECT image_id FROM snap_media_content_hashes WHERE content_hash = ? LIMIT 1');
+    $hstmt->execute([$content_hash]);
+    $mapped_id = (int)$hstmt->fetchColumn();
+    if ($mapped_id <= 0) {
+        return null;
+    }
+
+    $istmt = $pdo->prepare('SELECT id, img_thumb_square, img_title FROM snap_images WHERE id = ? LIMIT 1');
+    $istmt->execute([$mapped_id]);
+    $existing = $istmt->fetch(PDO::FETCH_ASSOC);
+    return $existing ?: null;
+}
+
+/**
+ * Record a raw upload SHA-256 content hash -> snap_images.id mapping so
+ * subsequent byte-identical uploads (e.g. a shared post signature) reuse
+ * the same asset even when snap_ingest_image() re-encodes the stored file.
+ */
+function smackpress_record_media_hash(PDO $pdo, string $content_hash, int $image_id): void {
+    if ($image_id <= 0 || !preg_match('/^[a-f0-9]{64}$/', $content_hash)) {
+        return;
+    }
+    $pdo->exec('CREATE TABLE IF NOT EXISTS snap_media_content_hashes (
+        content_hash VARCHAR(64) NOT NULL PRIMARY KEY,
+        image_id INTEGER NOT NULL
+    )');
+    $have = $pdo->prepare('SELECT 1 FROM snap_media_content_hashes WHERE content_hash = ? LIMIT 1');
+    $have->execute([$content_hash]);
+    if ($have->fetchColumn()) {
+        return;
+    }
+    $put = $pdo->prepare('INSERT INTO snap_media_content_hashes (content_hash, image_id) VALUES (?, ?)');
+    $put->execute([$content_hash, $image_id]);
+}
+
+/**
+ * Ingest an uploaded media file or reuse an existing asset with the same
+ * SHA-256 content hash.
+ */
+function smackpress_ingest_or_reuse_media(
+    PDO $pdo,
+    array $settings,
+    array $file,
+    array $upload_opts,
+    ?callable $ingest_fn = null
+): array {
+    $tmp_path = (string)($file['tmp_name'] ?? '');
+    $upload_hash = ($tmp_path !== '' && is_file($tmp_path))
+        ? strtolower((string)hash_file('sha256', $tmp_path))
+        : '';
+
+    if ($upload_hash !== '') {
+        $existing = smackpress_find_media_by_hash($pdo, $upload_hash);
+        if ($existing) {
+            $existing_id = (int)$existing['id'];
+            return [
+                'ok'           => true,
+                'id'           => $existing_id,
+                'thumb'        => (string)($existing['img_thumb_square'] ?? ''),
+                'title'        => (string)($existing['img_title'] ?? ''),
+                'deduplicated' => true,
+                'content_hash' => $upload_hash,
+            ];
+        }
+    }
+
+    if ($ingest_fn === null) {
+        if (!function_exists('snap_ingest_image')) {
+            require_once __DIR__ . '/image-ingest.php';
+        }
+        $ingest_fn = 'snap_ingest_image';
+    }
+
+    $ingest = $ingest_fn($pdo, $settings, $file, $upload_opts);
+    if (empty($ingest['ok'])) {
+        return $ingest;
+    }
+
+    $image_id = (int)($ingest['id'] ?? 0);
+    if ($upload_hash !== '' && $image_id > 0) {
+        smackpress_record_media_hash($pdo, $upload_hash, $image_id);
+    }
+
+    $ingest['deduplicated'] = false;
+    $ingest['content_hash'] = $upload_hash;
+    return $ingest;
+}
+
 // =====================================================================
 // ROUTE: POST smackpress/media/upload
 // =====================================================================
@@ -438,9 +547,6 @@ if (in_array($sub, ['media/upload', 'media'], true) && $method === 'POST') {
     // [img:gID], as mosaic cells, and as a featured_image_id cover. Writing to the
     // Library (snap_assets) here would leave mosaics and covers blank, because the
     // renderer (core/parser.php) resolves mosaic + cover ids against snap_images. (0.7.398)
-    if (!function_exists('snap_ingest_image')) {
-        require_once __DIR__ . '/image-ingest.php';
-    }
     $upload_opts = ['status' => 'published'];
     if (isset($_POST['caption_from_filename'])) {
         $upload_opts['caption_from_filename'] =
@@ -458,7 +564,7 @@ if (in_array($sub, ['media/upload', 'media'], true) && $method === 'POST') {
         smackpress_ok(['image_id' => (int)$prior['destination_id'], 'asset_id' => (int)$prior['destination_id'],
             'already_imported' => true]);
     }
-    $ingest = snap_ingest_image($pdo, $settings, $_FILES['file'], $upload_opts);
+    $ingest = smackpress_ingest_or_reuse_media($pdo, $settings, $_FILES['file'], $upload_opts);
     if (empty($ingest['ok'])) {
         smackpress_error(500, $ingest['error'] ?? 'Image ingest failed.');
     }
@@ -467,12 +573,16 @@ if (in_array($sub, ['media/upload', 'media'], true) && $method === 'POST') {
         bloggerflogger_record($pdo, $source[0], $source[1], $source[2], $source[3], 'media', $image_id);
         bloggerflogger_finish($pdo);
     }
-    smackpress_ok([
+    $payload = [
         'image_id' => $image_id,
         'asset_id' => $image_id,   // back-compat alias for older callers
         'thumb'    => $ingest['thumb'] ?? '',
         'title'    => $ingest['title'] ?? '',
-    ]);
+    ];
+    if (!empty($ingest['deduplicated'])) {
+        $payload['deduplicated'] = true;
+    }
+    smackpress_ok($payload);
 }
 
 /**
