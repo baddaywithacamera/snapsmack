@@ -15,7 +15,7 @@ $pdo->exec('CREATE TABLE snap_file_manifest (file_path TEXT)');
 $zipPath = $scratch . '/update.zip';
 $zip = new ZipArchive();
 $zip->open($zipPath, ZipArchive::CREATE);
-foreach (['install.php', 'setup.php', 'fedup.php', 'INSTALL.PHP', 'ordinary.php', 'core/constants.php', 'protected_paths.json'] as $file) {
+foreach (['install.php', 'setup.php', 'fedup.php', 'INSTALL.PHP', 'ordinary.php', 'core/constants.php'] as $file) {
     $zip->addFromString('package/' . $file, 'new package content');
 }
 $zip->close();
@@ -29,6 +29,13 @@ try {
     file_put_contents($scratch . '/core/db.php', 'configured');
     $rules = json_encode(['protected' => ['core/db.php', 'core/constants.php', 'protected_paths.json']]);
     file_put_contents($scratch . '/protected_paths.json', $rules);
+    $effective_rules = updater_load_protected_paths();
+    if (!updater_is_protected('protected_paths.json', $effective_rules)
+        || !updater_is_protected('core/db.php', $effective_rules)
+        || updater_is_protected('core/constants.php', $effective_rules)) {
+        throw new RuntimeException('Legacy rule handling changed the protection of another file.');
+    }
+
 
     foreach (['full', 'chunk'] as $mode) {
         foreach (['install.php', 'setup.php', 'fedup.php', 'core/.snapsmack-installer-state.php'] as $file) {
@@ -36,7 +43,7 @@ try {
         }
         file_put_contents($scratch . '/core/constants.php', 'legacy constants');
         $result = $mode === 'full' ? updater_extract($zipPath) : updater_extract_chunk($zipPath, 0, 60);
-        if (!$result['success'] || $result['files_skipped'] !== 5
+        if (!$result['success'] || $result['files_skipped'] !== 4
             || snapsmack_installer_artifacts($scratch)
             || file_get_contents($scratch . '/core/constants.php') !== 'new package content'
             || file_get_contents($scratch . '/protected_paths.json') !== $rules
