@@ -2816,9 +2816,11 @@
         "thresholds": []
     },
     "skin-packager-refuses-off-series-regression.php": {
-        "assertions": 81,
-        "predicates": 43,
+        "assertions": 87,
+        "predicates": 44,
         "thresholds": [
+            2,
+            2,
             2,
             2,
             2,
@@ -3578,7 +3580,7 @@
         "thresholds": []
     },
     "version-epoch-survives-the-local-scan-regression.php": {
-        "assertions": 15,
+        "assertions": 17,
         "predicates": 4,
         "thresholds": []
     },
