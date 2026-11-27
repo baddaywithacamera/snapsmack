@@ -1109,8 +1109,8 @@
         "thresholds": []
     },
     "git-hook-behaviour-regression.php": {
-        "assertions": 37,
-        "predicates": 4,
+        "assertions": 49,
+        "predicates": 7,
         "thresholds": []
     },
     "git-hooks-installed-regression.php": {
@@ -2457,7 +2457,7 @@
     },
     "release-gate-scope-regression.php": {
         "assertions": 34,
-        "predicates": 13,
+        "predicates": 14,
         "thresholds": []
     },
     "release-key-rotation-form-regression.php": {

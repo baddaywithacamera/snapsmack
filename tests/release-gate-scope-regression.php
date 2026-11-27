@@ -90,14 +90,15 @@ rgs_check(rf_classify_dirt([''])['shipping'] === [] && rf_classify_dirt([''])['i
 $flow = (string)file_get_contents(dirname(__DIR__) . '/tools/release-flow.php');
 rgs_check(str_contains($flow, "'browser_regressions' => 'pass'"),
     'release notes no longer require browser evidence');
-rgs_check((bool)preg_match('/rf_browser_tests\(\);.*?notes[^;]*release-gates[^;]*add/s', $flow),
-    'gate-note no longer executes browser tests before writing its evidence');
+$stableNote = substr($flow, strpos($flow, "$" . "fleetBefore = rf_fleet_capture('before', $" . "head);"));
+rgs_check((bool)preg_match('/rf_browser_tests\(\);.*?rf_write_gate_note\(/s', $stableNote),
+    'the full gate note no longer executes browser tests before writing its evidence');
 foreach (['security', 'parity', 'skin-render-parity', 'authority'] as $judgement) {
     rgs_check(str_contains($flow, "'{$judgement}' => '"),
         "gate-note no longer demands the {$judgement} judgement outright");
 }
-rgs_check((bool)preg_match('/notes[^;]*release-gates[^;]*add.*?rf_require_release_gate\(\)/s', $flow),
-    'gate-note writes a note without then proving it with the same check the tag uses');
+rgs_check((bool)preg_match('/rf_write_gate_note\(.*?rf_require_release_gate\(\)/s', $stableNote),
+    'the full gate note is written without the promotion check');
 foreach (['tag-dev', 'promote-stable'] as $gated) {
     $start = strpos($flow, "if (\$command === '{$gated}')");
     $next = $start === false ? false : strpos($flow, "if (\$command === '", $start + 10);
@@ -109,7 +110,7 @@ foreach (['tag-dev', 'promote-stable'] as $gated) {
     // note. See rfc_promotion_gate_commit().
     rgs_check(str_contains($block, $gated === 'promote-stable'
         ? 'rf_require_release_gate($gate_commit)'
-        : 'rf_require_release_gate();'),
+        : "rf_require_release_gate(null, 'dev');"),
         "{$gated} checks the gate note on the wrong commit");
     rgs_check(str_contains($block, 'rf_require_clean();'),
         "{$gated} no longer requires a clean release tree");

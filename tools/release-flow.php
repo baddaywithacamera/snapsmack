@@ -380,7 +380,7 @@ function rf_require_packaged_tag_alignment(string $requested): void {
  * hand, outside this tool, over three red regressions. One wording, one set of
  * rules, two callers.
  */
-function rf_release_gate_problem(string $head): string {
+function rf_release_gate_problem(string $head, string $tier = 'stable'): string {
     $ref = 'refs/notes/release-gates';
     exec('git notes --ref=' . escapeshellarg($ref) . ' show ' . escapeshellarg($head) . ' 2>&1', $lines, $code);
     if ($code !== 0) {
@@ -389,6 +389,7 @@ function rf_release_gate_problem(string $head): string {
     $raw = trim(implode("\n", $lines));
     $gate = json_decode($raw, true);
     if (!is_array($gate)) return "release-gate note for {$head} is not valid JSON";
+    if ($tier === 'dev') return rf_dev_gate_problem($head, $gate['dev_gate'] ?? []);
     $required = [
         'commit' => $head,
         'security' => 'pass',
@@ -445,11 +446,92 @@ function rf_release_gate_problem(string $head): string {
     return '';
 }
 
-function rf_require_release_gate(?string $commit = null): void {
+
+function rf_dev_skin_scope(string $head): array {
+    $tags = rf_git(['tag', '--merged', $head, '--list', 'v*D', '--sort=-v:refname']);
+    foreach (preg_split('/\R/', $tags) ?: [] as $tag) {
+        if (!preg_match('/^v[0-9]+\.[0-9]+\.[0-9]+D$/', $tag)) continue;
+        $baseline = rf_git(['rev-parse', $tag . '^{commit}']);
+        if ($baseline !== $head) break;
+        unset($baseline);
+    }
+    if (!isset($baseline)) rf_fail('no previous development tag for the skin evidence comparison');
+
+    $changed = rf_git(['diff', '--name-only', '--no-renames', $baseline, $head]);
+    $targets = [];
+    foreach (preg_split('/\R/', $changed) ?: [] as $file) {
+        if (preg_match('~^skins/([^/]+)/~', $file, $match)) {
+            $targets['skins/' . $match[1]] = true;
+        } elseif (str_ends_with(strtolower($file), '.css')) {
+            $targets[$file] = true;
+        }
+    }
+    $targets = array_keys($targets);
+    sort($targets, SORT_STRING);
+    return [$baseline, $targets];
+}
+
+function rf_dev_gate_problem(string $head, mixed $gate): string {
+    if (!is_array($gate)) return 'D-build gate must be an object';
+    $required = [
+        'commit' => $head,
+        'security' => 'pass',
+        'tests' => 'pass',
+        'code_review' => 'pass',
+        'authority_review' => 'approved',
+    ];
+    foreach ($required as $field => $expected) {
+        if (($gate[$field] ?? null) !== $expected) {
+            return "D-build gate field {$field} must be " . json_encode($expected);
+        }
+    }
+    foreach (['reviewer', 'review_reference', 'test_reference'] as $field) {
+        if (!is_string($gate[$field] ?? null) || trim($gate[$field]) === '') {
+            return "D-build gate must cite {$field}";
+        }
+    }
+    $demoProblem = rf_demo_parity_note_problem($gate);
+    if ($demoProblem !== '') return $demoProblem;
+    [$baseline, $targets] = rf_dev_skin_scope($head);
+    if (($gate['skin_baseline'] ?? null) !== $baseline) {
+        return 'D-build skin evidence must name the previous development commit';
+    }
+    $skinEvidence = $gate['skin_evidence'] ?? null;
+    if (!is_array($skinEvidence)) return 'D-build gate must record changed skin/CSS evidence';
+    $declared = array_keys($skinEvidence);
+    sort($declared, SORT_STRING);
+    if ($declared !== $targets) {
+        return 'D-build skin evidence must match the changed skin/CSS scope: '
+            . ($targets === [] ? '(none)' : implode(', ', $targets));
+    }
+    foreach ($skinEvidence as $target => $reference) {
+        if (!is_string($reference) || trim($reference) === '') {
+            return "D-build skin evidence for {$target} must cite a capture or review";
+        }
+    }
+    return '';
+}
+
+function rf_existing_release_note(string $head): array {
+    exec('git notes --ref=release-gates show ' . escapeshellarg($head) . ' 2>&1', $lines, $code);
+    if ($code !== 0) return [];
+    $note = json_decode(implode("\n", $lines), true);
+    if (!is_array($note)) rf_fail('existing release-gate note is not valid JSON');
+    return $note;
+}
+
+function rf_write_gate_note(string $head, array $note): void {
+    $tmp = tempnam(sys_get_temp_dir(), 'rfgate');
+    file_put_contents($tmp, json_encode($note, JSON_UNESCAPED_SLASHES));
+    rf_git(['notes', '--ref=release-gates', 'add', '-f', '-F', $tmp, $head]);
+    @unlink($tmp);
+}
+
+function rf_require_release_gate(?string $commit = null, string $tier = 'stable'): void {
     // HEAD stays the default: tag-dev and the pre-push hook both ask about the
     // commit in hand. A promotion asks about the DEV TAG instead -- see
     // rfc_promotion_gate_commit() for why it cannot be HEAD there.
-    $problem = rf_release_gate_problem($commit ?? rf_git(['rev-parse', 'HEAD']));
+    $problem = rf_release_gate_problem($commit ?? rf_git(['rev-parse', 'HEAD']), $tier);
     if ($problem !== '') rf_fail($problem);
 }
 
@@ -616,8 +698,9 @@ if ($command === 'gate-check') {
     $target = $argv[2] ?? 'HEAD';
     $commit = rf_git(['rev-parse', $target . '^{commit}']);
     if ($commit === '') rf_fail("cannot resolve {$target} to a commit");
-    $problem = rf_release_gate_problem($commit);
-    if ($problem !== '') rf_fail($problem);
+    $tierFlag = $argv[3] ?? '--tier=stable';
+    if (!in_array($tierFlag, ['--tier=dev', '--tier=stable'], true)) rf_fail('unknown release gate tier');
+    rf_require_release_gate($commit, substr($tierFlag, 7));
     echo "release gate passes for {$commit}\n";
     exit(0);
 }
@@ -684,8 +767,8 @@ if ($command === 'tag-dev') {
     if (rf_remote_tag_target($tag) !== '') rf_fail("tag {$tag} already exists ON ORIGIN and is immutable; use the next version");
     rf_require_next_dev_version($version);
     rf_require_packaged_tag_alignment($version);
+    rf_require_release_gate(null, 'dev');
     rf_tests();
-    rf_require_release_gate();
     rf_git(['tag', $tag]);
     if ($no_push) {
         $sha = rf_git(['rev-parse', $tag . '^{commit}']);
@@ -817,15 +900,18 @@ if ($command === 'gate-note') {
         }
         // Repeatable, so it is collected separately below rather than
         // overwriting itself in $flags.
-        if ($m[1] === 'skin-render-change') continue;
+        if (in_array($m[1], ['skin-render-change', 'skin-evidence'], true)) continue;
         $flags[$m[1]] = $m[2];
     }
+    $tier = $flags['tier'] ?? 'stable';
+    if (!in_array($tier, ['dev', 'stable'], true)) rf_fail('unknown release gate tier');
     $required = [
         'security' => 'pass',
-        'parity' => 'pass',
-        'skin-render-parity' => 'pass',
         'authority' => 'approved',
     ];
+    $required += $tier === 'dev'
+        ? ['tests' => 'pass', 'code-review' => 'pass']
+        : ['parity' => 'pass', 'skin-render-parity' => 'pass'];
     $missing = [];
     foreach ($required as $flag => $expected) {
         if (($flags[$flag] ?? '') !== $expected) $missing[] = "--{$flag}={$expected}";
@@ -856,6 +942,39 @@ if ($command === 'gate-note') {
     // Run the actual browsers before recording their result, never accept a
     // hand-typed --browser-pass assertion. Clean inputs bind the run to HEAD.
     rf_require_clean();
+    if ($tier === 'dev') {
+        [$baseline] = rf_dev_skin_scope($head);
+        $skinEvidence = [];
+        foreach (array_slice($argv, 2) as $arg) {
+            if (!str_starts_with($arg, '--skin-evidence=')) continue;
+            $pair = explode(':', substr($arg, strlen('--skin-evidence=')), 2);
+            if (count($pair) !== 2 || isset($skinEvidence[$pair[0]])) {
+                rf_fail('use one --skin-evidence=target:reference for each changed skin or CSS asset');
+            }
+            $skinEvidence[$pair[0]] = $pair[1];
+        }
+        $devGate = [
+            'commit' => $head,
+            'security' => $flags['security'],
+            'tests' => $flags['tests'],
+            'test_reference' => $flags['test-reference'] ?? '',
+            'code_review' => $flags['code-review'],
+            'reviewer' => $flags['reviewer'] ?? '',
+            'review_reference' => $flags['review-reference'] ?? '',
+            'authority_review' => $flags['authority'],
+            'skin_baseline' => $baseline,
+            'skin_evidence' => $skinEvidence,
+        ] + rf_demo_parity_note_fields($parityRecord, $parityRaw);
+        $problem = rf_dev_gate_problem($head, $devGate);
+        if ($problem !== '') rf_fail($problem);
+        $note = rf_existing_release_note($head);
+        $note['dev_gate'] = $devGate;
+        rf_write_gate_note($head, $note);
+        rf_require_release_gate($head, 'dev');
+        echo "D-BUILD GATE NOTE WRITTEN for {$head}. The tag command runs the full test suite.\n";
+        exit(0);
+    }
+
     $fleetBefore = rf_fleet_capture('before', $head);
     rf_browser_tests();
     $skinDirs = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];
@@ -933,10 +1052,9 @@ if ($command === 'gate-note') {
     if (isset($flags['tests'])) $note['tests'] = $flags['tests'];
     if (isset($flags['authority-by'])) $note['authority'] = $flags['authority-by'];
 
-    $tmp = tempnam(sys_get_temp_dir(), 'rfgate');
-    file_put_contents($tmp, json_encode($note, JSON_UNESCAPED_SLASHES));
-    rf_git(['notes', '--ref=release-gates', 'add', '-f', '-F', $tmp, $head]);
-    @unlink($tmp);
+    $existing = rf_existing_release_note($head);
+    if (isset($existing['dev_gate'])) $note['dev_gate'] = $existing['dev_gate'];
+    rf_write_gate_note($head, $note);
 
     // Prove it by the same code the tag uses, rather than by assertion.
     rf_require_release_gate();
