@@ -86,9 +86,12 @@ def release_paths(site, package, expected_version, state):
                 raise RuntimeError("The signed archive contains a file symlink.")
             if not path.parts or path.parts[0] in RUNTIME_ROOTS:
                 raise RuntimeError("The signed archive contains a runtime-data path.")
-            approved_path(site, entry.filename)
-            if not entry.is_dir():
+            target = approved_path(site, entry.filename)
+            if not entry.is_dir() or not target.exists():
                 files.add(path.as_posix())
+            for parent in path.parents:
+                if parent.parts and not approved_path(site, parent.as_posix()).exists():
+                    files.add(parent.as_posix())
     selected = []
     for name in sorted(files, key=lambda item: (len(PurePosixPath(item).parts), item)):
         target = approved_path(site, name)
@@ -120,23 +123,52 @@ def snapshot_files(site, selected, state):
 
 def restore_files(site, state, inventory):
     copies = state / "files"
+    restored_names = []
+    failed = {}
     for name, kind in reversed(tuple(inventory.items())):
-        target = approved_path(site, name)
-        if kind == "file":
-            target.parent.mkdir(parents=True, exist_ok=True)
-            with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as temporary:
-                restored = Path(temporary.name)
-            try:
-                shutil.copy2(copies / name, restored)
-                os.replace(restored, target)
-            finally:
-                restored.unlink(missing_ok=True)
-        elif kind == "directory":
-            shutil.copytree(copies / name, target, dirs_exist_ok=True, symlinks=True)
-        elif target.is_file():
-            target.unlink()
-        elif target.is_dir() and not any(target.iterdir()):
-            target.rmdir()
+        try:
+            target = approved_path(site, name)
+            if kind == "file":
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with tempfile.NamedTemporaryFile(dir=target.parent, delete=False) as temporary:
+                    restored = Path(temporary.name)
+                try:
+                    shutil.copy2(copies / name, restored)
+                    os.replace(restored, target)
+                finally:
+                    restored.unlink(missing_ok=True)
+            elif kind == "directory":
+                target.parent.mkdir(parents=True, exist_ok=True)
+                staging = Path(tempfile.mkdtemp(dir=target.parent, prefix=".release-restore-"))
+                restored = staging / "restore"
+                displaced = staging / "displaced"
+                try:
+                    shutil.copytree(copies / name, restored, symlinks=True)
+                    if target.exists():
+                        os.replace(target, displaced)
+                    try:
+                        os.replace(restored, target)
+                    except OSError:
+                        if displaced.exists():
+                            os.replace(displaced, target)
+                        raise
+                except OSError:
+                    # Retain the displaced path if even moving it back failed.
+                    if not displaced.exists():
+                        shutil.rmtree(staging)
+                    raise
+                shutil.rmtree(staging)
+            elif target.is_dir():
+                shutil.rmtree(target)
+            elif target.exists():
+                target.unlink()
+            restored_names.append(name)
+        except (OSError, ValueError) as error:
+            failed[name] = str(error)
+    report = state / "file-rollback.json"
+    report.write_text(json.dumps({"restored": restored_names, "failed": failed}), encoding="utf-8")
+    if failed:
+        raise RuntimeError(f"{len(failed)} file paths could not be restored. See {report}.")
 
 
 def probe(domain):
