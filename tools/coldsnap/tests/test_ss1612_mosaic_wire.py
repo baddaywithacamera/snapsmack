@@ -62,10 +62,13 @@ def test_mosaic_only_posts_stay_out_of_cms_automatic_paragraph_conversion():
     ("edit_mosaic", "[mosaic:752]\n\n<p>Prose.</p>\n<p>Other paragraph.</p>\n"),
     ("remove_mosaic", "<p>Prose.</p>\n<p>Other paragraph.</p>\n"),
     ("remove_prose", "[mosaic:751]\n\n<p>Other paragraph.</p>\n"),
+    ("move_mosaic", "<p>Prose.</p>\n<p>Other paragraph.</p>\n[mosaic:751]\n\n"),
 ])
 def test_imported_pair_roundtrip_and_half_edits(change, expected, monkeypatch):
     wrap = {"open": "<p>", "close": "</p>", "group": "p1"}
-    media = {"type": "mosaic", "src": "<p>[mosaic:751]", "sep": "", "wrap": wrap}
+
+    media = {"type": "site_mosaic", "mosaic_id": 751, "text": "[mosaic:751]",
+             "src": "<p>[mosaic:751]", "sep": "", "wrap": wrap}
     prose = {"type": "para", "text": "Prose.", "src": "Prose.</p>", "sep": "\n", "wrap": wrap}
     blocks = [media, prose, {"type": "para", "src": "<p>Other paragraph.</p>", "sep": "\n"}]
     if change == "edit_prose":
@@ -73,11 +76,15 @@ def test_imported_pair_roundtrip_and_half_edits(change, expected, monkeypatch):
         prose["text"] = "New < note."
     elif change == "edit_mosaic":
         media.pop("src")
+        media["type"] = "mosaic"
         media["order"] = [1]
     elif change == "remove_mosaic":
         blocks.remove(media)
     elif change == "remove_prose":
         blocks.remove(prose)
+    elif change == "move_mosaic":
+        blocks.remove(media)
+        blocks.append(media)
     site = FixtureSite()
     poster = SmacktalkPoster("https://example.test", "fixture", session=site)
     monkeypatch.setattr(poster, "_record_to_library", lambda *_: None)

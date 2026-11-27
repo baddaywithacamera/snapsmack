@@ -1231,10 +1231,10 @@ class SmacktalkPoster:
             for block in blocks_in_group:
                 existing = block.get("src", "")
                 kind = block["type"]
-                if kind in {"mosaic", "image"}:
+                if kind in {"mosaic", "site_mosaic", "image"}:
                     if existing:
-                        token = re.search(cls._WIRE_MOSAIC if kind == "mosaic" else r"\[img:[^\]]+\]",
-                                          existing, re.I)
+                        pattern = r"\[img:[^\]]+\]" if kind == "image" else cls._WIRE_MOSAIC
+                        token = re.search(pattern, existing, re.I)
                         if token is None:
                             raise ValueError("An imported media block lost its source shortcode.")
                         text = token[0]
