@@ -385,6 +385,75 @@ function sc_skin_workdir(string $tmp_key): string {
 
 // ── Read manifests from an extracted skins directory ─────────────────────────
 
+function sc_skin_first_line(string $text): string {
+    foreach (preg_split('/\R/', trim($text)) ?: [] as $line) {
+        $line = trim($line);
+        if ($line !== '') {
+            return $line;
+        }
+    }
+    return '';
+}
+
+function sc_skin_manifest_what_changed(array $manifest, string $version): string {
+    foreach (['what_changed', 'release_notes'] as $key) {
+        if (isset($manifest[$key]) && is_string($manifest[$key])) {
+            $line = sc_skin_first_line($manifest[$key]);
+            if ($line !== '') return $line;
+        }
+    }
+    $changelog = $manifest['changelog'] ?? null;
+    if (is_string($changelog)) {
+        return sc_skin_first_line($changelog);
+    }
+    if (is_array($changelog)) {
+        if (isset($changelog[$version]) && is_string($changelog[$version])) {
+            return sc_skin_first_line($changelog[$version]);
+        }
+        foreach ($changelog as $entry) {
+            if (is_string($entry)) {
+                $line = sc_skin_first_line($entry);
+                if ($line !== '') return $line;
+            }
+        }
+    }
+    return '';
+}
+
+function sc_skin_fetch_commit_summary(string $ref): string {
+    if (!sc_skin_source_is_commit($ref) || !function_exists('sc_github_get')) {
+        return '';
+    }
+    try {
+        $commit = sc_github_get('repos/' . SNAPSMACK_GITHUB_REPO . '/commits/' . rawurlencode($ref));
+    } catch (\Throwable $e) {
+        return '';
+    }
+    if (!is_array($commit)) {
+        return '';
+    }
+    $msg = (string)($commit['commit']['message'] ?? '');
+    return sc_skin_first_line($msg);
+}
+
+function sc_skin_what_changed_line(array $meta, bool $is_update, string $commit_summary = '', ?string $prev_version = null): string {
+    $manifest_note = trim((string)($meta['what_changed'] ?? ''));
+    if ($manifest_note !== '') {
+        return $manifest_note;
+    }
+    if (!$is_update) {
+        return '';
+    }
+    if ($commit_summary !== '') {
+        return $commit_summary;
+    }
+    $ver = (string)($meta['version'] ?? '');
+    if ($prev_version !== null && $prev_version !== '' && $ver !== '') {
+        return "Updated from {$prev_version} to {$ver}.";
+    }
+    return '';
+}
+
 function sc_read_manifests(string $skins_dir): array {
     $skins = [];
     foreach (glob(rtrim($skins_dir, '/') . '/*/manifest.json') as $mf) {
@@ -396,16 +465,18 @@ function sc_read_manifests(string $skins_dir): array {
             continue;  // skip skins with parse errors or fatal manifest issues
         }
         if (!is_array($manifest)) continue;
+        $version = (string)($manifest['version'] ?? '1.0');
         // mobile_only skins (e.g. photogram) ARE included in the registry so the
         // installer and updater can fetch them. Gallery hiding is enforced by
         // smack-skin.php at display time, not here.
         $skins[$slug] = [
             'name'               => $manifest['name']               ?? ucfirst($slug),
-            'version'            => $manifest['version']            ?? '1.0',
+            'version'            => $version,
             'status'             => $manifest['status']             ?? 'stable',
             'modes'              => $manifest['modes']              ?? [],
             'author'             => $manifest['author']             ?? 'Unknown',
             'description'        => $manifest['description']        ?? '',
+            'what_changed'       => sc_skin_manifest_what_changed($manifest, $version),
             'features'           => $manifest['features']           ?? [],
             'requires_php'       => $manifest['requires_php']       ?? '8.3',
             'requires_snapsmack' => $manifest['requires_snapsmack'] ?? '0.7',
@@ -742,7 +813,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     $previous_zips[] = dirname($zip_path) . '/' . $slug . '-' . $published_version . '.zip';
                 }
 
-                $existing_registry['skins'][$slug] = [
+                $posted_what_changed = sc_skin_first_line((string)($_POST['what_changed'][$slug] ?? ($meta['what_changed'] ?? '')));
+
+                $entry = [
                     'name'               => $meta['name'],
                     'version'            => $version,
                     'source_commit'      => $ref,
@@ -759,15 +832,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     'requires_snapsmack' => $meta['requires_snapsmack'],
                     'features'           => $meta['features'],
                 ];
+                if ($posted_what_changed !== '') {
+                    $entry['what_changed'] = $posted_what_changed;
+                }
+                $existing_registry['skins'][$slug] = $entry;
 
                 $build_results[] = [
-                    'slug'      => $slug,
-                    'name'      => $meta['name'],
-                    'ok'        => true,
-                    'zip_name'  => $zip_name,
-                    'zip_size'  => $zip_size,
-                    'signature' => $sig_hex,
-                    'files'     => $file_count,
+                    'slug'         => $slug,
+                    'name'         => $meta['name'],
+                    'ok'           => true,
+                    'zip_name'     => $zip_name,
+                    'zip_size'     => $zip_size,
+                    'signature'    => $sig_hex,
+                    'files'        => $file_count,
+                    'what_changed' => $posted_what_changed,
                 ];
             }
 
@@ -960,11 +1038,14 @@ include __DIR__ . '/sc-layout-top.php';
                     </tr>
                 </thead>
                 <tbody>
-                <?php foreach ($repo_skins as $slug => $meta):
+                <?php
+                    $commit_summary = sc_skin_fetch_commit_summary($ref);
+                    foreach ($repo_skins as $slug => $meta):
                     $in_registry    = isset($existing_registry['skins'][$slug]);
                     $reg_version    = $existing_registry['skins'][$slug]['version'] ?? null;
                     $reg_screenshot = $existing_registry['skins'][$slug]['screenshot'] ?? '';
                     $needs_update   = $in_registry && $reg_version !== $meta['version'];
+                    $what_changed   = sc_skin_what_changed_line($meta, $needs_update, $commit_summary, is_string($reg_version) ? $reg_version : null);
                     $status_class   = match($meta['status']) {
                         'stable'      => 'sc-status--ok',
                         'beta'        => 'sc-status--warn',
@@ -988,6 +1069,16 @@ include __DIR__ . '/sc-layout-top.php';
                             <?php if (!empty($meta['description'])): ?>
                                 <div style="font-size:0.78rem; color:#666; margin-top:3px; max-width:300px;">
                                     <?php echo htmlspecialchars($meta['description']); ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if ($needs_update || $what_changed !== ''): ?>
+                                <div class="sc-what-changed" style="font-size:0.78rem; color:#d8b36a; margin-top:6px; max-width:340px;">
+                                    <strong>What changed:</strong>
+                                    <span><?php echo htmlspecialchars($what_changed); ?></span>
+                                    <input type="text" name="what_changed[<?php echo htmlspecialchars($slug); ?>]"
+                                           value="<?php echo htmlspecialchars($what_changed); ?>"
+                                           placeholder="One-line summary of what changed..."
+                                           style="width:100%; margin-top:4px; font-size:0.78rem; padding:3px 6px; background:#111; border:1px solid #333; color:#ccc;">
                                 </div>
                             <?php endif; ?>
                         </td>
@@ -1051,6 +1142,11 @@ include __DIR__ . '/sc-layout-top.php';
                     — <?php echo htmlspecialchars($r['zip_name']); ?>
                     (<?php echo round($r['zip_size'] / 1024, 1); ?> KB,
                      <?php echo $r['files']; ?> files)<br>
+                    <?php if (!empty($r['what_changed'])): ?>
+                        <span style="font-size:0.8rem; color:#d8b36a;">
+                            What changed: <?php echo htmlspecialchars($r['what_changed']); ?>
+                        </span><br>
+                    <?php endif; ?>
                     <span class="sc-dim" style="font-size:0.8rem; word-break:break-all;">
                         sig: <?php echo htmlspecialchars($r['signature']); ?>
                     </span>

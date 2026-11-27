@@ -457,6 +457,13 @@
             2
         ]
     },
+    "cron-scripts-define-what-they-call-regression.php": {
+        "assertions": 12,
+        "predicates": 8,
+        "thresholds": [
+            2
+        ]
+    },
     "cron-update-path-refresh-regression.php": {
         "assertions": 1,
         "predicates": 13,
@@ -1183,6 +1190,18 @@
         "predicates": 4,
         "thresholds": []
     },
+    "images-page-renders-fixture.php": {
+        "assertions": 21,
+        "predicates": 19,
+        "thresholds": [
+            2,
+            5,
+            5,
+            5,
+            5,
+            5
+        ]
+    },
     "impact-printer-about-two-column-regression.php": {
         "assertions": 4,
         "predicates": 22,
@@ -1474,8 +1493,8 @@
         ]
     },
     "menu-search-item-regression.php": {
-        "assertions": 35,
-        "predicates": 31,
+        "assertions": 36,
+        "predicates": 33,
         "thresholds": [
             2,
             2,
@@ -1545,8 +1564,8 @@
         "thresholds": []
     },
     "mosaic-gallery-columns-regression.php": {
-        "assertions": 9,
-        "predicates": 12,
+        "assertions": 14,
+        "predicates": 20,
         "thresholds": []
     },
     "mosaic-shuffle-render-regression.php": {
@@ -1748,7 +1767,7 @@
     },
     "photochallenge-regression.php": {
         "assertions": 105,
-        "predicates": 178,
+        "predicates": 180,
         "thresholds": [
             3
         ]
@@ -1847,9 +1866,11 @@
         ]
     },
     "pocket-album-share-control-regression.php": {
-        "assertions": 28,
-        "predicates": 14,
-        "thresholds": []
+        "assertions": 38,
+        "predicates": 27,
+        "thresholds": [
+            2
+        ]
     },
     "portfolio-admin-controls-save-regression.php": {
         "assertions": 21,
@@ -2521,6 +2542,11 @@
         "predicates": 5,
         "thresholds": []
     },
+    "skin-packager-what-changed-regression.php": {
+        "assertions": 11,
+        "predicates": 4,
+        "thresholds": []
+    },
     "skin-parity-ledger-regression.php": {
         "assertions": 7,
         "predicates": 1,
@@ -2895,8 +2921,8 @@
         "thresholds": []
     },
     "ss1555-social-dock-outline-regression.php": {
-        "assertions": 10,
-        "predicates": 9,
+        "assertions": 13,
+        "predicates": 12,
         "thresholds": []
     },
     "stanley-cms-media-slot-regression.php": {
