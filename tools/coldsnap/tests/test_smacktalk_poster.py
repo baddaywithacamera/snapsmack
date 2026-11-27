@@ -72,6 +72,34 @@ def _img(path, color=(90, 120, 60)):
     Image.new("RGB", (200, 150), color).save(path, "JPEG")
 
 
+def test_signature_block_fields_reach_post_request_and_preserve_unedited_posts():
+    from coldsnap_qt import biggie
+
+    fake = FakeSession()
+    poster = P.SmacktalkPoster("https://smacktalk.example", "fixture", session=fake,
+                               signature_image_id=413)
+    draft = Draft(draft_id="signature", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                  title="Signature", caption="Body text", remote_post_id=777)
+    paragraph = {"type": "para", "text": "Body text"}
+    fields = ("signature_image_id", "signature_light_image_id", "signature_dark_image_id")
+
+    for block, expected in (
+        ({"type": "signature", "mode": "custom", "light_image_id": 413}, (413, 413, None)),
+        ({"type": "signature", "mode": "inherit"}, (None, None, None)),
+        ({"type": "signature", "mode": "off"}, (0, 0, 0)),
+    ):
+        draft.body_blocks = biggie.blocks_to_json([paragraph, block])
+        result = poster.sync_smacktalk(draft)
+        assert result.ok, result.message
+        assert tuple(fake.last_json[field] for field in fields) == expected
+        assert fake.last_json["content"] == "Body text"
+
+    draft.body_blocks = biggie.blocks_to_json([paragraph])
+    result = poster.sync_smacktalk(draft)
+    assert result.ok, result.message
+    assert not any(field in fake.last_json for field in fields)
+
+
 def _checks():
     n = 0
     tmp = tempfile.mkdtemp(prefix="smacktalk_test_")
