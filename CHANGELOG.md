@@ -17,6 +17,7 @@
 - **Require a valid release signature.** A signed update stops if its signature cannot be verified.
 - **Keep recovery files inside the site they belong to.** Restore and import reject paths outside the site.
 - **Keep a hub-side record of enrollment decisions.** The audit records approvals, refusals and revocations without storing enrollment tokens.
+- **Send one opening SMACKBACK email per recipient.** A repeated detection of the same active breach is logged without sending another email. A new breach after recovery sends a new alert.
 
 ## 0.7.1008D — opened
 
