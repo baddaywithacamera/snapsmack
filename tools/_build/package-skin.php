@@ -142,6 +142,27 @@ if ($default_output === null || trim($default_output) === '') {
         return is_dir($dir . '/skins') && is_dir($dir . '/core')
             && is_file($dir . '/index.php');
     };
+    // AND A SEPARATE REPOSITORY IS A CEILING, not just the filesystem root.
+    // "The outermost checkout on this path" is not the same thing as "my own
+    // repository", and a NESTED STANDALONE CLONE is where the two part company:
+    // a clone sitting inside another checkout is its own repository, so its
+    // builds belong beside IT, but a climb that only asks "does this look like
+    // a checkout" sails past it into the containing tree.
+    //
+    // That divergence stopped the v0.7.1007D tag run. Codex hit it in a nested
+    // standalone clone and I reproduced it before changing anything: from the
+    // nested clone, WITH git the default was <...>/outer/nested-builds and
+    // WITHOUT git it was <...>/outer-builds. Two different directories for one
+    // checkout, decided by whether a binary happens to be installed. With git
+    // was the correct answer, because rev-parse --git-common-dir names the
+    // repository you are actually in.
+    //
+    // A .git DIRECTORY marks a standalone repository root; a linked worktree's
+    // .git is a FILE pointing elsewhere. That distinction is a filesystem fact
+    // and needs no git binary, which is the whole point of this branch. So the
+    // climb still rises out of a worktree to its main repository -- .git is a
+    // file there, not a directory -- and now stops at the first real
+    // repository root it stands on.
     $base = $main_root;
     if ($base === null) {
         $base = $project_root;
@@ -149,6 +170,7 @@ if ($default_output === null || trim($default_output) === '') {
         $climb = 0;
         while ($climb++ < 40) {
             if ($looks_like_checkout($probe)) { $base = $probe; }  // keep the HIGHEST
+            if (is_dir($probe . '/.git')) { break; }  // a repository root: the ceiling
             $parent = dirname($probe);
             if ($parent === $probe) { break; }   // filesystem root: the floor
             $probe = $parent;
