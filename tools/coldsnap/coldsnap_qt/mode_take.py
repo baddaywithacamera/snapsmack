@@ -60,6 +60,7 @@ class _PublishedPostBridge(QObject):
     list_failed = Signal(object)
     loaded = Signal(object)
     failed = Signal(object)
+    progress = Signal(object, int, int)
 
 
 class MosaicPreview(QWidget):
@@ -404,12 +405,15 @@ class TakeMode(QWidget):
         self._slapper_launch_error = ""
         self._published_list_active = False
         self._published_load_active = False
+        self._published_cancel = None
+        self._published_progress = None
         self._published_choose_fn = None
         self._published_bridge = _PublishedPostBridge(self)
         self._published_bridge.list_loaded.connect(self._published_list_loaded)
         self._published_bridge.list_failed.connect(self._published_list_failed)
         self._published_bridge.loaded.connect(self._published_post_loaded)
         self._published_bridge.failed.connect(self._published_post_failed)
+        self._published_bridge.progress.connect(self._published_photo_progress)
 
         outer = QHBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
@@ -818,7 +822,6 @@ class TakeMode(QWidget):
         self.signature_check.toggled.connect(self._changed)
         self.tags_edit.textChanged.connect(self._changed)
         self._update_page_chrome()
-        QTimer.singleShot(0, self._recover_last_draft)
         QTimer.singleShot(0, self._sync_block_tray_width)
 
     def _sync_details_btn(self, opened: bool):
@@ -1365,18 +1368,6 @@ class TakeMode(QWidget):
                         "[mosaic=1,2 layout=asymmetric] (built from the photo picker)",
                         self._insert_mosaic),
         ]
-
-    def _recover_last_draft(self):
-        """Reopen the newest safe, unfinished essay after a restart."""
-        session = self.rail.session
-        if session is None or self._editing_id:
-            return
-        candidates = [d for d in session.list_drafts() if d.status == O.ST_DRAFT]
-        if not candidates:
-            return
-        latest = max(candidates, key=lambda d: (d.updated_at, d.draft_id))
-        self._edit(latest)
-        self.save_state.setText("Recovered your last safe draft from this computer")
 
     # -- rail rows -----------------------------------------------------------
     def _rows(self, session, refresh_cb):
@@ -2900,6 +2891,8 @@ class TakeMode(QWidget):
         self.save_state.setText(f"Opened draft \"{draft.title or 'Untitled'}\" ({n_blocks} blocks)")
 
     def _open_published(self, *, choose_fn=None):
+        if self._published_list_active or self._published_load_active:
+            return
         # A pending autosave must be durable before the first network request.
         self._autosave.stop()
         if self._autosave_now() is False:
@@ -2980,32 +2973,82 @@ class TakeMode(QWidget):
             return
         self._published_load_active = True
         self.save_state.setText("Loading published post… your draft is safe")
+        cancel = threading.Event()
+        self._published_cancel = cancel
+        progress = QProgressDialog("Fetching the published post…", "Cancel", 0, 0, self)
+        progress.setWindowTitle("Open published post")
+        progress.setWindowModality(Qt.NonModal)
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.canceled.connect(cancel.set)
+        progress.canceled.connect(lambda: self.save_state.setText(
+            "Canceled opening the post — your draft is safe"))
+        self._published_progress = progress
+        progress.show()
 
         def load():
             try:
                 post = poster.get_post(post_id)
-                draft = None if action == "attach" else self._draft_from_remote(post)
-                if draft is not None and (
+                draft = None
+                if action != "attach" and not cancel.is_set():
+                    draft = self._draft_from_remote(
+                        post, cancel=cancel, progress=lambda done, total:
+                        self._published_bridge.progress.emit(cancel, done, total),
+                    )
+                if draft is not None and not cancel.is_set() and (
                     (getattr(draft, "caption", "") or "").strip()
                     or (getattr(draft, "body_blocks", "") or "").strip()
                 ):
-                    session.add_draft(draft)
+                    session._absorb_images(draft)
                 self._published_bridge.loaded.emit({
                     "post": post,
                     "draft": draft,
                     "action": action,
                     "session": session,
                     "active_id": active_id,
+                    "cancel": cancel,
                 })
             except Exception as exc:  # noqa: BLE001
-                self._published_bridge.failed.emit(exc)
+                self._published_bridge.failed.emit((cancel, exc))
 
         threading.Thread(
             target=load, name="coldsnap-open-published", daemon=True,
         ).start()
 
-    def _published_post_loaded(self, result: dict) -> None:
+    def _published_photo_progress(self, cancel, done: int, total: int):
+        if cancel is not self._published_cancel or cancel.is_set():
+            return
+        progress = self._published_progress
+        if progress is None:
+            return
+        progress.setRange(0, total)
+        progress.setLabelText(f"Preparing photos ({done} of {total})…")
+        progress.setValue(done)
+
+    def _finish_published_load(self):
         self._published_load_active = False
+        self._published_cancel = None
+        progress, self._published_progress = self._published_progress, None
+        if progress is not None:
+            progress.hide()
+            progress.deleteLater()
+
+    def _published_post_loaded(self, result: dict) -> None:
+        cancel = result.get("cancel")
+        if cancel is not None and cancel is not self._published_cancel:
+            return
+        self._finish_published_load()
+        if cancel is not None:
+            if cancel.is_set():
+                return
+            if str(self._editing_id or "") != result["active_id"]:
+                self.save_state.setText("Open canceled because you switched drafts")
+                return
+            self._autosave.stop()
+            if self._autosave_now() is False:
+                self._published_post_failed("The current draft could not be saved.")
+                return
         session = result["session"]
         if result["action"] == "attach":
             draft = session.load_draft(result["active_id"])
@@ -3021,12 +3064,23 @@ class TakeMode(QWidget):
             self.save_state.setText("Draft attached — changes will update the published post")
         else:
             draft = result["draft"]
+            if cancel is not None and (draft.caption.strip() or draft.body_blocks.strip()):
+                try:
+                    session.add_draft(draft, copy_images=False)
+                except Exception as exc:  # noqa: BLE001
+                    self._published_post_failed(exc)
+                    return
             self._edit(draft)
             self.save_state.setText("Published post opened separately — your draft is still safe")
         self.rail.refresh_batches()
 
     def _published_post_failed(self, error) -> None:
-        self._published_load_active = False
+        cancel, error = error if isinstance(error, tuple) else (None, error)
+        if cancel is not None and cancel is not self._published_cancel:
+            return
+        self._finish_published_load()
+        if cancel is not None and cancel.is_set():
+            return
         self.save_state.setText("Could not open published post — your draft is still safe")
         if isinstance(error, AuthorizationExpiredError):
             from .connect_panel import prompt_reauthentication
@@ -3034,7 +3088,7 @@ class TakeMode(QWidget):
             return
         QMessageBox.critical(self, "Could not open post", str(error))
 
-    def _draft_from_remote(self, post):
+    def _draft_from_remote(self, post, *, cancel=None, progress=None):
         draft = O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK,
                         mode=self.SUITE_MODE)
         draft.remote_post_id = int(post.get("id") or 0)
@@ -3067,26 +3121,40 @@ class TakeMode(QWidget):
         rows = list(post.get("bucket") or [])
 
         def _fetch_one(item):
+            if cancel is not None and cancel.is_set():
+                return None
             pos, row = item
             image_id = int(row.get("id") or 0)
             source_url = str(row.get("url") or row.get("thumb_url") or "")
             filename = os.path.basename(source_url.split("?", 1)[0]) or f"image-{image_id}.jpg"
             target = os.path.join(cache, f"{image_id}-{filename}")
             if not os.path.isfile(target) and source_url:
-                response = requests.get(source_url, timeout=90)
+                response = requests.get(source_url, timeout=(10, 30))
                 response.raise_for_status()
+                if cancel is not None and cancel.is_set():
+                    return None
                 with open(target, "wb") as handle:
                     handle.write(response.content)
-            return O.DraftImage(
+            image = O.DraftImage(
                 local_path=target, original_path=target, filename=filename,
                 width=int(row.get("width") or 0), height=int(row.get("height") or 0),
                 alt=str(row.get("img_alt") or ""), title=str(row.get("img_title") or ""),
                 remote_path=str(row.get("img_file") or ""), remote_image_id=image_id,
                 sort_position=pos, is_cover=(image_id == cover_id))
+            if (cancel is None or not cancel.is_set()) and os.path.isfile(target):
+                O.generate_image_thumbs(image)
+            return image
 
         if rows:
+            if progress is not None:
+                progress(0, len(rows))
             with ThreadPoolExecutor(max_workers=4) as pool:
-                draft.images = list(pool.map(_fetch_one, enumerate(rows)))
+                for index, image in enumerate(pool.map(_fetch_one, enumerate(rows)), 1):
+                    if cancel is not None and cancel.is_set():
+                        return None
+                    draft.images.append(image)
+                    if progress is not None:
+                        progress(index, len(rows))
         if draft.images and not any(image.is_cover for image in draft.images):
             draft.images[0].is_cover = True
         return draft
@@ -3879,7 +3947,11 @@ class TakeMode(QWidget):
                 self._slapper_asset_uuid = ""
                 self._set_slapper_state("idle")
 
-    def _refresh_bucket(self):
+    def _sync_body_assets(self):
+        self.body.set_bucket([im.local_path for im in self._bucket])
+        self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
+
+    def _refresh_bucket(self, *, sync_assets=True):
         while self.bucket_col.count():
             item = self.bucket_col.takeAt(0)
             w = item.widget()
@@ -3892,8 +3964,8 @@ class TakeMode(QWidget):
                 w.deleteLater()
 
         n = len(self._bucket)
-        self.body.set_bucket([im.local_path for im in self._bucket])   # mosaics repaint
-        self.body.canvas.set_assets({im.asset_uuid: im.local_path for im in self._bucket})
+        if sync_assets:
+            self._sync_body_assets()
         default_caps = {}
         for i, im in enumerate(self._bucket):
             cap_val = (im.caption or im.title or "").strip()
@@ -4087,12 +4159,11 @@ class TakeMode(QWidget):
             "color_mode": getattr(draft, "color_mode", ""),
             "colors": getattr(draft, "ai_colors", ""),
         }
-        # Populate bucket + canvas.assets BEFORE set_state() so restored mosaics resolve immediately.
-        self._refresh_bucket()
+        # Bind photos before restoring blocks, then build the tray from the restored document.
+        self._sync_body_assets()
         self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
         self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
-        self._refresh_bucket()
-        self._update_linked_banner()
+        self._refresh_bucket(sync_assets=False)
         self._loading = False
         self._update_linked_banner()
         self.save_state.setText("Safe on this computer")
