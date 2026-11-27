@@ -1818,6 +1818,14 @@ if ($resource === 'disconnect' && $method === 'POST') {
     if ($node['role'] !== 'hub') ms_err('Only a hub may disconnect this node', 403);
     $pdo->prepare("DELETE FROM snap_multisite_nodes WHERE id = ?")->execute([$node_id]);
 
+    require_once __DIR__ . '/enrollment-grant.php';
+    snap_enrollment_audit($pdo, 'revoked', [
+        'reason'       => 'hub_disconnect_api',
+        'spoke_origin' => defined('BASE_URL') ? rtrim((string)BASE_URL, '/') : '',
+        'hub_origin'   => rtrim((string)($node['site_url'] ?? ''), '/'),
+        'remote_addr'  => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+    ]);
+
     // Clear all hub_controls_* flags — the spoke is now standalone and its settings
     // sections must no longer be locked. Idempotent: sets to '0' whether or not the
     // hub ever pushed a value.

@@ -680,10 +680,13 @@
         ]
     },
     "enrollment-grant-provenance-regression.php": {
-        "assertions": 85,
-        "predicates": 23,
+        "assertions": 101,
+        "predicates": 31,
         "thresholds": [
-            3
+            3,
+            3,
+            4,
+            7
         ]
     },
     "every-page-kind-renders-a-whole-document.php": {

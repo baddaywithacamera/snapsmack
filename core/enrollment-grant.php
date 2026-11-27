@@ -282,6 +282,10 @@ function snap_enrollment_grant_verify(string $grant, array $expect): array {
  */
 function snap_enrollment_audit_table(PDO $pdo): bool {
     try {
+        $pdo->query("SELECT 1 FROM `snap_enrollment_audit` LIMIT 1");
+        return true;
+    } catch (PDOException $e) { /* table does not exist yet; create it below */ }
+    try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS `snap_enrollment_audit` (
             `id`            int unsigned NOT NULL AUTO_INCREMENT,
             `event`         varchar(40)  COLLATE utf8mb4_unicode_ci NOT NULL

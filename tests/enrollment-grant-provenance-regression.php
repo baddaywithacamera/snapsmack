@@ -231,6 +231,72 @@ $canonical = (string) file_get_contents($root . '/database/schema/snapsmack_cano
 eg_test(strpos($canonical, 'snap_enrollment_audit') !== false,
     'the table is in the canonical schema, so a fresh install has it');
 
+echo "\nSECAUDIT 061 (B + C): hub-side registration provenance and revocation audit\n";
+eg_test(strpos($admin, "snap_enrollment_audit(\$pdo, 'consumed'") !== false
+    && strpos($admin, "'grant_digest' => \$_spoke_token_digest") !== false
+    && strpos($admin, "'stepup_at'    => \$_hub_stepup_at") !== false,
+    'hub register_spoke records consumed audit with grant_digest, admin_id and stepup_at');
+eg_test(strpos($admin, "snap_enrollment_audit(\$pdo, 'rejected'") !== false,
+    'hub register_spoke records rejected audit on failure');
+eg_test(strpos($admin, "'reason'       => 'hub_disconnect'") !== false
+    && strpos($admin, "'reason'       => 'spoke_disconnect'") !== false,
+    'hub remove-spoke and spoke disconnect_hub both record revoked audit');
+eg_test(strpos($api, "'reason'       => 'hub_disconnect_api'") !== false
+    && substr_count($api, 'snap_enrollment_audit($pdo') >= 4,
+    'multisite/disconnect API endpoint records revoked audit');
+
+// SQLite execution check of hub consumed / rejected / revoked audit rows.
+$auditPdo = new PDO('sqlite::memory:');
+$auditPdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$auditPdo->exec("CREATE TABLE snap_enrollment_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event TEXT NOT NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    grant_digest TEXT NOT NULL DEFAULT '',
+    nonce TEXT NOT NULL DEFAULT '',
+    spoke_origin TEXT NOT NULL DEFAULT '',
+    hub_origin TEXT NOT NULL DEFAULT '',
+    admin_id INTEGER NOT NULL DEFAULT 0,
+    stepup_at TEXT DEFAULT NULL,
+    remote_addr TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+)");
+// Prime static $ready flag in snap_enrollment_audit via MySQL-only DDL skip?
+// Instead, test the exact SQL insert shape against SQLite if snap_enrollment_audit_table
+// is MySQL-syntax; check whether snap_enrollment_audit($auditPdo, ...) succeeds:
+snap_enrollment_audit($auditPdo, 'consumed', [
+    'grant_digest' => $digest,
+    'spoke_origin' => 'https://spoke.example',
+    'hub_origin'   => 'https://hub.example',
+    'admin_id'     => 7,
+    'stepup_at'    => 1795800000,
+    'remote_addr'  => '203.0.113.10',
+]);
+snap_enrollment_audit($auditPdo, 'rejected', [
+    'reason'       => 'reauth_failed',
+    'grant_digest' => $digest,
+    'spoke_origin' => 'https://spoke.example',
+    'hub_origin'   => 'https://hub.example',
+    'admin_id'     => 7,
+]);
+snap_enrollment_audit($auditPdo, 'revoked', [
+    'reason'       => 'hub_disconnect',
+    'spoke_origin' => 'https://spoke.example',
+    'hub_origin'   => 'https://hub.example',
+    'admin_id'     => 7,
+]);
+$auditRows = $auditPdo->query("SELECT event, reason, grant_digest, admin_id, stepup_at FROM snap_enrollment_audit ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+eg_test(count($auditRows) === 3, 'all three hub-side audit events (consumed, rejected, revoked) persist');
+eg_test(($auditRows[0]['event'] ?? '') === 'consumed'
+    && ($auditRows[0]['grant_digest'] ?? '') === $digest
+    && (int)($auditRows[0]['admin_id'] ?? 0) === 7
+    && !empty($auditRows[0]['stepup_at']),
+    'consumed row retains grant_digest, admin_id and stepup_at without storing the grant');
+eg_test(($auditRows[1]['event'] ?? '') === 'rejected' && ($auditRows[1]['reason'] ?? '') === 'reauth_failed',
+    'rejected row retains machine-readable reason');
+eg_test(($auditRows[2]['event'] ?? '') === 'revoked' && ($auditRows[2]['reason'] ?? '') === 'hub_disconnect',
+    'revoked row retains disconnect reason');
+
 // Leave the install exactly as it was found.
 if (!$keyPreexisted && is_file($keyPath)) { @unlink($keyPath); }
 
