@@ -36,10 +36,8 @@ set -eu
 # WRITER_SHA256 is the sha256 of tools/proxvox/server/proxvox_writer.py AS
 # COMMITTED at WRITER_COMMIT, which is what raw.githubusercontent.com serves
 # and therefore what lands at WRITER_PATH. I verified that by fetching the
-# real URL rather than trusting it: HTTP 200, 64,373 bytes, and the digest
-# below. I also checked the committed bytes against my working copy, because
-# git hands a Windows checkout CRLF while it stores LF and that difference has
-# already cost this project a release night -- here they are identical.
+# published files before installation. Both hashes are against the committed
+# bytes, rather than a Windows checkout that may have a different line ending.
 #
 # The writer at this commit adds host-attested sessions, operation nonces,
 # server-side expiry and revoke, and full regular-file scope while authorized.
@@ -48,10 +46,16 @@ set -eu
 # stops being fetchable if that branch is deleted without being merged or
 # archived, and this URL would then 404 on a host that is trying to install.
 # Once the writer lands on dev, re-pin to the dev commit.
-WRITER_COMMIT=36f450db3ba6166238d96d06d0e3bdeab0e3bc7d
-WRITER_SHA256=8ad94bfa4ee13f14fcf79c217e307225fd6146f3cd5662bb0dd6e823703d5104
+WRITER_COMMIT=6b2a10ab76eaffb47a10a7f24789446f067b6c18
+WRITER_SHA256=9e7a78b711fb7843f163f0f04134e99f53bf5b0bc8d5de9539fdf0eaa5d52aac
 WRITER_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRITER_COMMIT}/tools/proxvox/server/proxvox_writer.py"
 WRITER_PATH=/usr/local/sbin/proxvox-writer
+DB_SHA256=e04c639235c578cdd3767d21bb20b4208b865bc7f062fd438c84f204fd8702ff
+DB_URL="https://raw.githubusercontent.com/baddaywithacamera/snapsmack/${WRITER_COMMIT}/tools/proxvox/server/proxvox_database.py"
+DB_PATH=/usr/local/sbin/proxvox_database.py
+CONNECTOR_PATH=/usr/local/sbin/proxvox-pymysql.whl
+CONNECTOR_SHA256=e169bed906168fffd0088925f45b3df024c2775c6fd128da0df773d47c458840
+CONNECTOR_URL="https://files.pythonhosted.org/packages/a3/60/acffa1e7261fdc68fadf6f196b66058e03dcb3df239f2c0acbfd11165845/pymysql-1.2.4-py3-none-any.whl"
 WRITER_USER=proxvox-root-rw
 
 fail() {
@@ -77,7 +81,13 @@ if [ "${1-}" = "verify" ]; then
     [ -f "$WRITER_PATH" ] || fail "no writer is installed at $WRITER_PATH"
     installed=$(sha256sum "$WRITER_PATH" | awk '{print $1}')
     if [ "$installed" = "$WRITER_SHA256" ]; then
-        note "installed writer matches the pinned revision ($WRITER_COMMIT)"
+        [ -f "$DB_PATH" ] || fail "the pinned database companion is missing"
+        installed_db=$(sha256sum "$DB_PATH" | awk '{print $1}')
+        [ "$installed_db" = "$DB_SHA256" ] || fail "the database companion does not match the pinned revision"
+        [ -f "$CONNECTOR_PATH" ] || fail "the pinned MariaDB connector package is missing"
+        installed_connector=$(sha256sum "$CONNECTOR_PATH" | awk '{print $1}')
+        [ "$installed_connector" = "$CONNECTOR_SHA256" ] || fail "the MariaDB connector package does not match the pin"
+        note "installed writer and database companion match pinned revision ($WRITER_COMMIT)"
         exit 0
     fi
     printf 'PROX VOX WRITER DRIFT: the installed writer is NOT the pinned one.\n' >&2
@@ -96,7 +106,7 @@ case "$WRITER_COMMIT" in
 esac
 
 [ "$(id -u)" -eq 0 ] || fail "run this on the Proxmox host as root"
-for command_name in curl sha256sum install useradd visudo grep mktemp awk sshd ssh-keygen systemctl; do
+for command_name in curl sha256sum install useradd visudo grep mktemp awk sshd ssh-keygen systemctl python3 lxc-info; do
     command -v "$command_name" >/dev/null 2>&1 || fail "missing command: $command_name"
 done
 [ "$#" -eq 1 ] && [ -f "$1" ] || fail "supply the dedicated writer's Ed25519 public-key file"
@@ -104,8 +114,18 @@ public_key=$(awk 'NF { if (++lines > 1 || $1 != "ssh-ed25519" || NF < 2) exit 1;
 [ -n "$public_key" ] && ssh-keygen -lf "$1" >/dev/null || fail "invalid Ed25519 public key"
 
 writer_tmp=$(mktemp /tmp/proxvox-writer.XXXXXX)
-cleanup() { rm -f "$writer_tmp"; }
+db_tmp=
+connector_tmp=
+cleanup() { rm -f "$writer_tmp" "$db_tmp" "$connector_tmp"; }
 trap cleanup EXIT HUP INT TERM
+db_tmp=$(mktemp /tmp/proxvox-database.XXXXXX)
+connector_tmp=$(mktemp /tmp/proxvox-connector.XXXXXX)
+curl --fail --silent --show-error --location "$CONNECTOR_URL" --output "$connector_tmp"
+printf '%s  %s\n' "$CONNECTOR_SHA256" "$connector_tmp" | sha256sum --check --status \
+    || fail "pinned MariaDB package SHA-256 mismatch; nothing was installed"
+curl --fail --silent --show-error --location "$DB_URL" --output "$db_tmp"
+printf '%s  %s\n' "$DB_SHA256" "$db_tmp" | sha256sum --check --status \
+    || fail "reviewed database companion SHA-256 mismatch; nothing was installed"
 curl --fail --silent --show-error --location "$WRITER_URL" --output "$writer_tmp"
 printf '%s  %s\n' "$WRITER_SHA256" "$writer_tmp" | sha256sum --check --status \
     || fail "reviewed writer SHA-256 mismatch; nothing was installed"
@@ -127,7 +147,7 @@ candidate=$(mktemp /etc/ssh/sshd_config.proxvox-writer-candidate.XXXXXX)
 backup=$(mktemp /etc/ssh/sshd_config.proxvox-writer-backup.XXXXXX)
 key_tmp=$(mktemp /tmp/proxvox-writer-key.XXXXXX)
 key_backup=$(mktemp /tmp/proxvox-writer-key-backup.XXXXXX)
-trap 'rm -f "$writer_tmp" "$sudoers_tmp" "$candidate" "$backup" "$key_tmp" "$key_backup"' EXIT
+trap 'rm -f "$writer_tmp" "$db_tmp" "$connector_tmp" "$sudoers_tmp" "$candidate" "$backup" "$key_tmp" "$key_backup"' EXIT
 cp -p "$config" "$backup"
 awk -v start="$marker" -v end="$end_marker" '
     $0 == start { if (inside || seen++) exit 1; inside = 1; next }
@@ -163,6 +183,8 @@ for setting in "authenticationmethods publickey" "passwordauthentication no" \
     "authorizedkeysfile /etc/ssh/authorized_keys/%u" "forcecommand sudo -n $WRITER_PATH"; do
     printf '%s\n' "$effective" | grep -Fqx "$setting" || fail "writer SSH setting did not take effect: $setting"
 done
+install -o root -g root -m 0644 "$connector_tmp" "$CONNECTOR_PATH"
+install -o root -g root -m 0644 "$db_tmp" "$DB_PATH"
 install -o root -g root -m 0755 "$writer_tmp" "$WRITER_PATH"
 if ! id "$WRITER_USER" >/dev/null 2>&1; then
     useradd --system --no-create-home --shell /bin/sh "$WRITER_USER"
@@ -192,6 +214,10 @@ fi
 # The same check the reader does, and then the reason verify exists.
 installed_sha=$(sha256sum "$WRITER_PATH" | awk '{print $1}')
 [ "$installed_sha" = "$WRITER_SHA256" ] || fail "installed writer SHA-256 mismatch"
+installed_db=$(sha256sum "$DB_PATH" | awk '{print $1}')
+[ "$installed_db" = "$DB_SHA256" ] || fail "installed database companion SHA-256 mismatch"
+installed_connector=$(sha256sum "$CONNECTOR_PATH" | awk '{print $1}')
+[ "$installed_connector" = "$CONNECTOR_SHA256" ] || fail "installed MariaDB connector SHA-256 mismatch"
 
 note "installed $WRITER_PATH from $WRITER_COMMIT"
 note "account $WRITER_USER uses the dedicated public key and forced command"
