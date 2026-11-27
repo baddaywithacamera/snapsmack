@@ -1,0 +1,22 @@
+[
+  {
+    "ticket": "SS-1612",
+    "captures": [
+      "opaudits/evidence/1008D/mosaic-api.png"
+    ],
+    "acceptance": "Authenticated GET returns the saved mosaic and ordered images. PUT preserves omitted fields and rejects stale or shared updates. POST copies focus and emphasis.",
+    "result": "pass",
+    "site": "http://127.0.0.1:64023/",
+    "room_message_id": "vsGXjSt24g0zdbKigMhvEm5s"
+  },
+  {
+    "ticket": "SS-1619",
+    "captures": [
+      "opaudits/evidence/1008D/telegram-mobile.png"
+    ],
+    "acceptance": "At a 390px viewport the candidate TELEGRAM feed shows the configured site name, mobile menu button, square photo and text excerpt.",
+    "result": "pass",
+    "site": "http://127.0.0.1:64023/",
+    "room_message_id": "vsGXjSt24g0zdbKigMhvEm5s"
+  }
+]
