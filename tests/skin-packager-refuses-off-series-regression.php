@@ -9,14 +9,31 @@ declare(strict_types=1);
  * The Skin Packager must refuse a version at 0.8 or above, and must refuse a
  * re-baselined skin that does not carry its epoch.
  *
- * THE NUMBERS, SO THEY LIVE WITH THE TEST AND NOT IN A COMMIT MESSAGE. (Muse
- * had to reconcile these by hand, twice.) There are 70 assertion sites here
- * plus the one non-zero exit at the end, which is the strength ledger's 71.
- * A clean run EXECUTES 66 of them: four are failure-only branches that fire
- * when an earlier step has already gone wrong -- an unopenable package, and
- * three refusals that did not state their default output directory -- so on a
- * passing run they are never reached. 70 minus 4 is 66. Any other run count
- * here means something changed.
+ * HOW TO RECONCILE THE NUMBERS, WHICH IS MORE USE THAN THE NUMBERS. (Muse had
+ * to do it by hand, twice.) The first version of this paragraph gave three
+ * absolute figures -- 70 sites, ledger 71, 66 executed -- and they were out of
+ * date within the hour: it is 80, 81 and 75 as I write this, and it will be
+ * something else next time somebody adds a check. A comment that states a
+ * count is a comment that will lie, and Muse caught this one lying.
+ *
+ * So the RELATIONSHIPS, which do not go stale:
+ *
+ *   the strength ledger  =  the assertion sites in this file + 1
+ *                           (the one non-zero exit at the end)
+ *   a clean run executes =  the assertion sites - the failure-only branches
+ *
+ * A failure-only branch is an assertion whose condition is the literal false,
+ * in an else arm: an unopenable package, and the refusals that did not state
+ * their default output directory. They fire only when an earlier step has
+ * already gone wrong, so a passing run never reaches them. If either
+ * relationship stops holding, something changed that is worth looking at.
+ *
+ * AND THAT SENTENCE IS WRITTEN OUT IN WORDS ON PURPOSE. The first version
+ * quoted the literal text somebody would grep for, which added an occurrence
+ * of it to this file and broke the arithmetic it was explaining -- the count
+ * went from five to six and the run relationship stopped holding. Seventh time
+ * today that something of mine matched the thing it was describing. Prose that
+ * explains a pattern must not contain the pattern.
  *
  * AND THIS PARAGRAPH IS WRITTEN WITHOUT THE LITERAL TOKENS ON PURPOSE. The
  * strength ledger reads test files as TEXT and counts assertion idioms, so the
@@ -294,7 +311,12 @@ if (preg_match('~default is (.+?)\.?$~m', $output, $m) === 1) {
         $normalised !== '' && strncmp($normalised, $rootNorm, strlen($rootNorm)) !== 0);
     $check('and not inside the repository internals either',
         !str_contains($normalised, '/.claude/') && !str_contains($normalised, '/.git/'));
-    $withGitDefault = $normalised;   // the no-git run below must NOT match this
+    // The no-git run below must MATCH this. It said "must NOT match" until
+    // Muse read it against the check that uses it: that was written when I
+    // expected the two routes to differ, and the fix made them agree -- which
+    // is the whole point of the fallback. The comment survived the change it
+    // describes and said the opposite of the assertion two hundred lines down.
+    $withGitDefault = $normalised;
 } else {
     $check('the refusal states the default output directory', false);
     $withGitDefault = '';
