@@ -508,6 +508,7 @@ class TakeMode(QWidget):
         signature_row = QHBoxLayout()
         self.signature_check = QCheckBox("Include blog signature")
         self.signature_check.setChecked(True)
+        self.signature_check.hide()
         signature_row.addWidget(self.signature_check)
         signature_settings = QPushButton("Blog signature…")
         signature_settings.clicked.connect(self._configure_signature)
@@ -828,6 +829,7 @@ class TakeMode(QWidget):
         self._slapper_timer = QTimer(self)
         self._slapper_timer.setInterval(1000)
         self._slapper_timer.timeout.connect(self._poll_slapper_return)
+        self._new_signature()
         self.body.changed.connect(self._changed)
         self.body.changed.connect(self._update_page_chrome)
         self.body.canvas.cursorPositionChanged.connect(self._update_page_chrome)
@@ -2536,7 +2538,10 @@ class TakeMode(QWidget):
             return True
         if self.body.is_biggie():
             plain = self.body.canvas.toPlainText()
-            if plain.strip() or "\ufffc" in plain:
+            if plain.replace("\ufffc", "").strip():
+                return True
+            if "\ufffc" in plain and any(block.get("type") not in ("para", "signature")
+                                         for block in self.body.authoring_blocks()):
                 return True
         elif self.body.editor.toPlainText().strip():
             return True
@@ -4240,7 +4245,11 @@ class TakeMode(QWidget):
         }
         # Bind photos before restoring blocks, then build the tray from the restored document.
         self._sync_body_assets()
-        self.body.set_state(draft.caption, getattr(draft, "body_blocks", ""))
+        blocks = biggie.blocks_from_json(draft.body_blocks)
+        self._signature_managed = any(block.get("type") == "signature" for block in blocks)
+        visible_blocks = [block for block in blocks
+                          if block.get("type") != "signature" or block.get("mode") != "off"]
+        self.body.set_state(draft.caption, biggie.blocks_to_json(visible_blocks))
         self.body.editor.moveCursor(QTextCursor.End)   # so an insert lands where writing resumes
         self._refresh_bucket(sync_assets=False)
         self._loading = False
@@ -4258,6 +4267,7 @@ class TakeMode(QWidget):
         self.tags_edit.clear()
         self.status_combo.setCurrentText("published")
         self.body.clear()
+        self._new_signature()
         self._bucket = []
         self._cover_idx = 0
         self._selected_photo_idx = None
@@ -4267,9 +4277,20 @@ class TakeMode(QWidget):
         self._loading = False
         self.save_state.setText("Begin the story… changes will be safe on this computer.")
 
+    def _new_signature(self):
+        self._signature_managed = True
+        self.body.set_state("", biggie.blocks_to_json([
+            {"type": "para", "text": ""},
+            {"type": "signature", "mode": "inherit"},
+        ]))
+        self.body.canvas.moveCursor(QTextCursor.Start)
+
     def _changed(self):
         if self._loading:
             return
+        if not self._signature_managed and self.body.is_biggie():
+            self._signature_managed = any(block.get("type") == "signature"
+                                          for block in self.body.authoring_blocks())
         if self._bucket:
             used = frozenset(self._used_photo_indices())
             if used != getattr(self, "_last_used_indices", frozenset()):
@@ -4321,6 +4342,8 @@ class TakeMode(QWidget):
         draft.tags = self.tags_edit.text().strip()
         if authored is None:
             authored = self.body.authoring_blocks()
+        if self._signature_managed and not any(block.get("type") == "signature" for block in authored):
+            authored = [*authored, {"type": "signature", "mode": "off"}]
         draft.body_blocks = biggie.blocks_to_json(authored)
         draft.caption = biggie.serialize_blocks(self._wire_blocks(authored)).strip()
         draft.img_status = self.status_combo.currentText()

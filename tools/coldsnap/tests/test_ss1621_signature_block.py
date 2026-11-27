@@ -292,4 +292,32 @@ def test_canvas_paints_signs_moves_and_removes_signature():
     canvas.close()
 
 
+def test_new_signature_survives_text_edit_and_removal_persists(monkeypatch, tmp_path):
+    from test_ss1514_open_published_preserves_draft import _FakePoster, _setup_mode
+
+    _, mode = _setup_mode(monkeypatch, tmp_path, _FakePoster([], {}))
+    try:
+        assert mode.body.authoring_blocks()[-1]["type"] == "signature"
+        assert not mode._has_open_draft_content()
+        mode.body._set_biggie(False)
+        mode.body.editor.setPlainText("One.\n\nTwo.")
+        mode.body._set_biggie(True)
+        assert mode.body.authoring_blocks()[-1]["type"] == "signature"
+        assert mode.body.toPlainText() == "One.\n\nTwo."
+
+        canvas = mode.body.canvas
+        block = canvas.document().firstBlock()
+        while block.isValid() and "\ufffc" not in block.text():
+            block = block.next()
+        assert block.isValid()
+        canvas._remove_object(block.position())
+        draft = mode._build_draft(mode.rail.ensure_session())
+        fields = biggie.signature_fields_for_blocks(biggie.blocks_from_json(draft.body_blocks))
+        assert len(fields) == 3 and all(value == 0 for value in fields.values())
+        mode._edit(draft)
+        assert all(block.get("type") != "signature" for block in mode.body.authoring_blocks())
+    finally:
+        mode.close()
+
+
 # ===== SNAPSMACK EOF =====
