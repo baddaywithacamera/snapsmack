@@ -999,22 +999,74 @@ if ($sub === 'categories' && $method === 'GET') {
 // =====================================================================
 // ROUTE: GET / POST smackpress/mosaics
 // =====================================================================
-function smackpress_mosaic_weights_available(PDO $pdo): bool {
-    try {
-        return $pdo->query(
-            'SELECT asset_ids, focus_positions, gap, emphasis, layout, gallery_shuffle, mosaic_weights FROM snap_mosaics LIMIT 0'
-        ) !== false;
-    } catch (PDOException $e) {
-        return false;
-    }
-}
+// THE MOSAIC RULES LIVE IN core/mosaic-contract.php, where a test can require
+// them. They used to be inline here, which made every one of them
+// unexecutable by the suite: this file authenticates at the top level, so
+// including it runs the API. Same correction as the signature contract.
+require_once __DIR__ . '/mosaic-contract.php';
 
-function smackpress_mosaic_mirrors_available(PDO $pdo): bool {
-    try {
-        return $pdo->query('SELECT mosaic_mirrors FROM snap_mosaics LIMIT 0') !== false;
-    } catch (PDOException $e) {
-        return false;
+// =====================================================================
+// ROUTE: GET smackpress/mosaics/{id} — one mosaic, as the desktop needs it
+// =====================================================================
+// SS-1612. COLD SNAP could CREATE a mosaic on a site and could not ASK a site
+// what one of its mosaics was, so Open published painted a placeholder bar
+// reading "Site mosaic 753" instead of the photographs. The data and the read
+// logic both already existed -- core/parser.php reads this row to render the
+// shortcode on the public page -- and nothing exposed it to the desktop.
+//
+// PATH FORM, not ?id=, to match pages/{id} below. The house style for "one
+// thing by its id" in this file is a path segment.
+if (preg_match('#^mosaics/(\d+)$#', $sub, $m) && $method === 'GET') {
+    $mosaic = smackpress_mosaic_read($pdo, (int)$m[1]);
+    if (!$mosaic) smackpress_error(404, 'Mosaic not found.');
+
+    // EVERY MEMBER, not just the ones in this post's bucket. A mosaic may hold
+    // photographs the post does not, and the desktop cannot paint what it
+    // cannot resolve. These are snap_images.id, the same ids the published
+    // bucket is keyed by, so the client needs no translation.
+    $images = [];
+    if ($mosaic['asset_ids']) {
+        $in = implode(',', array_fill(0, count($mosaic['asset_ids']), '?'));
+        $stmt = $pdo->prepare(
+            "SELECT id, img_file, img_title, img_alt, img_width, img_height
+             FROM snap_images WHERE id IN ({$in})"
+        );
+        $stmt->execute($mosaic['asset_ids']);
+        $by_id = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $by_id[(int)$row['id']] = [
+                'id'     => (int)$row['id'],
+                'file'   => (string)$row['img_file'],
+                'title'  => (string)($row['img_title'] ?? ''),
+                'alt'    => (string)($row['img_alt'] ?? ''),
+                'width'  => (int)($row['img_width'] ?? 0),
+                'height' => (int)($row['img_height'] ?? 0),
+            ];
+        }
+        // IN AUTHORED ORDER, and a MISSING member is reported rather than
+        // skipped. A mosaic naming an image that is gone is a fault the owner
+        // needs to see; silently returning fewer photographs than the mosaic
+        // claims would have the desktop save a shorter mosaic than it opened.
+        foreach ($mosaic['asset_ids'] as $id) {
+            $images[] = $by_id[$id] ?? ['id' => $id, 'missing' => true];
+        }
     }
+
+    $refs = smackpress_mosaic_references($pdo, $mosaic['id']);
+    smackpress_ok([
+        'mosaic' => $mosaic,
+        'images' => $images,
+        'references' => [
+            'posts'  => count($refs['posts']),
+            'pages'  => count($refs['pages']),
+            'post_ids' => $refs['posts'],
+            'shared' => (count($refs['posts']) + count($refs['pages'])) > 1,
+        ],
+        'capabilities' => [
+            'presentation'   => smackpress_mosaic_weights_available($pdo),
+            'mosaic_mirrors' => smackpress_mosaic_mirrors_available($pdo),
+        ],
+    ]);
 }
 
 if ($sub === 'mosaics' && $method === 'GET') {
@@ -1028,88 +1080,246 @@ if ($sub === 'mosaics' && $method === 'POST') {
     $body = json_decode(file_get_contents('php://input'), true);
     if (!$body) smackpress_error(400, 'Invalid JSON body.');
 
-    $title     = trim($body['title'] ?? 'Untitled Mosaic');
-    $asset_ids = array_map('intval', $body['asset_ids'] ?? []);
-    $gap       = max(0, min(20, (int)($body['gap'] ?? 4)));
-    $layout    = (string)($body['layout'] ?? 'asymmetric');
-    if (!in_array($layout, ['asymmetric', 'columns', 'rows', 'square', 'masonry', 'one-column',
-                            'one-left', 'one-right', 'three-across', 'one-top'], true)) {
-        $layout = 'asymmetric';
-    }
+    // SS-1185 LIVES IN smackpress_mosaic_validate() NOW, with the rest of the
+    // rules: the shuffle flag belongs to the MOSAIC and not the post, because a
+    // post may hold several mosaics and each is its own gallery; it defaults OFF
+    // so a client that says nothing gets the authored order; and asset_ids is
+    // stored exactly as sent either way, because shuffling is presentation and
+    // never rewrites what was saved. Six of the galleries migrating from the old
+    // site were owner-random in WordPress and the import had nowhere to put that.
+    $def = smackpress_mosaic_validate($body, $pdo, function (int $code, string $message): void {
+        smackpress_error($code, $message);
+    });
+    $title           = $def['title'];
+    $asset_ids       = $def['asset_ids'];
+    $gap             = $def['gap'];
+    $layout          = $def['layout'];
+    $gallery_shuffle = $def['gallery_shuffle'];
+    $weights         = $def['weights'];
+    $mirrors         = $def['mirrors'];
 
-    if (empty($asset_ids)) smackpress_error(422, 'asset_ids required.');
+    // THE COLUMN LIST IS BUILT, NOT BRANCHED. This was three hardcoded INSERT
+    // statements for the three combinations of weights and mirrors. Adding
+    // focus_positions and emphasis as optional columns too would have made
+    // twelve. One list, appended to under the same conditions, keeps every
+    // refusal exactly where it was and cannot miss a combination.
+    $columns = ['title', 'asset_ids', 'gap', 'layout', 'gallery_shuffle'];
+    $values  = [$title, json_encode($asset_ids), $gap, $layout, $gallery_shuffle];
 
-    $weights = [];
-    if (array_key_exists('mosaic_weights', $body)) {
-        if (!is_array($body['mosaic_weights'])) {
-            smackpress_error(422, 'mosaic_weights must map selected Gallery image IDs to tile sizes.');
-        }
-        foreach ($body['mosaic_weights'] as $image_id => $weight) {
-            if (!is_int($image_id) || $image_id < 1 || !in_array($image_id, $asset_ids, true)
-                || !in_array($weight, [-1, 1, 2], true)) {
-                smackpress_error(422, 'Every mosaic weight must be -1, 1 or 2 and refer to a selected Gallery image.');
-            }
-            $weights[$image_id] = $weight;
-        }
-    }
-
-    // SS-1185: six of the galleries migrating from mccormickphotography.com
-    // were owner-random in WordPress, and the import had nowhere to put that,
-    // so it either dropped the setting or claimed an order the owner never
-    // authored. The flag lives on the MOSAIC, not the post: a post may hold
-    // several mosaics and each is a separate gallery, and one WordPress gallery
-    // maps to one mosaic.
-    //
-    // Default OFF, so a client that says nothing about shuffle gets the
-    // authored order. asset_ids is stored exactly as sent either way --
-    // shuffling is presentation and never rewrites what was saved.
-    $gallery_shuffle = !empty($body['gallery_shuffle']) ? 1 : 0;
-    $mirrors = $body['mosaic_mirrors'] ?? [];
-    if (!is_array($mirrors) || !array_is_list($mirrors)
-        || ($mirrors && ($gallery_shuffle || (!$weights && in_array($layout, ['columns', 'rows', 'square', 'masonry', 'one-column'], true))))) {
-        smackpress_error(422, 'Mosaic mirrors require an ordered editorial layout.');
-    }
-    $mirrored_ids = [];
-    foreach ($mirrors as $group) {
-        if (!is_array($group) || !array_is_list($group) || count($group) < 2) {
-            smackpress_error(422, 'Each mirror must identify an ordered block of two or more Gallery images.');
-        }
-        $start = array_search($group[0], $asset_ids, true);
-        if ($start === false || array_slice($asset_ids, $start, count($group)) !== $group
-            || count(array_unique($group)) !== count($group) || array_intersect($mirrored_ids, $group)) {
-            smackpress_error(422, 'Each mirror must match a separate contiguous block of Gallery images.');
-        }
-        array_push($mirrored_ids, ...$group);
-    }
-
-    $values = [$title, json_encode($asset_ids), $gap, $layout, $gallery_shuffle];
     if ($mirrors && !smackpress_mosaic_mirrors_available($pdo)) {
         smackpress_error(409, 'Update the site schema before publishing mirrored mosaic blocks.');
     }
-    if ($mirrors) {
-        if ($weights && !smackpress_mosaic_weights_available($pdo)) {
-            smackpress_error(409, 'Update the site schema before publishing resized mosaic tiles.');
-        }
-        $mirror_columns = $weights ? 'mosaic_mirrors, mosaic_weights' : 'mosaic_mirrors';
-        $mirror_params = $weights ? '?, ?' : '?';
-        $stmt = $pdo->prepare("INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle, $mirror_columns) VALUES (?, ?, ?, ?, ?, $mirror_params)");
-        $values[] = json_encode($mirrors, JSON_THROW_ON_ERROR);
-        if ($weights) $values[] = json_encode((object)$weights, JSON_THROW_ON_ERROR);
-    } elseif ($weights) {
-        if (!smackpress_mosaic_weights_available($pdo)) {
-            smackpress_error(409, 'Update the site schema before publishing resized mosaic tiles.');
-        }
-        $stmt = $pdo->prepare('INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle, mosaic_weights) VALUES (?, ?, ?, ?, ?, ?)');
-        $values[] = json_encode((object)$weights, JSON_THROW_ON_ERROR);
-    } else {
-        $stmt = $pdo->prepare('INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle) VALUES (?, ?, ?, ?, ?)');
+    if ($weights && !smackpress_mosaic_weights_available($pdo)) {
+        smackpress_error(409, 'Update the site schema before publishing resized mosaic tiles.');
     }
+    if ($mirrors) {
+        $columns[] = 'mosaic_mirrors';
+        $values[]  = json_encode($mirrors, JSON_THROW_ON_ERROR);
+    }
+    if ($weights) {
+        $columns[] = 'mosaic_weights';
+        $values[]  = json_encode((object)$weights, JSON_THROW_ON_ERROR);
+    }
+    // SS-1612: carried so a copy-on-edit of a shared mosaic is a real copy.
+    // The schema check for these two is in the validator, which refuses 409
+    // before we reach here.
+    if ($def['focus'] !== []) {
+        $columns[] = 'focus_positions';
+        $values[]  = json_encode((object)$def['focus'], JSON_THROW_ON_ERROR);
+    }
+    if ($def['emphasis'] !== null) {
+        $columns[] = 'emphasis';
+        $values[]  = $def['emphasis'];
+    }
+    $stmt = $pdo->prepare('INSERT INTO snap_mosaics (' . implode(', ', $columns) . ') VALUES ('
+        . implode(', ', array_fill(0, count($columns), '?')) . ')');
     $stmt->execute($values);
     $mosaic_id = (int)$pdo->lastInsertId();
     $receipt = ['mosaic_id' => $mosaic_id, 'shortcode' => '[mosaic:' . $mosaic_id . ']'];
     if ($weights) $receipt['mosaic_weights'] = (object)$weights;
     if ($mirrors) $receipt['mosaic_mirrors'] = $mirrors;
+    // ECHOED BACK SO THE CLIENT CAN CHECK RATHER THAN HOPE. Codex said he would
+    // read the returned copy before repointing the post's shortcode, which is
+    // the right instinct: a copy that silently lost its framing must be
+    // detectable by the thing that made it, not by the owner noticing his
+    // photographs are cropped differently a week later.
+    if ($def['focus'] !== [])     $receipt['focus_positions'] = (object)$def['focus'];
+    if ($def['emphasis'] !== null) $receipt['emphasis'] = $def['emphasis'];
     smackpress_ok($receipt);
+}
+
+// =====================================================================
+// ROUTE: PUT smackpress/mosaics/{id} — edit THIS mosaic, never create one
+// =====================================================================
+// SS-1612. Two guards, independent, both must pass, and NEITHER trusts the read
+// the desktop did when it opened the post:
+//
+//   STALE REVISION    the mosaic changed on the site since it was opened
+//   NOW SHARED        another post or page has come to reference it
+//
+// The second one is the one Codex asked for and he was right to. The owner's
+// ruling is that editing a SHARED mosaic copies rather than changes it, so the
+// desktop chooses its path from the reference count in the read. If a mosaic
+// becomes shared in between, that count is stale, and updating in place on the
+// strength of it would silently rewrite a gallery in somebody else's post. So
+// the write re-counts for itself and refuses; the read's count is advisory and
+// this check is authoritative.
+//
+// AND IT NEVER INSERTS. An id that does not exist is a 404. Creating a row here
+// is how a save turns into a duplicate mosaic nobody asked for.
+// ONE TRANSACTION, AND THE COMPARISON TRAVELS IN THE WRITE. My first version
+// read the row, compared its token, counted the references and then updated, as
+// four separate statements with gaps between them. The PM put it in one line:
+// check-then-write outside a transaction does not guard anything. Every gap is
+// a window in which the thing just checked stops being true, and a guard that
+// can be overtaken is decoration. So the share re-count happens inside the
+// transaction, and the revision comparison is a WHERE on the UPDATE itself --
+// a write that matches nothing affects zero rows and is refused 409.
+//
+// WHAT THIS STILL DOES NOT GUARANTEE, stated rather than implied: the reference
+// count reads other tables, and another request could add a reference to this
+// mosaic after the count and commit before this one does. Locking every post
+// body to close that is not worth what it would cost. The window is now one
+// transaction wide instead of four statements wide, and the next read sees the
+// truth.
+if (preg_match('#^mosaics/(\d+)$#', $sub, $m) && $method === 'PUT') {
+    $mosaic_id = (int)$m[1];
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($body)) smackpress_error(400, 'Invalid JSON body.');
+
+    // Every refusal below unwinds the transaction before it answers. Without
+    // this, a 422 from the validator would leave a transaction open and the
+    // connection would decide the outcome.
+    $in_transaction = false;
+    $refuse = function (int $code, string $message) use ($pdo, &$in_transaction): void {
+        if ($in_transaction && $pdo->inTransaction()) {
+            try { $pdo->rollBack(); } catch (PDOException $e) { /* answering matters more */ }
+            $in_transaction = false;
+        }
+        smackpress_error($code, $message);
+    };
+
+    try {
+        $pdo->beginTransaction();
+        $in_transaction = true;
+    } catch (PDOException $e) {
+        smackpress_error(500, 'Could not start the save.');
+    }
+
+    try {
+        $stmt = $pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
+        $stmt->execute([$mosaic_id]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $refuse(500, 'Could not read the mosaic.');
+    }
+    if (!$existing) $refuse(404, 'Mosaic not found.');
+
+    $sent_revision = (string)($body['revision'] ?? '');
+    if ($sent_revision === '') $refuse(422, 'revision required: read the mosaic first.');
+    // THE CLIENT'S TOKEN AGAINST WHAT WE JUST READ. This is not the same check
+    // as the one in the UPDATE and neither replaces the other: this one says
+    // the client is working from a current definition, the one in the UPDATE
+    // says the row has not moved since this request read it.
+    if (!hash_equals(smackpress_mosaic_revision($existing), $sent_revision)) {
+        $refuse(409, 'This mosaic changed on the site since you opened it. '
+            . 'Reopen it to see the current arrangement.');
+    }
+
+    // post_id names the post the desktop believes it is editing from. A
+    // reference from ANY OTHER post or page means this mosaic is shared and
+    // must be copied instead of changed.
+    $post_id = (int)($body['post_id'] ?? 0);
+    if ($post_id < 1) $refuse(422, 'post_id required: an update must say which post it edits from.');
+    $refs = smackpress_mosaic_references($pdo, $mosaic_id);
+    $others = array_values(array_diff($refs['posts'], [$post_id]));
+    if ($others || $refs['pages']) {
+        $refuse(409, 'This mosaic is now used by ' . (count($others) + count($refs['pages']))
+            . ' other place(s). Save it as a new mosaic instead of changing this one.');
+    }
+
+    // THE STORED ROW IS PASSED IN, so a field the body does not mention keeps
+    // what the site has rather than being overwritten with a create default.
+    $def = smackpress_mosaic_validate($body, $pdo, $refuse, $existing);
+    if ($def['mirrors'] && !smackpress_mosaic_mirrors_available($pdo)) {
+        $refuse(409, 'Update the site schema before publishing mirrored mosaic blocks.');
+    }
+    if ($def['weights'] && !smackpress_mosaic_weights_available($pdo)) {
+        $refuse(409, 'Update the site schema before publishing resized mosaic tiles.');
+    }
+
+    // gallery_shuffle IS ABSENT FROM THIS LIST ON PURPOSE. Shuffle is
+    // presentation and asset_ids is the authored order; if the desktop could
+    // write the flag, a shuffled VIEW could become the stored arrangement and
+    // the owner's sequence would be destroyed by opening a post and saving it,
+    // with nothing to say so. Turning shuffle on and off stays in the admin.
+    $sets   = ['title = ?', 'asset_ids = ?', 'gap = ?', 'layout = ?'];
+    $values = [$def['title'], json_encode($def['asset_ids']), $def['gap'], $def['layout']];
+    foreach ([['mosaic_mirrors', $def['mirrors'] ? json_encode($def['mirrors'], JSON_THROW_ON_ERROR) : null],
+              ['mosaic_weights', $def['weights'] ? json_encode((object)$def['weights'], JSON_THROW_ON_ERROR) : null],
+              ['focus_positions', $def['focus'] ? json_encode((object)$def['focus'], JSON_THROW_ON_ERROR) : null],
+              ['emphasis', $def['emphasis']]] as [$col, $val]) {
+        // Only touch a column this install HAS. The body no longer decides
+        // whether the column is written, because the validator has already put
+        // the stored value back for anything the body left out -- so writing it
+        // is writing what is there.
+        if (!array_key_exists($col, $existing)) continue;
+        $sets[]   = $col . ' = ?';
+        $values[] = $val;
+    }
+
+    [$cas_sql, $cas_values] = smackpress_mosaic_cas($existing);
+    $values[] = $mosaic_id;
+    foreach ($cas_values as $cv) $values[] = $cv;
+    try {
+        $stmt = $pdo->prepare('UPDATE snap_mosaics SET ' . implode(', ', $sets)
+            . ' WHERE id = ? AND ' . $cas_sql);
+        $stmt->execute($values);
+        $changed = $stmt->rowCount();
+    } catch (PDOException $e) {
+        $refuse(500, 'Could not save the mosaic.');
+    }
+
+    // ZERO ROWS DOES NOT MEAN CONFLICT ON ITS OWN, and reading it that way
+    // would have refused good saves on the live fleet.
+    //
+    // rowCount() AFTER AN UPDATE DOES NOT MEAN THE SAME THING ON BOTH ENGINES.
+    // MySQL reports rows CHANGED, so saving a mosaic without altering a single
+    // field reports 0 -- the WHERE matched, the row was found, nothing needed
+    // writing. sqlite reports rows MATCHED, so the same save reports 1. Reading
+    // 0 as "somebody overtook me" would therefore turn every no-op save into a
+    // 409 on MySQL, which is every live site, while the suite stayed green on
+    // sqlite and showed me nothing. PDO::MYSQL_ATTR_FOUND_ROWS would settle it
+    // at the connection, but the connection is not this route's to reconfigure.
+    //
+    // So 0 rows asks the row itself. If the definition still hashes to the
+    // token the client sent, nothing has moved and there was simply nothing to
+    // change: that is a success. If it hashes to something else, the row was
+    // overtaken between this request's read and its write, and that is the
+    // conflict the guard exists for.
+    if ($changed < 1) {
+        try {
+            $stmt = $pdo->prepare('SELECT * FROM snap_mosaics WHERE id = ? LIMIT 1');
+            $stmt->execute([$mosaic_id]);
+            $after = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            $refuse(500, 'Could not confirm the save.');
+        }
+        if (!$after || !hash_equals(smackpress_mosaic_revision($after), $sent_revision)) {
+            $refuse(409, 'This mosaic changed on the site since you opened it. '
+                . 'Reopen it to see the current arrangement.');
+        }
+    }
+
+    try {
+        $pdo->commit();
+        $in_transaction = false;
+    } catch (PDOException $e) {
+        smackpress_error(500, 'Could not save the mosaic.');
+    }
+
+    $fresh = smackpress_mosaic_read($pdo, $mosaic_id);
+    smackpress_ok(['mosaic' => $fresh, 'revision' => $fresh['revision'] ?? '']);
 }
 
 // =====================================================================

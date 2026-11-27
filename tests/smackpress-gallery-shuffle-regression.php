@@ -119,21 +119,71 @@ gsh('a one-photograph gallery is returned as-is', snap_gallery_present_order([42
 $api = (string) @file_get_contents($root . '/core/smackpress-api.php');
 gsh('core/smackpress-api.php is readable', $api !== '');
 
+// THESE TWO WERE STRING SEARCHES AND ARE NOW EXECUTED. (SS-1612.) They looked
+// for the text of the shuffle line inside core/smackpress-api.php, which could
+// only ever prove that a line was written, never that it decides anything. The
+// rules moved to core/mosaic-contract.php so that a test could require them,
+// and that is the whole reason the move was worth making -- so the first thing
+// to do with it is stop grepping and call the validator.
+//
+// The PDO is a real one and is never touched on this path: the validator only
+// consults the schema when focus or emphasis are present, and neither is here.
+require_once $root . '/core/mosaic-contract.php';
+$gsh_pdo = new PDO('sqlite::memory:');
+// The refusal is injected, so a refusal here would be RECORDED rather than
+// exiting the run. Nothing below should refuse; if one does, the count is
+// checked at the end so it cannot pass quietly.
+$gsh_refusals = [];
+$gsh_refuse = function (int $code, string $message) use (&$gsh_refusals): void {
+    $gsh_refusals[] = $code . ' ' . $message;
+};
+
+$gsh_on  = smackpress_mosaic_validate(['asset_ids' => [1, 2], 'gallery_shuffle' => true], $gsh_pdo, $gsh_refuse);
+$gsh_off = smackpress_mosaic_validate(['asset_ids' => [1, 2], 'gallery_shuffle' => false], $gsh_pdo, $gsh_refuse);
+$gsh_mute = smackpress_mosaic_validate(['asset_ids' => [1, 2]], $gsh_pdo, $gsh_refuse);
+gsh('none of the three valid definitions was refused', $gsh_refusals === []);
+
+gsh('the mosaics endpoint receives gallery_shuffle ON as 1',  $gsh_on['gallery_shuffle'] === 1);
+gsh('and OFF as 0, not as a missing value',                   $gsh_off['gallery_shuffle'] === 0);
 gsh(
-    'the mosaics endpoint receives gallery_shuffle',
-    str_contains($api, "\$gallery_shuffle = !empty(\$body['gallery_shuffle'])")
+    'THE AUTHORED ORDER IS STORED EXACTLY AS SENT even with shuffle on',
+    $gsh_on['asset_ids'] === [1, 2] && $gsh_mute['asset_ids'] === [1, 2]
 );
+// RE-EXPRESSED FROM A LITERAL TO THE INTENT. (SS-1612.) This used to require
+// the exact string
+//     INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle)
+// which was one of THREE hardcoded INSERT statements, one per combination of
+// weights and mirrors. Carrying focus_positions and emphasis as well would have
+// made twelve, so the route now builds its column list once and appends the
+// optional columns under the same conditions as before.
+//
+// The literal is therefore gone and the behaviour is not: gallery_shuffle sits
+// in the BASE column list, unconditionally, which is a tighter claim than the
+// old one. The old assertion would pass if the flag appeared in any one of the
+// three statements; this one fails unless it is in the list every insert uses.
+//
+// Proved by mutation before this line was written: removing gallery_shuffle
+// from that base list fails this check.
 gsh(
-    'it is stored on the mosaic row',
-    str_contains($api, 'INSERT INTO snap_mosaics (title, asset_ids, gap, layout, gallery_shuffle)')
+    'it is stored on the mosaic row, unconditionally',
+    str_contains($api, "\$columns = ['title', 'asset_ids', 'gap', 'layout', 'gallery_shuffle'];")
 );
 gsh(
     'a client that says nothing gets OFF rather than a missing value',
-    (bool) preg_match('/\$gallery_shuffle = !empty\([^)]*\) \? 1 : 0;/', $api)
+    $gsh_mute['gallery_shuffle'] === 0
 );
+// STILL A SOURCE CHECK, AND IT HAS TO BE. This one guards against a SHAPE
+// returning rather than a value being wrong: the flag used to be read off the
+// post, and the fault would be someone reaching for it with array_key_exists
+// again. There is no value to execute for a line that should not exist. Both
+// files are searched, because the rules moved and the fault could reappear in
+// either.
+$contract = (string) @file_get_contents($root . '/core/mosaic-contract.php');
+gsh('core/mosaic-contract.php is readable', $contract !== '');
 gsh(
-    'the post no longer carries a shuffle flag at all',
+    'the post no longer carries a shuffle flag at all, in either file',
     !str_contains($api, "array_key_exists('gallery_shuffle'")
+        && !str_contains($contract, "array_key_exists('gallery_shuffle'")
 );
 
 // ── The column exists on the mosaic, and defaults to OFF ───────────────────
