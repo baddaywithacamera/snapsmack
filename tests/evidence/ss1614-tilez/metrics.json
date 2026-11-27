@@ -1,0 +1,55 @@
+{
+  "url": "https://baddaywithacamera.ca/start-your-engines",
+  "candidate": "01d9589549b5d93a3542ec53769b996e6f8df8e7",
+  "method": "Live public page and same page with only the reviewed CSS rules applied locally in Chrome. No production changes.",
+  "metrics": [
+    {
+      "file": "before-1920x1000.png",
+      "width": 1920,
+      "height": 1000,
+      "caption": "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11",
+      "imageToCaptionBox": 30,
+      "captionBoxToProseBox": 0
+    },
+    {
+      "file": "after-1920x1000.png",
+      "width": 1920,
+      "height": 1000,
+      "caption": "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11",
+      "imageToCaptionBox": 0,
+      "captionBoxToProseBox": 52
+    },
+    {
+      "file": "before-1440x1000.png",
+      "width": 1440,
+      "height": 1000,
+      "caption": "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11",
+      "imageToCaptionBox": 30,
+      "captionBoxToProseBox": 0
+    },
+    {
+      "file": "after-1440x1000.png",
+      "width": 1440,
+      "height": 1000,
+      "caption": "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11",
+      "imageToCaptionBox": 0,
+      "captionBoxToProseBox": 52
+    },
+    {
+      "file": "before-1024x1000.png",
+      "width": 1024,
+      "height": 1000,
+      "caption": "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11",
+      "imageToCaptionBox": 30,
+      "captionBoxToProseBox": 0
+    },
+    {
+      "file": "after-1024x1000.png",
+      "width": 1024,
+      "height": 1000,
+      "caption": "Pontiac RPM, Car Show, Strathmore, AB, 2026-07-11",
+      "imageToCaptionBox": 0,
+      "captionBoxToProseBox": 52
+    }
+  ]
+}
