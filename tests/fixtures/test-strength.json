@@ -532,6 +532,16 @@
         "predicates": 2,
         "thresholds": []
     },
+    "demo-parity-record-builder-regression.php": {
+        "assertions": 28,
+        "predicates": 2,
+        "thresholds": [
+            2,
+            2,
+            2,
+            120
+        ]
+    },
     "desktop-auth-route-regression.php": {
         "assertions": 3,
         "predicates": 3,

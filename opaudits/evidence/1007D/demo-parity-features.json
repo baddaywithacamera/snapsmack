@@ -1,0 +1,26 @@
+[
+    {
+        "ticket": "SS-1600",
+        "acceptance": "Configuration, under SECURITY, shows ALBUM SHARING as a two-value select reading OFF on a site that has never saved it. Choosing ON and saving stores it; a fresh load of Configuration still shows ON. With it OFF the cross-site POCKET ALBUM endpoint answers 404 with an album-sharing-not-enabled body; with it ON the same request returns the album payload. The control is not a checkbox, and it is not reachable by a non-administrator account.",
+        "site": "FILL IN: the local site the captures were taken on, e.g. http://127.0.0.1:56266/",
+        "room_message_id": "FILL IN: the room message that posted these captures",
+        "result": "pass",
+        "captures": [
+            "FILL IN: ALBUM SHARING in Configuration, reading OFF",
+            "FILL IN: the same control reading ON after a save and a fresh page load",
+            "FILL IN: the cross-site endpoint answering 404 with sharing OFF",
+            "FILL IN: the cross-site endpoint returning the album with sharing ON"
+        ]
+    },
+    {
+        "ticket": "SS-1600",
+        "acceptance": "CRON & JOBS lists POCKET ALBUM refresh beside the other three jobs, with RUN NOW, and with REGISTER or UNREGISTER according to whether this site's crontab line is present. On a site that displays no album from another site the Scheduler row says there is nothing to do, rather than showing a red NEVER FIRED for a job that site does not need. The page is not reachable by a non-administrator account.",
+        "site": "FILL IN: the local site the captures were taken on",
+        "room_message_id": "FILL IN: the room message that posted these captures",
+        "result": "pass",
+        "captures": [
+            "FILL IN: CRON & JOBS showing the POCKET ALBUM refresh entry",
+            "FILL IN: the Scheduler row saying there is nothing to do on a site with no remote album"
+        ]
+    }
+]
