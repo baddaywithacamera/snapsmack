@@ -32,6 +32,7 @@ if (PHP_SAPI !== 'cli' && !empty($_SERVER['SCRIPT_FILENAME'])
 
 // --- REGISTRY FORMAT ---
 require_once __DIR__ . '/skin-manifest.php';
+require_once __DIR__ . '/version-series.php';
 
 // The remote registry JSON must follow this structure:
 //
@@ -553,7 +554,7 @@ function skin_registry_local(): array {
             'name'        => $manifest['name'] ?? ucfirst($slug),
             'version'     => $manifest['version'] ?? '0.0',
             // THE INSTALLED SIDE OF THE EPOCH. This array is an allowlist, so
-            // the field had to be named here or snap_version_with_epoch() saw
+            // the field had to be named here or snap_release_version_with_epoch() saw
             // nothing and compared a re-baselined install as epoch 0 -- which
             // offered an already-installed 0.7.31 over and over. Both readers
             // of this array compare that way: skin_registry_compare() below,
@@ -594,16 +595,16 @@ function skin_registry_compare(array $registry, array $local): array {
         // old bigger number. IMPACT PRINTER 2.1.30 -> 0.7.31 is NEWER only
         // because the remote entry declares version_epoch 1; compared as plain
         // semver it reads as a downgrade and the site stays behind for ever
-        // with nobody told. snap_version_with_epoch() adds nothing when there
+        // with nobody told. snap_release_version_with_epoch() adds nothing when there
         // is no epoch, so every skin published before the re-baseline behaves
         // exactly as it did.
-        $remote_cmp   = snap_version_with_epoch($remote);
-        $local_cmp    = snap_version_with_epoch($local[$slug] ?? []);
+        $remote_cmp   = snap_release_version_with_epoch($remote);
+        $local_cmp    = snap_release_version_with_epoch($local[$slug] ?? []);
 
         $result[$slug] = array_merge($remote, [
             'installed'        => $is_installed,
             'local_version'    => $local_ver,
-            'update_available' => $is_installed && snap_version_compare($remote_cmp, $local_cmp, '>'),
+            'update_available' => $is_installed && snap_compare_release_versions($remote_cmp, $local_cmp, '>'),
             'installable'      => ($remote['status'] ?? 'stable') !== 'development',
         ]);
     }
