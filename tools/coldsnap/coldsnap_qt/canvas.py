@@ -58,6 +58,7 @@ PROP_DATA    = QTextFormat.UserProperty + 2         # object payload (JSON)
 PROP_DROPCAP = QTextFormat.UserProperty + 3         # paragraph: drop cap on
 PROP_RATIO   = QTextFormat.UserProperty + 4         # table: columns ratio
 PROP_LINK_OPTIONS = QTextFormat.UserProperty + 5
+PROP_SITE_SOURCE = QTextFormat.UserProperty + 6
 _LINK = re.compile(
     r'<a href="([^"]*)"( target="_blank")?(?: rel="(noopener(?: nofollow)?|nofollow)")?>([^<]*)</a>'
 )
@@ -330,6 +331,8 @@ class _Objects(QPyTextObject):
             return QSizeF(w, ih + 4 + cap_h)
         if kind == "spacer":
             return QSizeF(w, max(6, min(100, int(data.get("px", 20)))) + 2)
+        if kind in ("site_mosaic", "site_raw"):
+            return QSizeF(w, 40)
         if kind == "hr":
             return QSizeF(w, 14)
         return QSizeF(w, 20)
@@ -345,6 +348,14 @@ class _Objects(QPyTextObject):
             self._draw_mosaic(painter, r, data, pos)
         elif kind == "image":
             self._draw_image(painter, r, data)
+        elif kind in ("site_mosaic", "site_raw"):
+            outline, text = self._placeholder_colors()
+            painter.setPen(QPen(QColor(outline), 1, Qt.DashLine))
+            painter.drawRect(r.adjusted(0, 1, -1, -2))
+            painter.setPen(QColor(text))
+            label = (f"Site mosaic {data.get('mosaic_id', '')}" if kind == "site_mosaic"
+                     else data.get("label", "Imported site content"))
+            painter.drawText(r, Qt.AlignCenter, label)
         elif kind == "spacer":
             painter.setPen(QPen(QColor(theme.BORDER), 1, Qt.DashLine))
             painter.drawRect(r.adjusted(0, 1, -1, -2))
@@ -2317,7 +2328,8 @@ class BiggieCanvas(QTextEdit):
         def flush_list():
             nonlocal list_acc
             if list_acc:
-                out.append({"type": "list", "ordered": list_acc[1], "items": list_acc[2]})
+                model = {"type": "list", "ordered": list_acc[1], "items": list_acc[2]}
+                out.extend(_restore_site_source(list_acc[0].format(), [model]))
                 list_acc = None
 
         def flush_table():
@@ -2355,7 +2367,7 @@ class BiggieCanvas(QTextEdit):
                 block = block.next()
                 continue
             flush_list()
-            out.extend(_export_block(block))
+            out.extend(_restore_site_source(block.blockFormat(), _export_block(block)))
             block = block.next()
         flush_list()
         flush_table()
@@ -2381,6 +2393,8 @@ class BiggieCanvas(QTextEdit):
                     cur.insertBlock(self._block_format_for("para"), self._char_format_for("para"))
                 first = False
                 self._insert_block_model(cur, b, nested=False)
+                if "src" in b:
+                    self._remember_site_source(cur, b)
             if first:
                 self._init_empty_doc_format()
             cur.endEditBlock()
@@ -2398,8 +2412,29 @@ class BiggieCanvas(QTextEdit):
         finally:
             self._guard = False
 
+    def _remember_site_source(self, cur, original):
+        # The editor may trim whitespace or normalise a link even when the
+        # author made no edit. Compare against the canvas's own initial model.
+        text_list = cur.currentList()
+        if text_list is not None:
+            fmt = text_list.format()
+            items = [_block_inline_text(text_list.item(i)).strip()
+                     for i in range(text_list.count())]
+            baseline = [{"type": "list",
+                         "ordered": fmt.style() == QTextListFormat.ListDecimal,
+                         "items": [item for item in items if item]}]
+            fmt.setProperty(PROP_SITE_SOURCE, json.dumps([original, baseline], ensure_ascii=False))
+            text_list.setFormat(fmt)
+        else:
+            fmt = cur.blockFormat()
+            baseline = _export_block(cur.block())
+            fmt.setProperty(PROP_SITE_SOURCE, json.dumps([original, baseline], ensure_ascii=False))
+            cur.setBlockFormat(fmt)
+
     def _insert_block_model(self, cur, b: dict, nested: bool):
         t = b.get("type", "para")
+        if t == "raw" and "src" in b:
+            t = "site_raw"
         if t in ("para", "raw", "quote", "pullquote"):
             kind = {"para": "para", "raw": "raw", "quote": "quote", "pullquote": "pullquote"}[t]
             cur.setBlockFormat(self._block_format_for(kind, bool(b.get("dropcap"))))
@@ -2427,7 +2462,7 @@ class BiggieCanvas(QTextEdit):
                     cur.insertBlock()
                     lst.add(cur.block())
                 self._insert_link_text(cur, item, "para")
-        elif t in ("image", "spacer", "hr", "mosaic"):
+        elif t in ("image", "spacer", "hr", "mosaic", "site_mosaic", "site_raw"):
             fmt = QTextCharFormat()
             fmt.setObjectType(OBJ_TYPE)
             fmt.setProperty(PROP_KIND, t)
@@ -2514,6 +2549,20 @@ def _block_inline_text(block):
     return "".join(parts)
 
 
+def _restore_site_source(fmt, model):
+    source = fmt.property(PROP_SITE_SOURCE)
+    if not source or not model:
+        return model
+    original, baseline = json.loads(source)
+    if model == baseline:
+        return [original]
+    if "wrap" in original:
+        model[0]["wrap"] = original["wrap"]
+    if "sep" in original:
+        model[-1]["sep"] = original["sep"]
+    return model
+
+
 def _export_block(block, nested: bool = False) -> list:
     """One document paragraph → zero or more model blocks."""
     kind = _block_kind(block)
@@ -2558,6 +2607,8 @@ def _export_block(block, nested: bool = False) -> list:
                         if data.get("mirrors"):
                             blk["mirrors"] = list(data["mirrors"])
                     out.append(blk)
+                elif okind in ("site_mosaic", "site_raw"):
+                    out.append({"type": "raw" if okind == "site_raw" else okind, **data})
                 elif okind == "image":
                     image = {"type": "image", "img_id": str(data.get("img_id", ""))}
                     for key in ("gallery", "size", "align", "width", "decorative", "raw",

@@ -393,6 +393,55 @@ class TheImportPathMustActuallyParse(unittest.TestCase):
         self.assertEqual(biggie.serialize_site_blocks(blocks), body)
 
 
+class NativeCanvasImport(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PySide6.QtWidgets import QApplication
+        cls.app = QApplication.instance() or QApplication([])
+
+    def test_public_post_keeps_mosaics_caption_and_wire_body(self):
+        from coldsnap_qt.canvas import BiggieCanvas
+        from sumna_offline import Draft, KIND_SMACKTALK, MODE_SMACKTALK
+        from sumna_post import SmacktalkPoster
+
+        body = _load_post4()
+        if body is None:
+            self.skipTest("NOT CHECKED: post 4's body file is not on this machine")
+        self.assertIsInstance(body, str)
+        editor = BiggieCanvas()
+        editor.from_blocks(biggie.parse_site_html(body))
+        self.assertNotIn("[mosaic:", editor.toPlainText())
+        self.assertNotIn("<p>", editor.toPlainText())
+        blocks = editor.to_blocks()
+        self.assertEqual([block["type"] for block in blocks].count("site_mosaic"), 5)
+        captioned = next(block for block in blocks if block.get("caption"))
+        self.assertIn("Pontiac RPM", captioned["caption"])
+        draft = Draft(draft_id="published-import", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                      body_blocks=biggie.blocks_to_json(blocks))
+        content, _ = SmacktalkPoster._wire_body(draft)
+        self.assertEqual(content, body)
+
+    def test_editing_keeps_other_source_and_the_imported_placeholder(self):
+        from PySide6.QtGui import QTextCursor
+        from coldsnap_qt.canvas import BiggieCanvas
+
+        body = "<p>[mosaic:752]An intro</p>\n<ul><li>One</li><li>Two</li></ul>\n<section>Raw</section>"
+        original = biggie.parse_site_html(body)
+        editor = BiggieCanvas()
+        editor.from_blocks(original)
+        self.assertNotIn("<section>", editor.toPlainText())
+        self.assertEqual(editor.to_blocks(), original)
+        cursor = QTextCursor(editor.document().findBlockByNumber(1))
+        cursor.insertText("Now ")
+        edited = editor.to_blocks()
+        self.assertEqual(edited[1]["text"], "Now An intro")
+        self.assertNotIn("src", edited[1])
+        self.assertEqual(edited[1]["wrap"], original[1]["wrap"])
+        self.assertEqual(edited[0], original[0])
+        self.assertEqual(edited[2:], original[2:])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
 
