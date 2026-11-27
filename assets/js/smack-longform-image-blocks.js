@@ -11,10 +11,28 @@
     var list = document.getElementById('long-image-block-list');
     if (!ta || !panel || !list) return;
 
+    // Switchable snap rule pending owner limit decision:
+    // set to [25, 33, 50, 67, 100] to snap to COLD SNAP stops, or null for 5%-step clamping.
+    var SNAP_WIDTH_STOPS = null;
+
     var base = panel.getAttribute('data-base') || '';
     var timer = null;
     var imageCache = {};
-    var rx = /\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?\s*\]/gi;
+    var rx = /\[img:\s*(g)?\s*(\d+)(?:\s*\|\s*(small|wall|full))?(?:\s*\|\s*(left|center|right))?(?:\s*\|\s*(\d{1,3})(?:%)?)?(?:\s*\|\s*(decorative))?\s*\]/gi;
+
+    function clampWidth(value) {
+        return Math.max(20, Math.min(100, Math.round(value)));
+    }
+
+    function snapWidth(value) {
+        var clamped = clampWidth(value);
+        if (Array.isArray(SNAP_WIDTH_STOPS) && SNAP_WIDTH_STOPS.length) {
+            return SNAP_WIDTH_STOPS.reduce(function (best, stop) {
+                return Math.abs(stop - clamped) < Math.abs(best - clamped) ? stop : best;
+            }, SNAP_WIDTH_STOPS[0]);
+        }
+        return Math.max(20, Math.min(100, Math.round(clamped / 5) * 5));
+    }
 
     function esc(value) {
         return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -33,14 +51,15 @@
                 id: parseInt(match[2], 10),
                 size: match[3] || 'full',
                 align: match[4] || 'center',
-                width: Math.max(20, Math.min(100, parseInt(match[5], 10) || 100))
+                width: match[5] ? clampWidth(parseInt(match[5], 10)) : 100,
+                decorative: !!match[6]
             });
         }
         return blocks;
     }
 
     function shortcode(block) {
-        return '[img:' + (block.gallery ? 'g' : '') + block.id + '|' + block.size + '|' + block.align + '|' + block.width + ']';
+        return '[img:' + (block.gallery ? 'g' : '') + block.id + '|' + block.size + '|' + block.align + '|' + block.width + (block.decorative ? '|decorative' : '') + ']';
     }
 
     function replace(block, next) {
@@ -91,7 +110,7 @@
             var visual = card.querySelector('[data-visual]');
             var stage = card.querySelector('[data-stage]');
             function previewWidth(value) {
-                value = Math.max(20, Math.min(100, Math.round(value / 5) * 5));
+                value = snapWidth(value);
                 range.value = value;
                 output.textContent = value + '%';
                 visual.style.width = value + '%';
@@ -112,8 +131,13 @@
                 var handle = this;
                 function move(e) {
                     var rect = stage.getBoundingClientRect();
-                    var left = block.align === 'right' ? rect.right - e.clientX : e.clientX - rect.left;
-                    previewWidth((left / rect.width) * 100);
+                    if (!rect.width) return;
+                    var pct = block.align === 'right'
+                        ? ((rect.right - e.clientX) / rect.width) * 100
+                        : block.align === 'center'
+                            ? (((e.clientX - (rect.left + rect.width / 2)) * 2) / rect.width) * 100
+                            : ((e.clientX - rect.left) / rect.width) * 100;
+                    previewWidth(pct);
                 }
                 function up() {
                     handle.removeEventListener('pointermove', move);
