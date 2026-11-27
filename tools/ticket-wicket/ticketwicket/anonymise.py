@@ -83,6 +83,94 @@ _PUBLIC_HOSTS = frozenset({
     "example.com", "example.org", "example.net",   # RFC 2606 documentation
 })
 
+# ── SPECIMENS, NOT PEOPLE (SS-1632) ──────────────────────────────────────────
+#
+# THE FAULT THIS FIXES. A ticket documenting what a Pixelfed profile link looks
+# like has to show one. The example address it showed ended in a stand-in word,
+# naming nobody -- and this guard read "a URL" and refused to publish the
+# ticket. The advice on refusal is to rewrite the body about the problem, which
+# there would have meant DELETING THE EXAMPLE THAT IS THE PROBLEM. Eight
+# tickets were stuck behind this on 2026-11-27 and the only ways through were
+# to delete the documentation or hold the ticket off the board for ever.
+#
+# THE OWNER NAMED THE HOUSE PLACEHOLDER: CORDWAINER BIRD. It is the pseudonym
+# Harlan Ellison used to keep his real name off a project, so a reader who
+# recognises it knows at once that nothing real is being named. That is the
+# property a placeholder needs and "username" does not have.
+#
+# WHAT IS DELIBERATELY *NOT* DONE HERE, because it would be the easy wrong fix:
+# pixelfed.social is NOT added to _PUBLIC_HOSTS. Doing that would let
+# https://pixelfed.social/<a-real-person> through, which is the exact thing
+# this guard exists to stop. A shared instance's hostname names nobody; the
+# PATH on it names somebody. So a URL on a shared instance passes ONLY when its
+# final segment is a known placeholder, and a real-looking segment is still
+# refused. Both halves are proved in the regression by being fed the thing they
+# must refuse.
+_PLACEHOLDER_SEGMENTS = frozenset({
+    # the house placeholder, in the spellings a path or handle can carry
+    "cordwainerbird", "cordwainer-bird", "cordwainer.bird", "cordwainer_bird",
+    # the vocabulary already in bodies written before the ruling
+    "username", "example", "yourname", "youraccount", "yoursite", "sitename",
+    "someone", "somebody", "placeholder",
+})
+
+# Hostnames of SHARED services, where the host names an instance and never a
+# person. Being on this list is NOT enough on its own: it only means the host
+# itself identifies nobody, so the decision falls to the path segment.
+_SERVICE_HOSTS = frozenset({
+    "pixelfed.social", "mastodon.social", "mastodon.online",
+    "photoblogs.fyi",
+})
+
+# Reserved for documentation by RFC 2606 and RFC 6761. These can never belong
+# to anyone, by definition, which is why they exist.
+_RESERVED_EXAMPLE_SUFFIXES = (".example", ".invalid", ".test", ".localhost")
+
+
+def _is_reserved_example_host(host: str) -> bool:
+    """True for a hostname that is reserved for documentation and cannot be
+    anybody's. example.com/org/net are in _PUBLIC_HOSTS already; this covers
+    the reserved SUFFIXES, so anything.example and site.invalid are safe."""
+    h = (host or "").lower().rstrip(".")
+    return bool(h) and h.endswith(_RESERVED_EXAMPLE_SUFFIXES)
+
+
+def _final_segment(url: str) -> str:
+    """The last non-empty path segment of a URL, lowercased, with any query,
+    fragment, extension and @ prefix removed. This is the part that names a
+    person on a shared instance."""
+    rest = re.sub(r"(?i)^https?://", "", url)
+    path = re.split(r"[?#]", rest, 1)[0]
+    parts = [p for p in path.split("/")[1:] if p]
+    if not parts:
+        return ""
+    last = parts[-1].lstrip("@").lower()
+    # THE WHOLE SEGMENT IS TRIED FIRST, and my own regression caught why.
+    # "cordwainer.bird" is a dotted NAME, not a filename, and stripping what
+    # looks like a 4-letter extension turned it into "cordwainer" and refused
+    # the ticket. So only strip an extension when the segment as written is not
+    # itself a known placeholder.
+    if last in _PLACEHOLDER_SEGMENTS:
+        return last
+    if last.count(".") == 1 and len(last.rsplit(".", 1)[1]) <= 4:
+        return last.rsplit(".", 1)[0]
+    return last
+
+
+def _url_names_a_specimen(url: str) -> bool:
+    """True when a URL is plainly an EXAMPLE and names nobody.
+
+    Either the host is reserved for documentation, or the host is a shared
+    service AND the final path segment is a known placeholder. A real-looking
+    segment on a shared service is NOT a specimen, and a placeholder on
+    somebody's own site is NOT a specimen either -- the host still names them.
+    """
+    rest = re.sub(r"(?i)^https?://", "", url)
+    host = re.split(r"[/?#]", rest, 1)[0].rsplit("@", 1)[-1].split(":", 1)[0].lower()
+    if _is_reserved_example_host(host):
+        return True
+    return host in _SERVICE_HOSTS and _final_segment(url) in _PLACEHOLDER_SEGMENTS
+
 # Reporter values that name nobody. The store records WHO reported a ticket so
 # that the gate can refuse a body that still says it; a role word recorded in
 # that field carries no identity, and treating it as one blocks the ordinary
@@ -117,8 +205,15 @@ def _is_identifying_domain(token: str) -> bool:
 
     Matched EXACTLY against _PUBLIC_HOSTS, so a subdomain of the vendor's site
     -- which is how the fleet's own sites are addressed -- is still caught.
+
+    SS-1632: a hostname reserved for documentation is excepted, because
+    anything.example and site.invalid cannot belong to anyone by definition.
+    A SHARED-SERVICE host is NOT excepted here: on its own, bare, it is still
+    a real host somebody could be found on, and only a full URL carries the
+    path that says whether a specimen or a person is being named.
     """
-    return token.lower() not in _PUBLIC_HOSTS
+    return (token.lower() not in _PUBLIC_HOSTS
+            and not _is_reserved_example_host(token))
 
 
 def _identifying_terms(extra) -> list:
@@ -178,7 +273,10 @@ def check(text: str, extra=None) -> list:
     for label, pattern, keep in (
         ("an email address", _EMAIL, None),
         ("an IP address", _IPV4, None),
-        ("a URL", _URL, lambda u: not _url_is_public(u)),
+        # SS-1632: a documentation specimen is not a person. Still refused:
+        # a real-looking segment on a shared instance, and any path at all on
+        # somebody's own host.
+        ("a URL", _URL, lambda u: not _url_is_public(u) and not _url_names_a_specimen(u)),
         ("a domain", _DOMAIN, _is_identifying_domain),
         ("a filesystem path", _WINPATH, None),
         ("a filesystem path", _NIXPATH, None),
