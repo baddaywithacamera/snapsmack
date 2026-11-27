@@ -204,12 +204,26 @@ if ($fails) {
 }
 echo "ALL PASS: an installed skin's epoch survives the real local scan ({$checks} checks)\n";
 
-// NOT CHECKED HERE: core/updater.php's skin notification path, which reads the
-// same skin_registry_local() array through the same snap_version_with_epoch()
-// and is therefore fixed by the same two lines, but needs a registry fetch to
-// drive end to end; and the hub's own fleet comparison in smack-multisite.php,
-// which compares plain version strings and has no epoch to read because the
-// heartbeat sends {slug: version}. That last one is a separate finding and is
-// NOT fixed by this commit.
+// THE THREE CONSUMERS OF skin_registry_local(), all fixed by the one field,
+// because each one compares through snap_version_with_epoch() on the array
+// this test drives:
+//   skin_registry_compare()                 the Skin Updates gallery offer
+//   updater_check_skin_registry()           the skin update notifications
+//   updater_check_skin_registry()'s mobile  AUTO-INSTALLS the mobile skin when
+//                                           it reads as outdated, so a lost
+//                                           epoch there re-downloads and
+//                                           re-unpacks the package the site
+//                                           already has, on every sweep,
+//                                           rather than merely offering it
+// NOT CHECKED HERE: the two updater paths end to end. Both need a live
+// registry fetch and a PDO, so what this file proves about them is that the
+// array they read now carries the epoch and compares as 1:0.7.31 -- not that
+// the sweep was observed declining to reinstall.
+//
+// NOT FIXED BY THIS COMMIT, and separate findings: the hub's own fleet
+// comparison in smack-multisite.php compares plain version strings and has no
+// epoch to read, because the heartbeat sends {slug: version}; and the CORE
+// release channel is epoch-aware on the reader side only, since the published
+// release JSON declares no version_epoch.
 
 // ===== SNAPSMACK EOF =====
