@@ -639,7 +639,7 @@
         ]
     },
     "duplicate-detection-needs-corroboration-regression.php": {
-        "assertions": 36,
+        "assertions": 73,
         "predicates": 5,
         "thresholds": [
             2,
