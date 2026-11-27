@@ -30,6 +30,9 @@
   what it is for: the masthead now carries the site name and logo, navigation
   folds into a single button, thumbnails are square, titles are plain, and
   each entry shows an excerpt of the writing rather than only a heading.
+- **Edit published mosaics from COLD SNAP.** The API reads the saved photos
+  and layout, checks for concurrent edits, and preserves the original when
+  the mosaic is shared with another post or page.
 
 ## 0.7.1007D — opened
 
