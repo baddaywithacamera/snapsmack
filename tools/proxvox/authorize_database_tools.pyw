@@ -3,6 +3,7 @@
 # SNAPSMACK_EOF_HEADER
 # Last non-empty line must be the canonical SNAPSMACK EOF marker.
 """
+import argparse
 import ctypes
 import hashlib
 import json
@@ -19,6 +20,7 @@ from proxvox.audit import AuditBuffer
 from proxvox.container_read import ContainerReadBroker, ContainerTarget, DatabaseTarget
 from proxvox.file_write_client import ScopedFileWriter
 from proxvox.host_guard import machine_guid
+from proxvox.launcher_signals import ACTIONS, LauncherSignals
 from proxvox.root_read import RootReadBroker
 from proxvox.write_client import WriteClient
 
@@ -208,22 +210,23 @@ def activate_existing_form():
         foreground(window)
 
 
-def main():
-    from ctypes import wintypes
-    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
-    create_mutex = kernel.CreateMutexW
-    create_mutex.argtypes = (wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR)
-    create_mutex.restype = wintypes.HANDLE
-    handle = create_mutex(None, False, "Local\\SnapSmackProxVoxDatabasePreview")
-    if not handle:
-        raise ctypes.WinError(ctypes.get_last_error())
-    already_open = ctypes.get_last_error() == 183
-    close_handle = kernel.CloseHandle
-    close_handle.argtypes = (wintypes.HANDLE,)
-    if already_open:
-        close_handle(handle)
-        activate_existing_form()
-        return
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--select", choices=ACTIONS)
+    action = parser.parse_args(argv).select
+    signals = LauncherSignals()
+    try:
+        if action:
+            signals.select(action)
+        if signals.already_open:
+            activate_existing_form()
+            return
+        run_form(signals)
+    finally:
+        signals.close()
+
+
+def run_form(signals):
     window = tk.Tk()
     publication_sha = os.environ.get("PROXVOX_PUBLICATION_SHA256")
     window.title(WINDOW_TITLE)
@@ -254,6 +257,8 @@ def main():
     status = tk.StringVar(value="Checking the installed host files…")
     remaining = tk.StringVar(value="No active session")
     host_ready = False
+    publication_ready = False
+    selected_action = None
     running = False
     publication_complete = False
     session = None
@@ -284,11 +289,12 @@ def main():
         threading.Thread(target=work, daemon=True).start()
 
     def poll():
-        nonlocal host_ready, running, publication_complete, session
+        nonlocal host_ready, publication_ready, running, publication_complete, selected_action, session
         while not events.empty():
             item = events.get()
             if isinstance(item, tuple) and item[0] == "ready":
                 host_ready = True
+                publication_ready = item[1]
                 status.set("Ready for the owner to authorize.")
                 entries[0].state(["!disabled"])
                 entries[0].focus_set()
@@ -322,8 +328,18 @@ def main():
             entry.state(authorization_state)
         state = ["!disabled"] if session and not running else ["disabled"]
         preview_action.state(state)
-        publish_action.state(state if publication_sha and not publication_complete else ["disabled"])
+        publish_action.state(state if publication_ready and not publication_complete else ["disabled"])
         end_action.state(state)
+        for action in signals.selections():
+            selected_action = action
+        if selected_action == "publish" and host_ready and not publication_ready:
+            status.set("There is no verified publication available in this PROX VOX window.")
+            selected_action = None
+        if selected_action and session and not running:
+            action_button = publish_action if selected_action == "publish" else preview_action
+            if not action_button.instate(["disabled"]):
+                action_button.focus_set()
+            selected_action = None
         window.after(150, poll)
 
     def use_session(end=False, close=False, publish_site=False):
@@ -334,7 +350,7 @@ def main():
             if close:
                 window.destroy()
             return
-        if publish_site and (not publication_sha or publication_complete):
+        if publish_site and (not publication_ready or publication_complete):
             return
         client, reader, writer = session
         running = True
@@ -376,13 +392,15 @@ def main():
         except Exception:
             events.put("Could not verify the installed host files. Wait for confirmation.")
             return
+        publish_ready = False
         if publication_sha:
             try:
                 publication_plan(publication_sha, reader)
             except Exception:
-                events.put("The publication files could not be verified. Check the reviewed manifest before authorizing.")
-                return
-        events.put(("ready",))
+                pass
+            else:
+                publish_ready = True
+        events.put(("ready", publish_ready))
 
     actions = ttk.Frame(panel)
     actions.pack(anchor="w")
@@ -402,10 +420,7 @@ def main():
                     if running else use_session(end=True, close=True))
     threading.Thread(target=check_host, daemon=True).start()
     poll()
-    try:
-        window.mainloop()
-    finally:
-        close_handle(handle)
+    window.mainloop()
 
 
 if __name__ == "__main__":

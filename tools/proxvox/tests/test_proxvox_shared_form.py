@@ -6,6 +6,8 @@
 
 from pathlib import Path
 import runpy
+import subprocess
+import sys
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -55,7 +57,7 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
     valid_manifest = scenario != "invalid_manifest"
     source = Path(__file__).resolve().parents[1]
     monkeypatch.syspath_prepend(str(source))
-    main = runpy.run_path(str(source / "authorize_database_tools.pyw"))["main"]
+    run_form = runpy.run_path(str(source / "authorize_database_tools.pyw"))["run_form"]
     buttons, variables = {}, []
 
     def button(*args, **options):
@@ -73,10 +75,6 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
             self.poll = callback
 
         def mainloop(self):
-            if not valid_manifest:
-                assert buttons["Authorize"].disabled
-                assert "publication files could not be verified" in variables[2].get()
-                return
             variables[0].set("fixture")
             variables[1].set("000000")
             buttons["Authorize"].press()
@@ -84,8 +82,14 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
             assert variables[0].get() == variables[1].get() == ""
             buttons["Preview The Artist"].press()
             self.poll()
-            buttons["Publish SnapSmack.ca"].press()
+            signals.selections.return_value = iter(["publish"])
             self.poll()
+            publish.assert_not_called()
+            if valid_manifest:
+                buttons["Publish SnapSmack.ca"].press()
+                self.poll()
+            else:
+                assert "no verified publication" in variables[2].get()
             assert buttons["Publish SnapSmack.ca"].disabled
             if scenario == "expire":
                 client.seconds_remaining.return_value = 0
@@ -97,7 +101,7 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
             if scenario == "expire":
                 assert variables[3].get() == "The PROX VOX session expired."
 
-    kernel = SimpleNamespace(CreateMutexW=Mock(return_value=1), CloseHandle=Mock())
+    signals = SimpleNamespace(selections=Mock(return_value=()))
     client, reader, writer = Mock(), Mock(), Mock()
     client.seconds_remaining.return_value = 18000
     writer.scope.return_value = {"owner_users": ["proxvox@pve"]}
@@ -107,7 +111,6 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
     preview, publish = Mock(), Mock(return_value=1)
     monkeypatch.setenv("PROXVOX_PUBLICATION_SHA256", "fixture")
     for name, replacement in {
-        "ctypes": SimpleNamespace(WinDLL=lambda *args, **kw: kernel, get_last_error=lambda: 0),
         "tk": SimpleNamespace(Tk=Window, StringVar=string_var),
         "ttk": SimpleNamespace(Frame=Widget, Label=Widget, Entry=Widget, Button=button),
         "threading": SimpleNamespace(Thread=SynchronousThread),
@@ -121,39 +124,64 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
         "publication_plan": plan,
         "publish_pages": publish,
     }.items():
-        monkeypatch.setitem(main.__globals__, name, replacement)
-    main()
+        monkeypatch.setitem(run_form.__globals__, name, replacement)
+    run_form(signals)
 
+    client.authorize.assert_called_once_with("proxvox@pve", "fixture", "000000", timeout=25)
+    preview.assert_called_once_with(client)
     if valid_manifest:
-        client.authorize.assert_called_once_with("proxvox@pve", "fixture", "000000", timeout=25)
-        preview.assert_called_once_with(client)
         assert publish.call_args.args[:4] == (reader, writer, client, [("fixture",)])
         assert plan.call_count == 2
-        if scenario == "expire":
-            client.revoke.assert_not_called()
-        else:
-            client.revoke.assert_called_once()
     else:
-        client.authorize.assert_not_called()
-        preview.assert_not_called()
         publish.assert_not_called()
         plan.assert_called_once_with("fixture", reader)
+    if scenario == "expire":
+        client.revoke.assert_not_called()
+    else:
+        client.revoke.assert_called_once()
 
 
 def test_duplicate_launcher_reopens_the_shared_window_without_another_login(monkeypatch):
     source = Path(__file__).resolve().parents[1]
     monkeypatch.syspath_prepend(str(source))
     main = runpy.run_path(str(source / "authorize_database_tools.pyw"))["main"]
-    kernel = SimpleNamespace(CreateMutexW=Mock(return_value=1), CloseHandle=Mock())
-    activate, create_window = Mock(), Mock()
-    monkeypatch.setitem(main.__globals__, "ctypes", SimpleNamespace(
-        WinDLL=lambda *args, **kwargs: kernel, get_last_error=lambda: 183))
-    monkeypatch.setitem(main.__globals__, "tk", SimpleNamespace(Tk=create_window))
+    signals = Mock(already_open=True)
+    activate, run_form = Mock(), Mock()
+    monkeypatch.setitem(main.__globals__, "LauncherSignals", lambda: signals)
+    monkeypatch.setitem(main.__globals__, "run_form", run_form)
     monkeypatch.setitem(main.__globals__, "activate_existing_form", activate)
-    main()
-    kernel.CloseHandle.assert_called_once_with(1)
+    main(["--select", "publish"])
+    signals.select.assert_called_once_with("publish")
+    signals.close.assert_called_once()
     activate.assert_called_once()
-    create_window.assert_not_called()
+    run_form.assert_not_called()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows launcher IPC")
+def test_windows_launchers_signal_the_existing_process(monkeypatch):
+    source = Path(__file__).resolve().parents[1]
+    monkeypatch.syspath_prepend(str(source))
+    pytest.importorskip("win32event")
+    from proxvox.launcher_signals import LauncherSignals
+
+    primary = LauncherSignals()
+    try:
+        assert not primary.already_open
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "from proxvox.launcher_signals import LauncherSignals\n"
+             "signals = LauncherSignals()\n"
+             "assert signals.already_open\n"
+             "signals.select('publish')\n"
+             "signals.close()"],
+            cwd=source, capture_output=True, text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW, timeout=10,
+        )
+        assert result.returncode == 0, result.stderr
+        assert list(primary.selections()) == ["publish"]
+        assert list(primary.selections()) == []
+    finally:
+        primary.close()
 
 
 # ===== SNAPSMACK EOF =====
