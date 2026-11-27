@@ -132,8 +132,11 @@ def test_published_mosaic_reuses_site_id_and_does_not_add_mosaic_only_photo_to_p
     from coldsnap_qt import biggie
     from coldsnap_qt.mode_take import hydrate_site_mosaics
 
-    origin = {"id": 753, "revision": "first", "asset_ids": [41, 36], "layout": "rows", "gap": 0}
+    origin = {"id": 753, "revision": "first", "title": "Arranged mosaic",
+              "asset_ids": [41, 36], "layout": "rows", "gap": 0}
     origin.update(focus_positions={"41": {"x": 50, "y": 30}}, emphasis="natural")
+    origin["mosaic_weights"] = []
+    origin["mosaic_mirrors"] = []
     blocks = biggie.parse_site_html(content)
     images = [DraftImage(asset_uuid="pictured", remote_image_id=36, is_cover=True),
               DraftImage(asset_uuid="mosaic-extra", remote_image_id=41, mosaic_only=True)]
@@ -146,24 +149,27 @@ def test_published_mosaic_reuses_site_id_and_does_not_add_mosaic_only_photo_to_p
         blocks[0]["weights"] = {"pictured": 2}
     calls = []
     creations = []
-    definition = {"mosaic": origin, "references": {"posts": 2 if shared and not race else 1, "shared": shared}}
+    page_refs = int(shared and not race)
+    definition = {"mosaic": origin, "references": {"posts": 1, "post_ids": [4],
+                                                  "pages": page_refs, "shared": bool(page_refs)},
+                  "images": [{"id": 41, "file": "img_uploads/extra photo.jpg", "title": "Extra", "alt": "",
+                              "width": 3, "height": 2}, {"id": 90, "missing": True}]}
 
     class PublishedSite(FixtureSite):
-        def get(self, url, params, timeout):
-            assert url.endswith("/mosaics")
-            if params == {"id": 801}:
+        def get(self, url, timeout):
+            if url.endswith("/mosaics/801"):
                 return SimpleNamespace(status_code=200, raise_for_status=lambda: None,
                                        json=lambda: {"mosaic": {"id": 801, **creations[-1]}})
-            assert params == {"id": 753}
+            assert url.endswith("/mosaics/753")
             return SimpleNamespace(status_code=200, raise_for_status=lambda: None,
                                    json=lambda: definition)
 
-        def put(self, url, params, timeout, json):
-            assert url.endswith("/mosaics")
-            assert params == {"id": 753}
+        def put(self, url, timeout, json):
+            assert url.endswith("/mosaics/753")
             calls.append(json)
             if race:
                 definition["references"]["posts"] = 2
+                definition["references"]["post_ids"] = [4, 11]
                 return SimpleNamespace(status_code=409)
             return SimpleNamespace(status_code=200, raise_for_status=lambda: None,
                                    json=lambda: {"mosaic": {**origin, **json, "revision": "next"}})
@@ -179,14 +185,21 @@ def test_published_mosaic_reuses_site_id_and_does_not_add_mosaic_only_photo_to_p
     site = PublishedSite()
     poster = SmacktalkPoster("https://example.test", "fixture", session=site)
     monkeypatch.setattr(poster, "_record_to_library", lambda *_: None)
-    assert poster.get_mosaic(753) == definition
+    loaded = poster.get_mosaic(753)
+    assert loaded["mosaic"] == definition["mosaic"]
+    assert loaded["images"] == [{"id": 41, "img_file": "img_uploads/extra photo.jpg",
+                                 "img_title": "Extra", "img_alt": "", "width": 3, "height": 2,
+                                 "url": "https://example.test/img_uploads/extra%20photo.jpg"}]
     draft = Draft(draft_id="edit", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
                   title="Test", remote_post_id=4, caption=content,
                   body_blocks=biggie.blocks_to_json(blocks), images=images)
     result = poster.sync_smacktalk(draft)
     assert result.ok, result.message
-    expected_put = ([{"revision": "first", "post_id": 4, "asset_ids": [36, 41],
-                      "mosaic_weights": {"36": 2}}] if edited and (not shared or race) else [])
+    expected_put = ([{"revision": "first", "post_id": 4, "title": "Arranged mosaic",
+                      "asset_ids": [36, 41], "layout": "rows", "gap": 0,
+                      "mosaic_weights": {"36": 2}, "mosaic_mirrors": [],
+                      "focus_positions": {"41": {"x": 50, "y": 30}}, "emphasis": "natural"}]
+                    if edited and (not shared or race) else [])
     assert calls == expected_put
     assert site.posts[0]["content"] == (content.replace("753", "801") if edited and shared else content)
     assert site.posts[0]["bucket_image_ids"] == [36]
@@ -195,9 +208,9 @@ def test_published_mosaic_reuses_site_id_and_does_not_add_mosaic_only_photo_to_p
         assert creations[0]["focus_positions"] == {"41": {"x": 50, "y": 30}}
         assert creations[0]["emphasis"] == "natural"
         assert origin["asset_ids"] == [41, 36]
-        assert "1 other post" in result.message
+        assert "another post or page" in result.message
         reloaded = Draft.from_dict(draft.to_dict())
-        definition["references"]["posts"] = 1
+        definition["references"] = {"posts": 1, "post_ids": [11], "pages": 0}
         assert poster.sync_smacktalk(reloaded).ok
         assert len(creations) == 1
         assert calls == expected_put
@@ -252,7 +265,7 @@ def test_imported_mosaic_opens_the_existing_visual_editor(monkeypatch, tmp_path)
         def inspect_editor(dialog):
             observations.extend(_wait_for_preview(dialog._mosaic_preview))
             assert dialog.windowTitle() == "Edit mosaic"
-            assert any("appears in 2 posts" in label.text() for label in dialog.findChildren(QLabel))
+            assert any("appears on 2 posts or pages" in label.text() for label in dialog.findChildren(QLabel))
             dialog.show()
             QTest.qWait(100)
             assert dialog.grab().save(str(tmp_path / "fixture-753-editor.png"))

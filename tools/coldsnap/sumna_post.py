@@ -33,6 +33,7 @@ import os
 import re
 import sys
 from typing import List, Optional, Tuple
+from urllib.parse import quote
 
 import requests
 
@@ -1047,16 +1048,43 @@ class SmacktalkPoster:
         return weights
 
     def get_mosaic(self, mosaic_id):
-        reply = self.session.get(self._route("smackpress/mosaics"),
-                                 params={"id": int(mosaic_id)}, timeout=15)
+        mosaic_id = int(mosaic_id)
+        reply = self.session.get(self._route(f"smackpress/mosaics/{mosaic_id}"), timeout=15)
         if reply.status_code in (404, 405):
             return None
         reply.raise_for_status()
         data = reply.json()
         mosaic = data.get("mosaic") if isinstance(data, dict) else None
-        if not isinstance(mosaic, dict) or mosaic.get("id") != int(mosaic_id):
+        if not isinstance(mosaic, dict) or mosaic.get("id") != mosaic_id:
             return None
+        if "images" in data:
+            images = []
+            for row in data["images"]:
+                path = (row.get("file") or "").replace("\\", "/").lstrip("/")
+                if row.get("missing") or not path:
+                    continue
+                images.append({
+                    "id": row["id"], "img_file": path, "img_title": row.get("title") or "",
+                    "img_alt": row.get("alt") or "", "width": row.get("width") or 0,
+                    "height": row.get("height") or 0,
+                    "url": f"{self.base_url}/{quote(path)}",
+                })
+            data = {**data, "images": images}
         return data
+
+    @staticmethod
+    def _other_mosaic_references(snapshot, post_id):
+        refs = snapshot.get("references") or {}
+        posts, pages = refs.get("post_ids"), refs.get("pages")
+        if not isinstance(posts, list) or not isinstance(pages, int):
+            return None
+        return sum(ident != post_id for ident in posts) + pages
+
+    @staticmethod
+    def _mosaic_matches(mosaic, fields):
+        return all(mosaic.get(key) == value or (
+            isinstance(value, (dict, list)) and not value and mosaic.get(key) in ({}, [])
+        ) for key, value in fields.items())
 
     def _update_published_mosaics(self, draft, image_ids):
         from coldsnap_qt import biggie
@@ -1104,39 +1132,50 @@ class SmacktalkPoster:
             revision = origin["revision"]
             snapshot = self.get_mosaic(mosaic_id) or {}
             current = snapshot.get("mosaic") or {}
-            reference_count = (snapshot.get("references") or {}).get("posts")
-            if not current or not isinstance(reference_count, int):
+            other_references = self._other_mosaic_references(snapshot, draft.remote_post_id)
+            if not current or other_references is None:
                 raise RuntimeError(f"The site could not confirm which posts use mosaic {mosaic_id}. Reopen the post.")
             receipt = draft.mosaic_copies.get(str(mosaic_id)) or {}
             expected = {"site": self.base_url, "revision": revision, "definition": desired}
             if all(receipt.get(key) == value for key, value in expected.items()) and receipt.get("id"):
                 copies[mosaic_id] = (receipt["id"], receipt["other_posts"])
                 continue
-            if reference_count > 1:
+            if other_references:
                 if current.get("revision") != revision:
                     raise RuntimeError(f"Mosaic {mosaic_id} changed on the site. Reopen the post before sending.")
                 copies[mosaic_id] = self._copy_published_mosaic(
-                    draft, mosaic_id, origin, expected, reference_count - 1)
+                    draft, mosaic_id, origin, expected, other_references)
                 continue
             if current.get("revision") != revision:
-                if all(current.get(field) == value for field, value in edited.items()):
+                if self._mosaic_matches(current, edited):
                     continue
                 raise RuntimeError(f"Mosaic {mosaic_id} changed on the site. Reopen the post before sending.")
 
-            response = self.session.put(self._route("smackpress/mosaics"),
-                                        params={"id": mosaic_id}, timeout=30,
-                                        json={"revision": revision, "post_id": draft.remote_post_id, **edited})
+            payload = {"revision": revision, "post_id": draft.remote_post_id,
+                       "title": origin.get("title", "Untitled Mosaic"), **desired}
+            for field in ("mosaic_weights", "mosaic_mirrors"):
+                if field not in origin and field not in edited:
+                    payload.pop(field, None)
+            if "focus_positions" in origin:
+                payload["focus_positions"] = {
+                    image_id: point for image_id, point in (origin["focus_positions"] or {}).items()
+                    if int(image_id) in desired["asset_ids"]
+                }
+            if origin.get("emphasis"):
+                payload["emphasis"] = origin["emphasis"]
+            response = self.session.put(self._route(f"smackpress/mosaics/{mosaic_id}"),
+                                        timeout=30, json=payload)
             if response.status_code == 409:
                 # A retry after a successful write can find the requested arrangement
                 # already in place, even if the following post request failed.
                 snapshot = self.get_mosaic(mosaic_id) or {}
                 current = snapshot.get("mosaic") or {}
-                reference_count = (snapshot.get("references") or {}).get("posts") or 0
-                if reference_count > 1 and current.get("revision") == revision:
+                other_references = self._other_mosaic_references(snapshot, draft.remote_post_id)
+                if other_references and current.get("revision") == revision:
                     copies[mosaic_id] = self._copy_published_mosaic(
-                        draft, mosaic_id, origin, expected, reference_count - 1)
+                        draft, mosaic_id, origin, expected, other_references)
                     continue
-                if all(current.get(field) == value for field, value in edited.items()):
+                if self._mosaic_matches(current, edited):
                     continue
                 raise RuntimeError(_resp_msg(
                     response, f"Mosaic {mosaic_id} changed on the site. Reopen the post before sending."))
@@ -1144,9 +1183,8 @@ class SmacktalkPoster:
                 raise RuntimeError(f"This site cannot update mosaic {mosaic_id}. Update its CMS before sending.")
             response.raise_for_status()
             confirmed = response.json().get("mosaic") or {}
-            if confirmed.get("id") != mosaic_id or not all(
-                confirmed.get(field) == value for field, value in edited.items()
-            ):
+            verified = {key: value for key, value in payload.items() if key not in {"revision", "post_id"}}
+            if confirmed.get("id") != mosaic_id or not self._mosaic_matches(confirmed, verified):
                 raise RuntimeError(f"The site did not confirm the changes to mosaic {mosaic_id}.")
         return copies
 
@@ -1734,9 +1772,11 @@ class SmacktalkPoster:
             self._cache_published_post(post_id, data.get("slug"), draft.images, image_ids)
         message = "Updated" if getattr(draft, "remote_post_id", 0) else "Posted"
         if len(mosaic_copies) == 1:
-            other_posts = next(iter(mosaic_copies.values()))[1]
-            message = f"Saved as a new mosaic. The original is still used by {other_posts} other "
-            message += "post." if other_posts == 1 else "posts."
+            other_references = next(iter(mosaic_copies.values()))[1]
+            if other_references == 1:
+                message = "Saved as a new mosaic. The original is still used by another post or page."
+            else:
+                message = f"Saved as a new mosaic. The original is still used by {other_references} other posts or pages."
         elif mosaic_copies:
             message = f"Saved {len(mosaic_copies)} new mosaics. Other posts still use the originals."
         return SyncResult(True, remote_post_id=post_id, message=message,

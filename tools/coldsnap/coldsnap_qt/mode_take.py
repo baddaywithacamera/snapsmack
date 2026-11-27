@@ -439,6 +439,7 @@ def hydrate_site_mosaics(blocks, mosaics, images):
             continue
         snapshot = mosaics.get(block["mosaic_id"], {})
         definition = snapshot.get("mosaic") or {}
+        references = snapshot.get("references") or {}
         ordered_ids = definition.get("asset_ids") or []
         if not definition.get("revision") or not ordered_ids or not all(
             image_id in by_remote_id for image_id in ordered_ids
@@ -462,7 +463,8 @@ def hydrate_site_mosaics(blocks, mosaics, images):
                      for image_id in ordered_ids if str(image_id) in weights},
             mirrors=ranges,
             site_shortcode=block.get("text"),
-            remote_mosaic={**definition, "reference_count": (snapshot.get("references") or {}).get("posts", 0)},
+            remote_mosaic={**definition, "reference_count": references.get("posts", 0) + references.get("pages", 0),
+                           "shared": bool(references.get("shared"))},
         )
         block.pop("label", None)
         block.pop("text", None)
@@ -1961,9 +1963,9 @@ class TakeMode(QWidget):
         layout.addWidget(QLabel(
             "Click photos to include them. Drag in the preview to swap positions. "
             "Right-click a preview photo to rearrange or resize it."))
-        if reference_count > 1:
+        if origin.get("shared") or reference_count > 1:
             layout.addWidget(QLabel(
-                f"This mosaic appears in {reference_count} posts. Edits create a copy for this post."))
+                f"This mosaic appears on {reference_count} posts or pages. Edits create a copy for this post."))
 
         preview = MosaicPreview(content_width=self._preview_width)
         preview.allow_section_mirroring = not bool(origin.get("gallery_shuffle"))
