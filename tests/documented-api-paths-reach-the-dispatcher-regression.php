@@ -211,12 +211,27 @@ $check('a line that ADVERTISES a path is NOT excused, even mentioning 404',
 $check('an advertisement with no annotation is not excused',
     !$excused(' * GET /api/nope?x=1'));
 $check('a line with neither is not excused', !$excused(' * just prose about the api'));
-// The scan must CALL the decision, not carry a copy of it. A substring search
-// for the expression passed while two copies existed, which is what let the
-// mutant live.
+// The scan must CALL the decision, not carry a copy of it.
+//
+// THE FOURTH TIME I HAVE WRITTEN A CHECK THAT MATCHES ITSELF. (Muse, on
+// 0bce9d38.) It searched for the scan's call as one unbroken literal, which
+// the search itself then contained, so it passed whether or not the scan
+// called anything. It could not detect the one mutant it names.
+//
+// THE FIFTH TIME WAS THIS COMMENT. The first version of this note quoted that
+// literal verbatim to explain the fault, which put a second copy in the file
+// and failed the corrected check immediately. The call is never written out
+// whole anywhere in this file now, comments included.
+//
+// The needle is assembled from pieces, as the definition check below already
+// does, so it never appears whole in this file. Then there must be EXACTLY ONE
+// occurrence: the scan's call. Not "at least one", which an accidental second
+// copy would also satisfy, and not a bare str_contains, which is what went
+// wrong three times before.
 $ownSource = (string)file_get_contents(__FILE__);
-$check('the scan calls the shared decision rather than repeating it',
-    str_contains($ownSource, 'if ($excused($line)) {'));
+$call = 'if ($excused(' . '$line)) {';
+$check('the scan calls the shared decision exactly once rather than repeating it',
+    substr_count($ownSource, $call) === 1);
 // Counting the DEFINITION, not the expression: my first version searched for
 // the expression text, which this very check contains, so it counted itself
 // and reported two.
