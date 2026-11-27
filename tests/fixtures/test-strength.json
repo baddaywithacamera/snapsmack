@@ -1664,6 +1664,16 @@
             15728640
         ]
     },
+    "media-usage-enumeration-regression.php": {
+        "assertions": 35,
+        "predicates": 21,
+        "thresholds": [
+            15,
+            25,
+            29,
+            90
+        ]
+    },
     "medium-thumb-column-and-size-regression.php": {
         "assertions": 12,
         "predicates": 7,
