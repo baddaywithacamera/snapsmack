@@ -2422,6 +2422,17 @@
         "predicates": 3,
         "thresholds": []
     },
+    "signature-contract-four-states-regression.php": {
+        "assertions": 41,
+        "predicates": 10,
+        "thresholds": [
+            9,
+            9,
+            11,
+            42,
+            42
+        ]
+    },
     "site-mode-guard-regression.php": {
         "assertions": 2,
         "predicates": 29,
