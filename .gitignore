@@ -282,3 +282,11 @@ outputs/oh-snap-*/
 # use, and the whole point is that it is NOT a database value and NOT shipped.
 # Committing it would hand every site the same signing authority.
 core/enrollment-key.php
+
+# SYBU/COLD SNAP write these at RUNTIME to record that the gemini prompts moved
+# to shared_library/prompts (tools/sybu/config.py, tools/coldsnap/config.py).
+# They are 50-byte markers, not anybody's work, and they have shown up in
+# git status in every checkout since 24 November. Noise in git status is how
+# real uncommitted work gets missed. Approved by the PM, 2026-11-27.
+tools/sybu/.prompts_migrated_to_shared
+tools/sybu/gemini_prompts.json.migrated

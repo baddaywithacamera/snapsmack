@@ -112,23 +112,58 @@ if ($default_output === null || trim($default_output) === '') {
         }
     }
     // WITHOUT GIT the plain sibling can still be inside the repository: from a
-    // worktree it is .claude/worktrees. Muse's condition on f9e76bdc. The
-    // fallback therefore climbs out of any .claude, worktrees or .git segment
-    // before taking a sibling.
+    // worktree it is .claude/worktrees. Muse's condition on f9e76bdc.
+    //
+    // THE FIRST FALLBACK CLIMBED BY DIRECTORY NAME AND HAD NO FLOOR. It walked
+    // up while the current or parent directory was called .claude, worktrees
+    // or .git. Measured against real paths, that breaks on a checkout which
+    // simply LIVES under a folder of that name -- a repository at
+    // C:/dev/worktrees/snapsmack was climbed straight past, out of the
+    // checkout, and produced "C:\/dev-builds": the wrong directory AND a
+    // malformed path, because dirname() at a drive root returns "C:\" and the
+    // concatenation mixed separators. C:/worktrees became "C:\/C-builds". That
+    // is the D-gate's nested no-git blocker.
+    //
+    // SO IT NO LONGER GUESSES FROM NAMES. What the climb always MEANT was "the
+    // outermost SnapSmack checkout on this path" -- a worktree lives inside
+    // the main repository, so the main repository is an ancestor of it. That
+    // is directly checkable, needs no list of magic directory names, and has a
+    // natural floor: the ancestor chain ends. A path that is under a folder
+    // called worktrees but is not inside another checkout now stays where it
+    // is, which is the correct answer and was not reachable before.
+    // THE MARKER IS MEASURED, NOT ASSUMED. My first version used core/db.php,
+    // which is wrong: that file is GENERATED at install time with the site's
+    // credentials and is not in the repository at all, so nothing on the
+    // ancestor chain matched and the no-git default came out INSIDE the
+    // worktree -- worse than the fault I was fixing. I caught it by running
+    // the real packager rather than reading my own change. skins/, core/ and
+    // index.php are all tracked and all present on an unpacked install.
+    $looks_like_checkout = static function (string $dir): bool {
+        return is_dir($dir . '/skins') && is_dir($dir . '/core')
+            && is_file($dir . '/index.php');
+    };
     $base = $main_root;
     if ($base === null) {
         $base = $project_root;
+        $probe = $project_root;
         $climb = 0;
-        while ($climb++ < 20) {
-            if (in_array(basename($base), ['.claude', 'worktrees', '.git'], true)
-                || in_array(basename(dirname($base)), ['.claude', 'worktrees', '.git'], true)) {
-                $base = dirname($base);
-                continue;
-            }
-            break;
+        while ($climb++ < 40) {
+            if ($looks_like_checkout($probe)) { $base = $probe; }  // keep the HIGHEST
+            $parent = dirname($probe);
+            if ($parent === $probe) { break; }   // filesystem root: the floor
+            $probe = $parent;
         }
     }
-    $default_output = dirname($base) . '/' . basename($base) . '-builds';
+    // ONE SEPARATOR STYLE, AND THE PARENT NORMALISED BEFORE IT IS JOINED.
+    // dirname() returns "C:\" at a Windows drive root, so joining it raw gave
+    // "C:\/worktrees-builds" for a checkout sitting directly under the root.
+    // Normalising only the finished string turned that into a double slash
+    // instead, which is tidier and still wrong. The parent is normalised and
+    // its trailing slash removed BEFORE the join, so the root case comes out
+    // as "C:/worktrees-builds".
+    $base   = rtrim(str_replace('\\', '/', $base), '/');
+    $parent = rtrim(str_replace('\\', '/', dirname($base)), '/');
+    $default_output = $parent . '/' . basename($base) . '-builds';
 }
 $output_dir = $args['output'] ?? $default_output;
 

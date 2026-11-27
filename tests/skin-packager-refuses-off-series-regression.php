@@ -441,6 +441,68 @@ if (preg_match('~default is (.+?)\.?$~m', $output, $m) === 1) {
     $check('the no-git run states its default output directory', false);
 }
 
+// ---------------------------------------------------------------------------
+// THE D-GATE BLOCKER: THE CLIMB HAD NO FLOOR. (SS-1600D, reported by Codex as
+// the nested no-git fallback.)
+//
+// The first fallback walked up while the current or parent directory was
+// CALLED .claude, worktrees or .git. Measured against real paths, that breaks
+// on a checkout which merely LIVES under a folder of that name: a repository
+// at C:/dev/worktrees/snapsmack was climbed straight past, out of the
+// checkout, and produced "C:\/dev-builds" -- the wrong directory AND a
+// malformed path, because dirname() returns "C:\" at a drive root. C:/worktrees
+// became "C:\/C-builds". Nesting was never the fault; the missing floor was.
+//
+// It no longer guesses from names. What the climb always MEANT is "the
+// outermost SnapSmack checkout on this path", which is directly checkable and
+// ends when the ancestor chain does.
+//
+// These drive the SHIPPED resolution by reading it out of the packager and
+// running it, rather than re-implementing it here -- a local copy would pass
+// while the tool stayed broken, which is the mistake this file has already
+// been corrected for once.
+$packagerSrc = (string)file_get_contents($root . '/tools/_build/package-skin.php');
+$check('the resolution no longer climbs by directory NAME',
+    !str_contains($packagerSrc, "['.claude', 'worktrees', '.git']"));
+$check('it identifies a checkout by its tracked contents instead',
+    str_contains($packagerSrc, "is_dir(\$dir . '/skins')")
+    && str_contains($packagerSrc, "is_file(\$dir . '/index.php')"));
+// COMMENTS ARE NOT CODE, and this is the second time today I have had to say
+// so in a check of mine. The packager EXPLAINS the core/db.php mistake in a
+// comment, quoting the path, so a substring search over the whole file cannot
+// tell the explanation from the thing. Line comments are stripped first, which
+// lets the record of the mistake stay where the next reader will find it.
+$packagerCode = preg_replace('~^\s*(?://|\*|/\*).*$~m', '', $packagerSrc) ?? $packagerSrc;
+$check('and NOT by core/db.php, which is generated at install and not in the repo',
+    !str_contains($packagerCode, "core/db.php"));
+$check('while the comment still records why that marker was wrong',
+    str_contains($packagerSrc, "core/db.php"));
+$check('the parent is normalised BEFORE the join, so a drive root cannot mix separators',
+    str_contains($packagerSrc, "rtrim(str_replace('\\\\', '/', dirname(\$base)), '/')"));
+// SOURCE ONLY, AND DECLARED UNOBSERVABLE. The loop also breaks when the parent
+// equals the directory, which is the filesystem root. Mutation proof showed
+// removing that break changes no answer: the walk is capped at 40 steps and
+// $base is only ever assigned when a checkout is found, so a saturating
+// dirname() merely wastes iterations. It is kept for clarity and because the
+// cap should not be what stops it, and it is held as a source check rather
+// than pretended to be a behaviour one.
+$check('SOURCE ONLY: the walk stops at the filesystem root rather than relying on the cap',
+    str_contains($packagerSrc, 'if ($parent === $probe) { break; }'));
+
+// The two defaults must AGREE. With git and without it, from this nested
+// worktree, the answer is the same directory -- that is the whole point of the
+// fallback, and the version that broke produced different answers.
+[$code, $output] = $withoutGit(['tilez', '--output=' . $root]);
+if (preg_match('~default is (.+?)\.?$~m', $output, $m) === 1) {
+    $noGitAgain = rtrim(str_replace(chr(92), '/', trim($m[1], " .\t\r\n")), '/');
+    $check('WITH GIT AND WITHOUT IT, the default is the SAME directory: ' . $noGitAgain,
+        $withGitDefault !== '' && rtrim($withGitDefault, '/') === $noGitAgain);
+    $check('and it carries no doubled slash', !str_contains($noGitAgain, '//'));
+    $check('and no backslash survived', !str_contains($noGitAgain, chr(92)));
+} else {
+    $check('the no-git run states its default for the agreement check', false);
+}
+
 // And it must still WORK without git, not merely refuse: a real site owner
 // unpacking a zip has no repository and still needs to package a skin.
 $noGitOut = $out . '-nogit';
