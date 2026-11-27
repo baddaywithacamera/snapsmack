@@ -157,6 +157,36 @@ $check('an unchanged row carries no epoch and keeps its version',
 $check('every row says why', $byName['tilez']['why'] !== '' && $byName['impact-printer']['why'] !== '');
 
 // ---------------------------------------------------------------------------
+// THE BUILD LETTER. Every core release is 0.7.1007D, and the first version of
+// this gate refused that outright as "not three numbers" -- so wiring the gate
+// to core would have refused every core release. Muse flagged it as cosmetic
+// on 8faa5eab; it was not.
+// ---------------------------------------------------------------------------
+$check('the core version format 0.7.1007D is in series',
+    snap_version_series_problem('0.7.1007D') === '');
+$check('0.7.1008D may follow 0.7.1007D',
+    snap_version_step_problem('0.7.1008D', '0.7.1007D') === '');
+$check('the expected next version keeps the build letter',
+    str_contains(snap_version_step_problem('0.7.1009D', '0.7.1007D'), '0.7.1008D'));
+$check('dropping the build letter is refused',
+    snap_version_step_problem('0.7.1008', '0.7.1007D') !== '');
+$check('adding a build letter is refused',
+    snap_version_step_problem('0.7.32D', '0.7.31') !== '');
+$check('the build letter is reported',
+    snap_version_build_letter('0.7.1007D') === 'D'
+    && snap_version_build_letter('0.7.31') === '');
+$check('a build letter survives a re-baseline',
+    snap_version_rebaseline('1.2.3D') === '0.7.4D');
+$check('an off-series version with a letter is still refused',
+    snap_version_series_problem('1.2.3D') !== '');
+// Muse's note (b): the message named an empty version when the last published
+// one could not be read. Fail closed AND legibly.
+$unreadable = snap_version_step_problem('0.7.31', 'not-a-version');
+$check('an unreadable last-published version is refused', $unreadable !== '');
+$check('and the refusal does not name an empty version',
+    !str_contains($unreadable, "'' ") && stripos($unreadable, 'cannot be read') !== false);
+
+// ---------------------------------------------------------------------------
 // AGAINST THE REAL FLEET: every skin in the build must land in series.
 // ---------------------------------------------------------------------------
 $manifests = glob(dirname(__DIR__) . '/skins/*/manifest.json') ?: [];

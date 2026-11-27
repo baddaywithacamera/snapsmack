@@ -19,9 +19,15 @@ declare(strict_types=1);
  * version numbers.
  *
  * TWO RULES, both enforced here and nowhere else, so there is one spelling:
- *   1. SERIES. major.minor must be exactly 0.7.
+ *   1. SERIES. the version must be UNDER 0.8 -- major 0, minor at most 7.
+ *      Not "exactly 0.7": Sean's mapping says the skins already below 0.8 keep
+ *      their numbers and names TILEZ, GLIDE, SCROLL, ONYX and TELEGRAM among
+ *      them, so 0.1.x and 0.2.x are correct as they stand. Demanding 0.7 would
+ *      force a re-baseline he explicitly said not to do. His one condition is
+ *      the invariant: everything under 1.0, nothing at 0.8 or above.
  *   2. STEP. a published version must be exactly the last published one plus
- *      one on the patch. No jumps, no re-publishing the same number.
+ *      one on the patch, with the series unchanged. No jumps, no re-publishing
+ *      the same number. TILEZ 0.2.79 publishes 0.2.80, not 0.7.80.
  *
  * AND THE MAPPING, which is a one-time move Sean delegated with one condition,
  * everything stays under 1.0:
@@ -53,10 +59,26 @@ const SNAP_VERSION_EPOCH = 1;
 function snap_version_parts(string $version): ?array
 {
     $version = trim($version);
-    if (preg_match('/^(\d+)\.(\d+)\.(\d+)$/', $version, $m) !== 1) {
+    // THE BUILD LETTER IS PART OF THE FORMAT. Every core release is
+    // 0.7.1007D -- D for dev -- and the first version of this gate refused it
+    // outright as "not three numbers". Muse flagged it as cosmetic; it is not.
+    // The PM asked for this gate to cover core as well as skins, so a gate
+    // that refuses the core's own format would have refused every core release
+    // the moment it was wired in.
+    // ONLY 'D'. Any letter would also accept the pre-0.7.17 legacy scheme
+    // (0.7.9P, 0.7.9N), which is not a format anything may publish today --
+    // my own test caught that the moment the letter was allowed at all.
+    if (preg_match('/^(\d+)\.(\d+)\.(\d+)([Dd])?$/', $version, $m) !== 1) {
         return null;
     }
-    return [(int)$m[1], (int)$m[2], (int)$m[3]];
+    return [(int)$m[1], (int)$m[2], (int)$m[3], strtoupper($m[4] ?? '')];
+}
+
+/** The build letter of a version ('D' for a dev release), or '' if it has none. */
+function snap_version_build_letter(string $version): string
+{
+    $parts = snap_version_parts($version);
+    return $parts === null ? '' : (string)($parts[3] ?? '');
 }
 
 /**
@@ -70,8 +92,10 @@ function snap_version_series_problem(string $version): string
 {
     $parts = snap_version_parts($version);
     if ($parts === null) {
-        return "version '" . trim($version) . "' is not three numbers like 0.7.31. "
-            . 'Status words such as beta or stable are labels, never version numbers.';
+        return "version '" . trim($version) . "' is not three numbers like 0.7.31, "
+            . 'optionally with a D for a dev build like 0.7.1007D. Status words such as beta '
+            . 'or stable are labels, never version numbers, and the pre-0.7.17 letter scheme '
+            . '(0.7.9P) is not publishable.';
     }
     [$major, $minor] = $parts;
     // UNDER 0.8, not "exactly 0.7". My first version of this gate demanded
@@ -117,7 +141,15 @@ function snap_version_step_problem(string $version, string $last_published): str
     // -- found by its own test rather than by reading it.
     if ($last === null || snap_version_series_problem($last_published) !== '') {
         $expected = snap_version_rebaseline($last_published);
-        if ($expected === null || $version !== $expected) {
+        if ($expected === null) {
+            // Nothing can be derived from a version this gate cannot read, so
+            // it says so rather than naming an empty version -- Muse's note on
+            // 8faa5eab. Fail closed, and legibly.
+            return "the last published version '{$last_published}' cannot be read as a version, so "
+                . 'the next one cannot be derived. State the last published version as three '
+                . 'numbers, optionally with a build letter, such as 0.7.1007D.';
+        }
+        if ($version !== $expected) {
             return "the last published version was '{$last_published}', which is at 0.8 or above, "
                 . "so the only version that may follow it is '" . (string)$expected . "' "
                 . '(its patch plus one, on ' . SNAP_VERSION_SERIES . '), and that release carries '
@@ -128,14 +160,20 @@ function snap_version_step_problem(string $version, string $last_published): str
     }
     // In series: the same major.minor, one more on the patch. TILEZ 0.2.79
     // publishes 0.2.80, not 0.7.80 -- its number is already correct.
+    // The expected next number keeps the build letter: after 0.7.1007D comes
+    // 0.7.1008D, not 0.7.1008.
+    $expected_next = $last[0] . '.' . $last[1] . '.' . ($last[2] + 1) . (string)($last[3] ?? '');
     if ($next[0] !== $last[0] || $next[1] !== $last[1]) {
         return "version '{$version}' changes the series from '{$last_published}'. A publish moves "
-            . 'the patch only, so the next is ' . $last[0] . '.' . $last[1] . '.' . ($last[2] + 1) . '.';
+            . "the patch only, so the next is {$expected_next}.";
     }
     if ($next[2] !== $last[2] + 1) {
         return "version '{$version}' does not follow '{$last_published}': a published version is "
-            . 'exactly the last published one plus one on the patch, so the next is '
-            . $last[0] . '.' . $last[1] . '.' . ($last[2] + 1) . '.';
+            . "exactly the last published one plus one on the patch, so the next is {$expected_next}.";
+    }
+    if ((string)($next[3] ?? '') !== (string)($last[3] ?? '')) {
+        return "version '{$version}' changes the build letter from '{$last_published}'. A dev "
+            . "release follows a dev release, so the next is {$expected_next}.";
     }
     return '';
 }
@@ -158,7 +196,8 @@ function snap_version_rebaseline(string $version): ?string
     if ($major === 0 && $minor < 8) {
         return null;   // already under 0.8: Sean's rule is that it keeps its number
     }
-    return SNAP_VERSION_SERIES . '.' . ($patch + 1);
+    // The build letter survives the move: 1.2.3D re-baselines to 0.7.4D.
+    return SNAP_VERSION_SERIES . '.' . ($patch + 1) . (string)($parts[3] ?? '');
 }
 
 /** Does this version need re-baselining at all? */

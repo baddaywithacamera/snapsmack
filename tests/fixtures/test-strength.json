@@ -3286,8 +3286,8 @@
         "thresholds": []
     },
     "version-series-gate-regression.php": {
-        "assertions": 45,
-        "predicates": 5,
+        "assertions": 55,
+        "predicates": 8,
         "thresholds": [
             2,
             30
