@@ -333,6 +333,8 @@ class _Objects(QPyTextObject):
         if kind == "image":
             _iw, ih, _align, _cap_text, cap_h = self._image_box_metrics(data, w)
             return QSizeF(w, ih + 4 + cap_h)
+        if kind == "signature":
+            return QSizeF(w, 82)
         if kind == "spacer":
             return QSizeF(w, max(6, min(100, int(data.get("px", 20)))) + 2)
         if kind in ("site_mosaic", "site_raw"):
@@ -352,6 +354,8 @@ class _Objects(QPyTextObject):
             self._draw_mosaic(painter, r, data, pos)
         elif kind == "image":
             self._draw_image(painter, r, data)
+        elif kind == "signature":
+            self._draw_signature(painter, r, data)
         elif kind in ("site_mosaic", "site_raw"):
             outline, text = self._placeholder_colors()
             painter.setPen(QPen(QColor(outline), 1, Qt.DashLine))
@@ -371,6 +375,27 @@ class _Objects(QPyTextObject):
             y = r.top() + r.height() // 2
             painter.drawLine(r.left(), y, r.right(), y)
         painter.restore()
+
+    def _draw_signature(self, painter, rect, data):
+        block = biggie.signature_block_normalise(data)
+        pixmap = None
+        if block["mode"] != "off":
+            light = self.canvas.palette().color(QPalette.Base).lightness() >= 128
+            primary = "light_image_id" if light else "dark_image_id"
+            image_id = block[primary] or self.canvas.signature_default()
+            if image_id:
+                pixmap = self.canvas.image_pixmap(str(image_id), 240)
+        if pixmap is not None and not pixmap.isNull():
+            scaled = pixmap.scaled(min(rect.width() - 8, 240), rect.height() - 8,
+                                   Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            painter.drawPixmap(rect.left() + 4, rect.top() + 4, scaled)
+            return
+        outline, text = self._placeholder_colors()
+        painter.setPen(QPen(QColor(outline), 1, Qt.DashLine))
+        painter.drawRect(rect.adjusted(0, 1, -1, -2))
+        painter.setPen(QColor(text))
+        label = "Signature off" if block["mode"] == "off" else "Signature preview unavailable"
+        painter.drawText(rect.adjusted(8, 0, -8, 0), Qt.AlignVCenter, label)
 
     def _placeholder_colors(self):
         """Return (outline_hex, text_hex) contrasting with the canvas page background."""
@@ -848,6 +873,7 @@ class BiggieCanvas(QTextEdit):
         self._image_resize_handle = None
         self._image_resize_drag = None
         self._image_resolver = None      # callable(img_id, width) -> QPixmap|None
+        self.signature_default = lambda: 0
         self._site_provider = None       # callable() -> site url; unlocks the gallery picker
         self._pending_obj_pos = None     # document position of a mosaic being edited
         self._guard = False
@@ -1530,6 +1556,11 @@ class BiggieCanvas(QTextEdit):
         self.setCurrentCharFormat(self._char_format_for(_block_kind(cur.block())))
         self.setFocus()
 
+    def insert_signature(self):
+        data = biggie.signature_block_normalise({})
+        data.pop("type")
+        self._insert_object("signature", data)
+
     def insert_mosaic(self, order, layout: str, *, position: str = "after", weights=None, mirrors=()):
         payload = {"order": list(order), "layout": str(layout)}
         if weights:
@@ -2039,7 +2070,7 @@ class BiggieCanvas(QTextEdit):
                 menu.addAction("Edit caption…", lambda p=pos: self._prompt_image_caption(p))
             elif kind == "spacer":
                 menu.addAction("Change the gap…", lambda: self._edit_spacer(hit))
-            if kind in ("image", "mosaic"):
+            if kind in ("image", "mosaic", "signature"):
                 earlier = menu.addAction("Move earlier", lambda: self._move_object(pos, -1))
                 later = menu.addAction("Move later", lambda: self._move_object(pos, 1))
                 earlier.setEnabled(self._can_move_object(pos, -1))
@@ -2545,10 +2576,12 @@ class BiggieCanvas(QTextEdit):
                     cur.insertBlock()
                     lst.add(cur.block())
                 self._insert_link_text(cur, item, "para")
-        elif t in ("image", "spacer", "hr", "mosaic", "site_mosaic", "site_raw"):
+        elif t in ("image", "spacer", "hr", "mosaic", "site_mosaic", "site_raw", "signature"):
             fmt = QTextCharFormat()
             fmt.setObjectType(OBJ_TYPE)
             fmt.setProperty(PROP_KIND, t)
+            if t == "signature":
+                b = biggie.signature_block_normalise(b)
             data = {k: v for k, v in b.items() if k != "type"}
             if t == "mosaic" and not self.allow_mosaic:
                 cur.setBlockFormat(self._block_format_for("raw"))
@@ -2700,6 +2733,8 @@ def _export_block(block, nested: bool = False) -> list:
                         if key in data:
                             image[key] = data[key]
                     out.append(image)
+                elif okind == "signature":
+                    out.append(biggie.signature_block_normalise(data))
                 elif okind == "spacer":
                     out.append({"type": "spacer", "px": int(data.get("px", 20))})
                 elif okind == "hr":
