@@ -55,6 +55,18 @@ def test_visual_edge_drag_updates_existing_width_and_keeps_decorative():
     QTest.mouseMove(canvas.viewport(), end)
     QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=end)
     assert canvas.body_text() == "[img:5|60%|decorative]"
+
+    canvas.from_blocks(biggie.parse_body("[img:5|100|decorative]"))
+    canvas.select_block_at(0)
+    app.processEvents()
+    rect, _, initial, column_width, _ = canvas._image_resize_handle
+    assert initial == 100
+    assert canvas.viewport().rect().contains(rect)
+    start = rect.center()
+    end = start - QPoint(round(column_width * .1), 0)
+    QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=start)
+    QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=end)
+    assert canvas.body_text() == "[img:5|80|decorative]"
     canvas.close()
 
 

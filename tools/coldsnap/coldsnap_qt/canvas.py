@@ -1875,7 +1875,9 @@ class BiggieCanvas(QTextEdit):
         left = block.left()
         x = left if align == "left" else left + round((width - image_width) * scale * (.5 if align == "center" else 1))
         edge = x if align == "right" else x + round(image_width * scale) - 1
-        handle = QRect(max(0, edge - 6), block.center().y() - 11, 13, 22)
+        handle_width = 16
+        handle_left = min(self.viewport().width() - handle_width, edge - 6)
+        handle = QRect(max(0, handle_left), block.center().y() - 11, handle_width, 22)
         initial = biggie.image_width_percent(data) or round(100 * image_width / width)
         self._image_resize_handle = (handle, position, initial, width * scale, align)
         painter.fillRect(handle, QColor(theme.ACCENT))
