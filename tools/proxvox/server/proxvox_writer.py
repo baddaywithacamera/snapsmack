@@ -542,7 +542,7 @@ def _put_container(vmid, path, content, dry_run, expected=None, require_live_ses
 
 # Who may authorise a write. A ticket for any other user is refused even when
 # the ticket itself is perfectly valid.
-OWNER_USERS = ("root@pam", "sean@pam")
+OWNER_USERS = ("root@pam", "sean@pam", "proxvox@pve")
 
 # A grant may not be minted further ahead than this, however far the caller
 # asks. Without a cap, "expires" is decoration.
@@ -1419,6 +1419,7 @@ def dispatch(command):
             "maintenance": sorted(MAINTENANCE),
             "attested_maintenance": ["chmod", "chown", "reload", "restart", "status"],
             "attested_database": ["row-update"],
+            "owner_users": list(OWNER_USERS),
             "max_write_bytes": MAX_WRITE_BYTES,
             "note": "Without a live owner session, only listed paths can be rehearsed. "
                     "With host-witnessed TOTP and an operation nonce, the file writer supports "

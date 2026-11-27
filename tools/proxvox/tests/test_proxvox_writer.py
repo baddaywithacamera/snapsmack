@@ -1099,4 +1099,37 @@ def test_attested_maintenance_binds_command_and_audits_before_mutation(w, monkey
     assert ticket not in repr(audit) and nonce not in repr(audit)
 
 
+def test_dedicated_pve_account_still_needs_host_attested_totp(tmp_path, monkeypatch):
+    from contextlib import closing
+    from urllib.parse import parse_qs
+    import urllib.request
+
+    w = _load()
+    monkeypatch.setattr(w, "WRITE_SESSIONS", str(tmp_path / "sessions"))
+    challenge = "PVE:!tfa!dedicated-fixture"
+    ticket = "PVE:proxvox@pve:owner-fixture"
+    seen = []
+
+    class LocalPve:
+        def open(self, request, timeout):
+            seen.append(parse_qs(request.data.decode("ascii")))
+            response = io.BytesIO(json.dumps({"data": {
+                "username": "proxvox@pve", "ticket": ticket, "CSRFPreventionToken": "fixture",
+            }}).encode())
+            response.status = 200
+            return closing(response)
+
+    monkeypatch.setattr(w, "_pve_ssl_context", lambda: object())
+    monkeypatch.setattr(urllib.request, "build_opener", lambda *args: LocalPve())
+    monkeypatch.setattr(urllib.request, "HTTPSHandler", lambda **kwargs: object())
+    with pytest.raises(w.Refused, match="fresh Proxmox"):
+        w._start_write_session("proxvox@pve", {"challenge": ticket, "code": "012345"})
+    result = w._start_write_session("proxvox@pve", {"challenge": challenge, "code": "012345"})
+    assert result["ticket"] == ticket
+    assert seen == [{"username": ["proxvox@pve"], "tfa-challenge": [challenge], "password": ["totp:012345"]}]
+    assert w._check_write_session("proxvox@pve", ticket) == result["expires_at"]
+    with pytest.raises(w.Refused, match="belongs to another"):
+        w._check_write_session("sean@pam", ticket)
+
+
 # ===== SNAPSMACK EOF =====
