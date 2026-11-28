@@ -138,8 +138,8 @@
             "manifest_css_sha256": "eab3f387f9f5546c00035c537a1bb0049f1003da547e89505cdde320f23fb01e"
         },
         "tilez": {
-            "version": "0.2.79",
-            "files_sha256": "c8afa502734d44cc37737fd86aabade4c6496f56f08d925a9b44538581f775da",
+            "version": "0.2.80",
+            "files_sha256": "65b156d56ab022cb52ee33235bd02e0341a950b7f533cc012577057b6d159b80",
             "manifest_css_sha256": "938bc3dfc24b1e28cdc1c6f8c053edd08aeb64dd220d130dd6d402b2a47ed1a6"
         },
         "true-grit": {
