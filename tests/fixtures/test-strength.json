@@ -995,8 +995,6 @@
         "assertions": 13,
         "predicates": 5,
         "thresholds": [
-            647,
-            664,
             3650,
             86400,
             86400,

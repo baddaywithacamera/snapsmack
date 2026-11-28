@@ -12,8 +12,12 @@ declare(strict_types=1);
  * img_date_posted from the Flickr export's date_imported. Measured across the
  * whole of Sean's export, 9,912 records:
  *
- *   posted at least a DAY after taken        3,647   <- the real publications
- *   posted BEFORE taken                      4,664   <- cannot be true
+ *   posted at least a DAY after taken        3,647   the real publications
+ *   posted BEFORE taken                      4,664   cannot be true
+ *
+ * (those two lines once ended in an ASCII arrow. The strength gate reads a
+ * bare < as a comparison, so '<- the real publications' recorded 647 and 664
+ * as numbers this file holds the code to. They held nothing. Muse's nit.)
  *   commonest signed offset                 -1.00 h  on 4,164 records
  *
  * The export's date_imported carries a timezone artifact, and for 47% of the
