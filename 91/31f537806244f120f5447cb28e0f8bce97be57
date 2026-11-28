@@ -17,7 +17,7 @@
   "fleet_before_manifest_sha256": "055ad92b2acb43e0e5e1101e33c1d99c9eadaed73d492d40b00f1ceb68f77ecb",
   "demo_parity": "pass",
   "demo_parity_checked_by": "Codex",
-  "demo_parity_checked_at": "2026-11-28T06:38:29.731638+00:00",
+  "demo_parity_checked_at": "2026-11-28T00:38:29.731638-06:00",
   "demo_parity_record_sha256": "ca610bc2d2f40b6161a9b007669f8b6d9db09d9fcbccc64dabd392a867ad04ad",
   "demo_parity_features": [
     {
@@ -52,5 +52,53 @@
       "evidence": "Reproduced on unchanged shared checkout; gate source and hooks byte-identical to origin dev."
     }
   ],
-  "candidate_package_sha256": "5099fb002e934c6a1a24e8cfe292316d03178266bd7d2c66c963cd7e909d83e8"
+  "candidate_package_sha256": "5099fb002e934c6a1a24e8cfe292316d03178266bd7d2c66c963cd7e909d83e8",
+  "dev_gate": {
+    "commit": "9131f537806244f120f5447cb28e0f8bce97be57",
+    "security": "pass",
+    "tests": "pass",
+    "code_review": "pass",
+    "authority_review": "approved",
+    "reviewer": "Muse",
+    "review_reference": "Brain Trust 9016, 9035, and 9066. PM approved release scope in 9081.",
+    "test_reference": "Candidate PHP 512 pass with two PM-approved exclusions (9065); required browser suite PASS; signed hand update receipts from 1009D and repaired 1007D PASS.",
+    "skin_baseline": "2d2eab24240c0a987d86fd82eccbd1b8c6d0ff03",
+    "skin_evidence": {},
+    "demo_parity": "pass",
+    "demo_parity_checked_by": "Codex",
+    "demo_parity_checked_at": "2026-11-28T00:38:29.731638-06:00",
+    "demo_parity_record_sha256": "ca610bc2d2f40b6161a9b007669f8b6d9db09d9fcbccc64dabd392a867ad04ad",
+    "demo_parity_features": [
+      {
+        "ticket": "SS-1589",
+        "site": "Local CMS navigation fixture (PhotoFri.day)",
+        "room_message_id": "jdHdXxpngsv-Wiiob-EfEFVY",
+        "capture_count": 1
+      },
+      {
+        "ticket": "SS-1641",
+        "site": "Loopback PHP and MariaDB, canonical schema",
+        "room_message_id": "G9CBNOJsALKpRRMeWqUcRX4a",
+        "capture_count": 1
+      },
+      {
+        "ticket": "SS-1610",
+        "site": "Local strict-render fixture using TILEZ (Bad Day)",
+        "room_message_id": "XJcapma0IVW862BFbMjMbH4_",
+        "capture_count": 2
+      }
+    ],
+    "php_exclusions": [
+      {
+        "test": "smackpress-keeps-albums-it-was-not-told-about-regression.php",
+        "status": "skip",
+        "alternate_evidence": "Real PHP HTTP and MariaDB with all five cases, room 9038"
+      },
+      {
+        "test": "git-hook-behaviour-regression.php",
+        "status": "baseline_failure",
+        "evidence": "Reproduced on unchanged shared checkout; gate source and hooks byte-identical to origin dev."
+      }
+    ]
+  }
 }
