@@ -142,7 +142,7 @@ def take_composer_checks(mode, files, *, check_renderer=False):
     from PySide6.QtCore import QPoint, QPointF, Qt
     from PySide6.QtGui import QDragEnterEvent, QDropEvent, QMouseEvent
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu
+    from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu, QPushButton
 
     import sumna_offline as O
     from coldsnap_qt import biggie, photo_tray
@@ -328,7 +328,17 @@ def take_composer_checks(mode, files, *, check_renderer=False):
             stack.enter_context(_replace_for_fixture(
                 connect_panel, "verify_site_mode", lambda *args: True,
             ))
-            mode._configure_signature()
+            signature_settings = mode.findChild(QPushButton, "BlogSignatureSettings")
+            previous_details = mode.details_open()
+            mode.set_details_open(False)
+            hidden = not signature_settings.isVisibleTo(mode)
+            mode.set_details_open(True)
+            results["signature_settings_outside_essay"] = (
+                mode.page_card.findChild(QPushButton, "BlogSignatureSettings") is None
+                and hidden and signature_settings.isVisibleTo(mode)
+            )
+            signature_settings.click()
+            mode.set_details_open(previous_details)
             poster, _ = mode._poster_and_url()
             results["signature_block_in_visual_tray"] = any(
                 action.tag == "SIG" for action in mode._visual_block_actions()

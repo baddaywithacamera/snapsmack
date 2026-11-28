@@ -333,6 +333,31 @@ class SumnaConnection:
         data = r.json()
         return data if isinstance(data, dict) else {}
 
+    def gallery_file(self, image_id: int) -> str:
+        """Find one image in the existing Gallery listing, ordered by descending ID."""
+        first = last = 1
+        while first <= last:
+            page = (first + last) // 2
+            reply = self.session.get(f"{self.base_url}/sybu-images.php",
+                                     params={"page": page, "per": 200},
+                                     timeout=15, allow_redirects=False)
+            _raise_authorization(reply, "api")
+            reply.raise_for_status()
+            data = reply.json()
+            if page == 1:
+                last = max(1, (int(data.get("total", 0)) + 199) // 200)
+            rows = data.get("images") or []
+            if not rows:
+                return ""
+            if int(rows[-1]["id"]) > image_id:
+                first = page + 1
+            elif int(rows[0]["id"]) < image_id:
+                last = page - 1
+            else:
+                return next((str(row.get("file") or "") for row in rows
+                             if int(row["id"]) == image_id), "")
+        return ""
+
     # -- site mode probe ----------------------------------------------------
     def probe_site_mode(self, timeout: int = 12) -> Tuple[str, bool, str]:
         """

@@ -387,6 +387,9 @@ class _Objects(QPyTextObject):
             image_id = block[primary] or self.canvas.signature_default()
             if image_id:
                 pixmap = self.canvas.image_pixmap(str(image_id), 240)
+                if pixmap is None or pixmap.isNull():
+                    path = self.canvas.signature_preview_path(image_id)
+                    pixmap = self._cached_cell_pixmap(path, QSize(240, 240))
         if pixmap is not None and not pixmap.isNull():
             scaled = pixmap.scaled(min(rect.width() - 8, 240), rect.height() - 8,
                                    Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -891,6 +894,7 @@ class BiggieCanvas(QTextEdit):
         self._gallery_paths = {}
         self._galleryPathsReady.connect(self._apply_gallery_paths)
         self.signature_default = lambda: 0
+        self.signature_preview_path = lambda _image_id: ""
         self._site_provider = None       # callable() -> site url; unlocks the gallery picker
         self._pending_obj_pos = None     # document position of a mosaic being edited
         self._guard = False

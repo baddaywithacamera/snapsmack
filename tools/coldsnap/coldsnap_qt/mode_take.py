@@ -18,13 +18,14 @@ import traceback
 import threading
 import uuid
 from pathlib import Path
+from urllib.parse import quote
 
 import requests
 
 from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 from PySide6.QtCore import QObject, Qt, QDate, QEvent, QEventLoop, QMetaObject, QRect, QRegularExpression, QSize, Signal, Slot, QTimer, QSettings
-from PySide6.QtGui import QTextCursor, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
+from PySide6.QtGui import QTextCursor, QTextDocumentFragment, QPainter, QPixmap, QColor, QPen, QIcon, QKeySequence, QShortcut, QFont
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QLabel, QLineEdit, QPlainTextEdit,
     QComboBox, QPushButton, QFileDialog, QMessageBox, QProgressDialog, QScrollArea, QFrame,
@@ -39,7 +40,7 @@ import published_photo_cache
 import published_post_cache
 import snap_library
 from snap_home import site_key
-from sumna_post import AuthorizationExpiredError, SmacktalkPoster
+from sumna_post import AuthorizationExpiredError, SmacktalkPoster, SumnaConnection
 
 from . import theme, biggie
 from .canvas import mosaic_cells as _mosaic_cells
@@ -511,6 +512,7 @@ class TakeMode(QWidget):
     detailsStateChanged = Signal(bool)      # post details drawer open
     exitFocusRequested = Signal()           # exit focus mode from format strip
     _thumbsReady = Signal(object)           # background thumb job finished (queued to UI thread)
+    _signaturePreviewReady = Signal(object, str)
 
     def __init__(self, app_config_provider, parent=None):
         super().__init__(parent)
@@ -524,6 +526,8 @@ class TakeMode(QWidget):
         self._updating_photo_fields = False
         self._loading = False
         self._view_settings = QSettings("SnapSmack", "COLD SNAP")
+        self._signature_paths = {}
+        self._signaturePreviewReady.connect(self._signature_preview_ready)
         self._slapper_state = "idle"
         self._slapper_watch_session = None
         self._slapper_asset_uuid = ""
@@ -570,6 +574,7 @@ class TakeMode(QWidget):
             lambda: ((self.app_config() or {}).get("url") or "").strip())
         self.body.canvas.signature_default = lambda: self._signature_default(
             ((self.app_config() or {}).get("url") or "").strip())
+        self.body.canvas.signature_preview_path = self._signature_preview_path
 
         scroll = QScrollArea()
         scroll.setObjectName("CanvasWell")
@@ -623,17 +628,9 @@ class TakeMode(QWidget):
         self.colophon_edit.setAccessibleName("Colophon")
         colophon_label.setBuddy(self.colophon_edit)
 
-        signature_row = QHBoxLayout()
-        self.signature_check = QCheckBox("Include blog signature")
+        self.signature_check = QCheckBox("Include blog signature", self)
         self.signature_check.setChecked(True)
         self.signature_check.hide()
-        signature_row.addWidget(self.signature_check)
-        signature_settings = QPushButton("Blog signature…")
-        signature_settings.clicked.connect(self._configure_signature)
-        signature_row.addWidget(signature_settings)
-        signature_row.addStretch()
-        card_col.addLayout(signature_row)
-
         self.page_meta = QLabel("")
         self.page_meta.setObjectName("PageMeta")
         card_col.addWidget(self.page_meta)
@@ -689,6 +686,10 @@ class TakeMode(QWidget):
         self.status_combo.addItems(["published", "draft"])
         self.status_combo.currentTextChanged.connect(lambda _t: self._update_page_chrome())
         details.addWidget(self.status_combo)
+        signature_settings = QPushButton("Blog signature…")
+        signature_settings.setObjectName("BlogSignatureSettings")
+        signature_settings.clicked.connect(self._configure_signature)
+        details.addWidget(signature_settings)
         self.compose_splitter = None
 
         # -- THE PHOTOS — a rail section, opened when wanted. The count lives in
@@ -1772,6 +1773,9 @@ class TakeMode(QWidget):
         """0-based bucket indices already placed in mosaics (and image blocks)."""
         uuid_to_index = {str(image.asset_uuid): index
                          for index, image in enumerate(self._bucket)}
+        remote_to_index = {str(image.remote_image_id): index
+                           for index, image in enumerate(self._bucket)
+                           if getattr(image, "remote_image_id", 0)}
         used = set()
 
         def _claim(identity):
@@ -1801,7 +1805,11 @@ class TakeMode(QWidget):
                     if node.get("asset_uuid"):
                         _claim(node.get("asset_uuid"))
                     elif node.get("img_id"):
-                        _claim(node.get("img_id"))
+                        key = str(node["img_id"]).removeprefix("g")
+                        if key in remote_to_index:
+                            used.add(remote_to_index[key])
+                        elif not key.isdigit():
+                            _claim(key)
                 for value in node.values():
                     walk(value)
             elif isinstance(node, (list, tuple)):
@@ -4492,7 +4500,7 @@ class TakeMode(QWidget):
         self._remote_post_id = int(getattr(draft, "remote_post_id", 0) or 0)
         self._remote_slug = str(getattr(draft, "slug", "") or "")
         self.title_edit.setText(draft.title)
-        self.colophon_edit.setText(draft.colophon)
+        self.colophon_edit.setText(self._colophon_text(draft.colophon))
         self.signature_check.setChecked(draft.signature_enabled)
         self.tags_edit.setText(draft.tags)
         self.status_combo.setCurrentText(draft.img_status)
@@ -4601,6 +4609,13 @@ class TakeMode(QWidget):
             return out
         return [convert(block) for block in blocks]
 
+    @staticmethod
+    def _colophon_text(value):
+        value = value or ""
+        if re.search(r"</?[A-Za-z][^>]*>", value):
+            return QTextDocumentFragment.fromHtml(value).toPlainText()
+        return value
+
     def _build_draft(self, session, *, authored=None):
         draft = (session.load_draft(self._editing_id) if self._editing_id else None) \
             or O.Draft(draft_id=O._new_id(), kind=O.KIND_SMACKTALK, mode=self.SUITE_MODE)
@@ -4610,7 +4625,9 @@ class TakeMode(QWidget):
         if getattr(self, "_remote_slug", ""):
             draft.slug = str(self._remote_slug)
         draft.title = self.title_edit.text().strip()
-        draft.colophon = self.colophon_edit.text().strip()
+        colophon = self.colophon_edit.text().strip()
+        if colophon != self._colophon_text(draft.colophon).strip():
+            draft.colophon = colophon
         draft.signature_enabled = self.signature_check.isChecked()
         draft.tags = self.tags_edit.text().strip()
         if authored is None:
@@ -4805,6 +4822,50 @@ class TakeMode(QWidget):
         if not url:
             return 0
         return self._view_settings.value(f"take/signatures/{site_key(url)}", 0, type=int)
+
+    def _signature_preview_path(self, image_id):
+        config = self.app_config() or {}
+        site = (config.get("url") or "").strip().rstrip("/")
+        api_key = (config.get("api_key") or "").strip()
+        if not site or not api_key:
+            return ""
+        key = (site, image_id)
+        if key in self._signature_paths:
+            return self._signature_paths[key]
+        self._signature_paths[key] = ""
+
+        def load():
+            path = ""
+            try:
+                connection = SumnaConnection(site, api_key)
+                try:
+                    file = connection.gallery_file(image_id)
+                finally:
+                    connection.session.close()
+                if file:
+                    url = f"{site}/{quote(file.lstrip('/'))}"
+
+                    def fetch():
+                        with requests.get(url, timeout=(10, 20), allow_redirects=False) as reply:
+                            if reply.status_code == 200:
+                                return reply.content
+                            return None
+
+                    cached = published_photo_cache.get_full_size(site, image_id, url, fetch)
+                    path = str(cached) if cached else ""
+            except (requests.RequestException, RuntimeError, ValueError, OSError, KeyError):
+                pass
+            try:
+                self._signaturePreviewReady.emit(key, path)
+            except RuntimeError:
+                pass
+
+        threading.Thread(target=load, name="coldsnap-signature-preview", daemon=True).start()
+        return ""
+
+    def _signature_preview_ready(self, key, path):
+        self._signature_paths[key] = path
+        self.body.canvas.viewport().update()
 
     def _configure_signature(self):
         url = str((self.app_config() or {}).get("url") or "").strip()

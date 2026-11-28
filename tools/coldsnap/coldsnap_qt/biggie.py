@@ -423,7 +423,7 @@ _RX_SITE = {
     # nests, so this does not arise on a SnapSmack body today.
     "element": re.compile(
         r"<(p|figure|h2|h3|ul|ol|blockquote)\b[^>]*>.*?</\1\s*>|<hr\s*/?>"
-        r"|\[mosaic:\s*\d+(?:\s+width=\d{2,4})?\s*\]",
+        r"|\[mosaic:\s*\d+(?:\s+width=\d{2,4})?\s*\]|\[img:[^\]]+\]",
         re.DOTALL | re.IGNORECASE),
     # A <p>'s own tags, so the inner content can be read on its own.
     "p_wrap": re.compile(r"^(<p\b[^>]*>)(.*)(</p\s*>)$", re.DOTALL | re.IGNORECASE),
