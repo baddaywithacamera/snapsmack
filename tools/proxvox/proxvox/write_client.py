@@ -31,6 +31,24 @@ from .tls_pin import CertificatePinError, pinned_https_opener
 ALLOWED_METHODS = ("POST", "PUT", "DELETE", "GET")
 PROXMOX_TICKET_TTL_SECONDS = 7200
 
+# SEAN'S RULING, 2026-11-27, restated 2026-11-28 after he typed his second TOTP
+# of one morning and asked "what happened to 24 hours?": ONE TOTP opens a
+# 24-hour write window covering every PROX VOX operation. Not one session per
+# operation, and not one per job.
+#
+# WHY THAT NEEDED MORE THAN RAISING THE NUMBER ABOVE. A Proxmox /access/ticket
+# is valid for TWO HOURS and that is Proxmox's lifetime, not ours -- setting
+# this constant to 86400 would just mean the client believed in a ticket the
+# server had already stopped honouring. The window is held open by RENEWING the
+# ticket instead, which Proxmox does by accepting the CURRENT TICKET in place
+# of the password. So the renewal credential is the ticket already in memory:
+# no stored password, no stored TOTP, no stored write token, which are Sean's
+# 2026-11-22 conditions and they still hold.
+#
+# IT IS STILL TIME-BOXED. The window closes at this bound whatever happens, a
+# failed renewal fails CLOSED, and revoke() is still instant.
+PROXVOX_WRITE_WINDOW_SECONDS = 86400
+
 
 class WriteClient:
     """Short-lived, live-authorised Proxmox write client (Option A + P5 revoke)."""
@@ -38,7 +56,9 @@ class WriteClient:
     def __init__(self, base_url: str, audit, pinned_guid: str,
                  actual_guid: str = None, opener=None, verify_host: bool = True,
                  clock=None, ticket_ttl: int = PROXMOX_TICKET_TTL_SECONDS,
-                 certificate_sha256: str = "", expiry_timer_factory=None):
+                 certificate_sha256: str = "", expiry_timer_factory=None,
+                 window_seconds: int = PROXVOX_WRITE_WINDOW_SECONDS,
+                 renew_margin: int = 300):
         if verify_host:
             host_guard.require_host(pinned_guid, actual_guid)
         self.base_url = base_url.rstrip("/")
@@ -64,6 +84,12 @@ class WriteClient:
             raise Refused("PROX VOX requires an HTTPS Proxmox URL.")
         self._clock = clock or time.time
         self._ticket_ttl = max(1, int(ticket_ttl))
+        # The outer bound on one authorisation. A ticket lives 2 hours; the
+        # window may span many tickets and still only ever one TOTP.
+        self._window_seconds = max(1, int(window_seconds))
+        # Renew THIS EARLY, so a renewal that fails does not leave a dead
+        # ticket in the middle of somebody's write.
+        self._renew_margin = max(1, int(renew_margin))
         self._expiry_timer_factory = expiry_timer_factory or threading.Timer
         self._certificate_sha256 = certificate_sha256
         self._session_lock = threading.RLock()
@@ -72,6 +98,8 @@ class WriteClient:
         self._ticket: str = ""
         self._csrf_token: str = ""
         self._expires_at: float = 0.0
+        self._window_ends_at: float = 0.0
+        self._renewals: int = 0
         self._container_consoles = []
         self._expiry_timer = None
         self._expiry_generation = 0
@@ -94,21 +122,42 @@ class WriteClient:
             self._ticket = ""
             self._csrf_token = ""
             self._expires_at = 0.0
+            self._window_ends_at = 0.0
 
     def _schedule_expiry(self):
         with self._session_lock:
             self._expiry_generation += 1
             generation = self._expiry_generation
 
-            def expire():
+            # DECIDED HERE, NOT WHEN IT FIRES. The wake is either a renewal
+            # or the end of the window, and which one it is follows from the
+            # time remaining AT SCHEDULING. Re-deriving it from the clock
+            # inside the callback made the behaviour depend on the clock
+            # advancing between scheduling and firing, which is true of a real
+            # clock and not of a test one -- so the window could never be
+            # observed closing. The intent belongs in the schedule.
+            wake_in = max(1, self._ticket_ttl - self._renew_margin)
+            window_left = self._window_ends_at - float(self._clock())
+            final = window_left <= wake_in
+            if final:
+                wake_in = max(1, int(window_left))
+
+            def wake():
                 with self._session_lock:
                     if generation != self._expiry_generation or not self._ticket:
                         return
                     user = self._username
-                    self.audit.record("write_expired", {"username": user})
-                    self._clear_session()
+                    if final:
+                        self.audit.record("write_expired", {
+                            "username": user,
+                            "why": "the authorised write window closed",
+                            "renewals": self._renewals,
+                        })
+                        self._clear_session()
+                        return
+                self._renew(user)
 
-            timer = self._expiry_timer_factory(self._ticket_ttl, expire)
+            timer = self._expiry_timer_factory(wake_in, wake)
             if hasattr(timer, "daemon"):
                 timer.daemon = True
             self._expiry_timer = timer
@@ -118,7 +167,10 @@ class WriteClient:
         with self._session_lock:
             if not self._ticket or not self._csrf_token:
                 return False
-            if float(self._clock()) >= self._expires_at:
+            now = float(self._clock())
+            # BOTH bounds. The ticket is the inner one and is renewed; the
+            # window is the outer one and is never extended.
+            if now >= self._window_ends_at or now >= self._expires_at:
                 self._clear_session()
                 return False
             return True
@@ -240,6 +292,11 @@ class WriteClient:
             self._ticket = ticket.strip()
             self._csrf_token = csrf.strip()
             self._expires_at = now + self._ticket_ttl
+            # THE WINDOW IS SET BY THE TOTP AND BY NOTHING ELSE. _renew() must
+            # never touch it, or a renewal would extend the window and one TOTP
+            # would last for ever.
+            self._window_ends_at = now + self._window_seconds
+            self._renewals = 0
             self._schedule_expiry()
 
         self.audit.record("write_auth_result", {
@@ -247,8 +304,94 @@ class WriteClient:
             "ok": True,
             "status": status,
             "expires_at": self._expires_at,
+            "window_ends_at": self._window_ends_at,
         })
-        return {"username": user, "expires_at": self._expires_at}
+        return {"username": user, "expires_at": self._expires_at,
+                "window_ends_at": self._window_ends_at}
+
+    # ── the 24-hour window: renew the ticket, never the window ───────────
+    def _renew(self, user: str, timeout: int = 15) -> bool:
+        """Exchange the live ticket for a fresh one. No password, no TOTP.
+
+        Proxmox accepts a VALID TICKET in place of the password on
+        /access/ticket, which is how one TOTP can hold a 24-hour window open
+        without anything being stored. The credential used here is the ticket
+        already in memory, so Sean's 2026-11-22 conditions are untouched: no
+        stored password, no stored TOTP, no stored write token.
+
+        FAILS CLOSED. Anything other than a fresh ticket and CSRF token clears
+        the session, so a renewal that cannot happen ends the window rather
+        than leaving a client that believes in a dead ticket.
+        """
+        with self._session_lock:
+            ticket = self._ticket
+            if not ticket:
+                return False
+
+        url = self.base_url + "/api2/json/access/ticket"
+        form = urllib.parse.urlencode({"username": user, "password": ticket})
+        request = urllib.request.Request(url, data=form.encode("utf-8"), method="POST")
+        request.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+        # Recorded BEFORE the request, like every other call here.
+        self.audit.record("write_renew_attempt", {
+            "username": user,
+            "renewals_so_far": self._renewals,
+        })
+        try:
+            with self._opener(request, timeout=timeout) as response:
+                body = response.read().decode("utf-8", "replace")
+                status = getattr(response, "status", 200)
+        except Exception as err:            # transport, HTTP, or pinning
+            self.audit.record("write_renew_failed", {
+                "username": user,
+                "why": type(err).__name__,
+            })
+            self._clear_session()
+            return False
+
+        try:
+            payload = json.loads(body).get("data") or {}
+        except Exception:
+            self.audit.record("write_renew_failed", {
+                "username": user, "status": status,
+                "why": "invalid JSON from /access/ticket",
+            })
+            self._clear_session()
+            return False
+
+        fresh = str(payload.get("ticket") or "").strip()
+        csrf = str(payload.get("CSRFPreventionToken") or "").strip()
+        if not fresh or not csrf:
+            self.audit.record("write_renew_failed", {
+                "username": user, "status": status,
+                "why": "no ticket or CSRFPreventionToken in the renewal",
+            })
+            self._clear_session()
+            return False
+
+        now = float(self._clock())
+        with self._session_lock:
+            if not self._ticket:               # revoked while we were asking
+                return False
+            self._ticket = fresh
+            self._csrf_token = csrf
+            self._expires_at = now + self._ticket_ttl
+            self._renewals += 1
+            # _window_ends_at IS NOT TOUCHED. That is the whole safety
+            # property: renewing extends the TICKET and never the window, so
+            # one TOTP cannot outlive its 24 hours.
+            renewals = self._renewals
+            window_ends_at = self._window_ends_at
+            self._schedule_expiry()
+
+        self.audit.record("write_renewed", {
+            "username": user,
+            "renewals": renewals,
+            "expires_at": now + self._ticket_ttl,
+            "window_ends_at": window_ends_at,
+        })
+        return True
 
     # ── P5: manual revoke ────────────────────────────────────────────────
     def revoke(self, reason: str = "manual") -> None:
