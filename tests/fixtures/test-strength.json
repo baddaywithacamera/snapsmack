@@ -2178,6 +2178,11 @@
             1200
         ]
     },
+    "pocket-album-one-date-order-regression.php": {
+        "assertions": 16,
+        "predicates": 6,
+        "thresholds": []
+    },
     "pocket-album-share-control-regression.php": {
         "assertions": 38,
         "predicates": 27,

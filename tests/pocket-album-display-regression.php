@@ -399,8 +399,19 @@ $display = (string)file_get_contents($root . '/core/pocket-album-display.php');
 // SS-1643: the ordering is now built from what the cache table actually has.
 // A posted date wins where the source gave one; everything else keeps the
 // reversed album order this assertion was written for.
+// SS-1659 CHANGED THIS DELIBERATELY and this assertion caught it, which is
+// the test doing its job rather than being in the way. It used to pin the
+// exact clause "CASE WHEN posted_on <> '' THEN 0 ELSE 1 END ASC, posted_on
+// DESC" -- every dated row ahead of every undated one. That is right on an
+// all-or-nothing cache and wrong once the backfill fills only the third of
+// rows the source published a day or more after capture: the album came out
+// as two blocks. The intent is unchanged -- prefer the SOURCE publication
+// date -- so the assertion now pins the expression that does it, and the
+// ORDER BY is EXECUTED against a mixed cache in
+// tests/pocket-album-one-date-order-regression.php, which is where the proof
+// belongs.
 $check('pocket album prefers the SOURCE publication date',
-       str_contains($display, "CASE WHEN posted_on <> '' THEN 0 ELSE 1 END ASC, posted_on DESC, "));
+       str_contains($display, "COALESCE(NULLIF(posted_on,''), NULLIF(taken_on,''))"));
 $check('  and still falls back to the reversed album order',
        str_contains($display, 'sort_rank DESC,'));
 $check('  with the ordering built only when the column exists',
