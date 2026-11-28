@@ -25,11 +25,54 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/core/db.php';
 require_once __DIR__ . '/core/community-session.php';
 require_once __DIR__ . '/core/secret-store.php'; // SECAUDIT 047
+require_once __DIR__ . '/core/csrf.php';         // SS-1385
 
 // --- METHOD ---
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['error' => 'method_not_allowed']);
+    exit;
+}
+
+// --- TOKEN (SS-1385) ---
+// This endpoint read NO token, so a form POST from any other site could toggle
+// a like for whoever was logged in.
+//
+// THE FIRST REPAIR WAS FAILED ON REVIEW AND DESERVED TO BE. It added the check
+// below and nothing else. csrf_meta_tag() is emitted on ADMIN pages only, so a
+// public page carried no token, the client sent none, and the guard waved every
+// request through -- while REFUSING a signed-in owner's genuine likes on his own
+// site, because for him a session existed and the token still did not. It
+// allowed the attack and broke the real case.
+//
+// What makes the check mean something now: core/public-runtime.php starts the
+// shared session where the heart is enabled, snap_tile_like_html() puts the
+// token on the button, and ss-engine-tile-like.js reads it from there. The
+// session is RESUMED here through the same store, so the token compared is the
+// one that page issued.
+//
+// WHAT THIS DOES AND DOES NOT PROTECT, because the honest scope matters. The
+// session cookie is SameSite Lax (core/session-store.php), so it is NOT sent on
+// a cross-site POST. A request from another site therefore arrives with no
+// session and no identity: the like cannot be attributed to the visitor whose
+// browser sent it, which is the harm this ticket describes. The token check is
+// the second layer, for any browser or configuration where that cookie does
+// arrive.
+//
+// WHAT IS STILL OPEN, stated rather than left to be discovered. A visitor
+// whose browser sends no session cookie at all -- cookies off, or a strict
+// privacy mode -- has no session and no token, and is ALLOWED, because
+// refusing them is refusing a real reader. That means a cross-site POST can
+// still toggle an ANONYMOUS like, the IP-keyed guest row, for such a visitor.
+// It cannot touch a signed-in member's like, which is the harm SS-1385
+// describes. Closing the remainder means refusing every cookie-less visitor,
+// which is a decision about who may like a photograph and therefore not mine
+// to take: it is with the PM.
+require_once __DIR__ . '/core/tile-like-control.php';
+snap_tile_like_session();
+if (!csrf_ok_public()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'csrf', 'message' => 'Reload the page and try again.']);
     exit;
 }
 

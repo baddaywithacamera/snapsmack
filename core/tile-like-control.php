@@ -123,11 +123,60 @@ function snap_tile_like_assets(): array {
  * number beside a heart on every tile is also the thing that makes a wall
  * look like a scoreboard instead of photographs.
  */
+/**
+ * Start the session that mints the token the heart carries. (SS-1385.)
+ *
+ * WHY THIS EXISTS AT ALL. process-like.php read no CSRF token, so a form POST
+ * from any other site could toggle a like for whoever was logged in. The first
+ * repair added a check and was rightly FAILED on review, because there was
+ * nothing for it to check: csrf_meta_tag() is emitted on admin pages only, so
+ * a public page carried no token, the client sent none, and the guard either
+ * waved every request through or -- for a signed-in owner browsing his own
+ * site -- refused every genuine like. A guard with no token is not a guard.
+ *
+ * WHY IT IS CALLED HERE AND NOT ON EVERY PUBLIC PAGE. A session means a cookie
+ * and a session file for every visitor, where a public page has neither today.
+ * The owner approved paying that, and it is still worth paying as little as
+ * possible: this runs only where the heart is actually enabled, so a site with
+ * likes switched off gets no session, no cookie and no file. The cost lands
+ * exactly where the token is needed.
+ *
+ * THE BOOTSTRAP IS THE SHARED ONE, copied from core/auth-smack.php rather than
+ * improvised, for the same reason SS-1603 needed it: SS-1470 put the save path
+ * and cookie params in core/session-store.php so every entry point reads the
+ * SAME store, and a bare session_start() opens PHP's default store instead --
+ * which is how core/maintenance-gate.php once made a logged-in owner invisible
+ * to itself.
+ */
+function snap_tile_like_session(): void {
+    if (session_status() !== PHP_SESSION_NONE) return;
+    require_once __DIR__ . '/session-store.php';
+    snap_use_private_session_store();
+    @session_start();
+}
+
+/**
+ * The token a heart carries, or '' when no session could be started.
+ *
+ * RETURNS '' RATHER THAN THROWING, and the endpoint decides. A page that
+ * cannot start a session should still render its photographs.
+ */
+function snap_tile_like_token(): string {
+    require_once __DIR__ . '/csrf.php';
+    return csrf_token();
+}
+
 function snap_tile_like_html(int $image_id, bool $liked): string {
     if ($image_id <= 0) return '';
     $label = $liked ? 'Unlike this photograph' : 'Like this photograph';
+    // THE TOKEN RIDES THE BUTTON, which is why this needs no skin change. The
+    // button is built here, in the CMS, and every skin prints it through
+    // snap_render_component('tile-like'). Putting the token in <head> would
+    // have meant editing thirty layout.php files in another agent's lane.
+    $token = snap_tile_like_token();
     return '<button type="button" class="ss-tile-like' . ($liked ? ' is-liked' : '')
         . '" data-tile-like="' . $image_id . '"'
+        . ($token !== '' ? ' data-csrf="' . htmlspecialchars($token, ENT_QUOTES) . '"' : '')
         . ' data-liked="' . ($liked ? '1' : '0') . '"'
         . ' aria-pressed="' . ($liked ? 'true' : 'false') . '"'
         . ' aria-label="' . htmlspecialchars($label, ENT_QUOTES) . '"'
