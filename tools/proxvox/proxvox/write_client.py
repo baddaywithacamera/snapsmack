@@ -31,7 +31,6 @@ from .tls_pin import CertificatePinError, pinned_https_opener
 
 ALLOWED_METHODS = ("POST", "PUT", "DELETE", "GET")
 PROXMOX_TICKET_TTL_SECONDS = 7200
-HOST_WRITE_SESSION_SECONDS = 5 * 60 * 60
 
 
 class WriteClient:
@@ -66,8 +65,10 @@ class WriteClient:
             self.audit.record("tls_refused", {"why": "Proxmox URL is not HTTPS"})
             raise Refused("PROX VOX requires an HTTPS Proxmox URL.")
         self._clock = clock or time.time
-        default_ttl = HOST_WRITE_SESSION_SECONDS if host_writer is not None else PROXMOX_TICKET_TTL_SECONDS
-        self._ticket_ttl = max(1, min(int(ticket_ttl), default_ttl)) if ticket_ttl is not None else default_ttl
+        self._ticket_ttl = max(1, int(ticket_ttl)) if ticket_ttl is not None else None
+        if host_writer is None:
+            self._ticket_ttl = min(self._ticket_ttl or PROXMOX_TICKET_TTL_SECONDS,
+                                   PROXMOX_TICKET_TTL_SECONDS)
         self._expiry_timer_factory = expiry_timer_factory or threading.Timer
         self._certificate_sha256 = certificate_sha256
         self._host_writer = host_writer
@@ -262,9 +263,9 @@ class WriteClient:
             self._username = user
             self._ticket = ticket.strip()
             self._csrf_token = csrf.strip()
-            self._expires_at = now + self._ticket_ttl
-            if host_expiration is not None:
-                self._expires_at = min(self._expires_at, host_expiration)
+            self._expires_at = host_expiration if host_expiration is not None else now + self._ticket_ttl
+            if self._ticket_ttl is not None:
+                self._expires_at = min(self._expires_at, now + self._ticket_ttl)
             self._schedule_expiry()
 
         self.audit.record("write_auth_result", {
@@ -318,6 +319,12 @@ class WriteClient:
 
     def preview_db_update(self, plan):
         return self._host_operation("preview_db_update", plan)
+
+    def signed_release_status(self, site, version):
+        return self._host_operation("signed_release_status", site, version)
+
+    def start_signed_release(self, site, version):
+        return self._host_operation("start_signed_release", site, version)
 
     def run_db_update(self, plan, expected):
         return self._host_operation("run_db_update", plan, expected)

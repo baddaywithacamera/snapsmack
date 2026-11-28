@@ -71,7 +71,8 @@ def w(tmp_path):
                        ("WRITE_NONCES", "nonce-store/write-nonces"),
                        ("WRITE_SESSIONS", "session-store/write-sessions"),
                        ("AUDIT_LOG", "audit/writer.jsonl"),
-                       ("MAINTENANCE_LOCKS", "run/maintenance")):
+                       ("MAINTENANCE_LOCKS", "run/maintenance"),
+                       ("FLEET_STATE", "fleet-receipts")):
         setattr(module, name, str(tmp_path / leaf).replace(os.sep, "/"))
     module._check_write_session = lambda user, ticket: time.time() + 3600
     return module
@@ -95,6 +96,44 @@ def test_no_host_path_escapes_the_test_directory(w, tmp_path):
         assert str(tmp_path).replace(os.sep, "/") in current, (
             "%s is still the host path %s; redirect it in the w() fixture"
             % (name, value))
+
+
+def test_fleet_nonce_is_bound_to_the_host_session_site_and_release(w):
+    w._write_session_path = lambda ticket: "/session/" + ticket
+    request = {"ticket": "fixture", "site": w.FLEET_SITES[0], "version": w.FLEET_RELEASE}
+    first = w._attested_fleet("issue-signed-release-nonce", "proxvox@pve", request)
+    nonce = first["write_nonce"]
+    with open(w._write_nonce_name(nonce), encoding="utf-8") as record:
+        issued = json.load(record)["operation"]
+    for field, other in (("ticket", "different"), ("site", w.FLEET_SITES[1])):
+        second = w._attested_fleet("issue-signed-release-nonce", "proxvox@pve", {**request, field: other})
+        with open(w._write_nonce_name(second["write_nonce"]), encoding="utf-8") as record:
+            operation = json.load(record)["operation"]
+        with pytest.raises(w.Refused, match="different operation"):
+            w._consume_write_nonce(nonce, operation)
+    w._consume_write_nonce(nonce, issued)
+    with pytest.raises(w.Refused, match="already used"):
+        w._consume_write_nonce(nonce, issued)
+    for override in ({"site": "outside.example"}, {"version": "0.7.1008D"}):
+        with pytest.raises(w.Refused, match="outside the approved"):
+            w._attested_fleet("issue-signed-release-nonce", "proxvox@pve", {**request, **override})
+
+
+@pytest.mark.skipif(os.name != "posix", reason="the detached writer worker runs on Linux")
+def test_fleet_worker_survives_separate_requests_and_reuses_receipt(w, monkeypatch):
+    monkeypatch.setattr(w, "_apply_fleet_release",
+                        lambda domain: {"site": domain, "version": w.FLEET_RELEASE, "http": 200})
+    w._write_session_path = lambda ticket: "/session/" + ticket
+    plan = {"ticket": "fixture", "site": w.FLEET_SITES[0], "version": w.FLEET_RELEASE}
+    user = "proxvox@pve"
+    issued = w._attested_fleet("issue-signed-release-nonce", user, plan)
+    started = w._attested_fleet("start-signed-release", user, {**plan, "nonce": issued["write_nonce"]})
+    assert started == {"state": "running"}
+    os.wait()
+    result = w._attested_fleet("signed-release-status", user, plan)
+    assert result["state"] == "verified"
+    assert result["receipt"]["site"] == plan["site"]
+    assert w._attested_fleet("start-signed-release", user, plan) == result
 
 
 def _stdin(monkeypatch, content: bytes):
@@ -456,6 +495,7 @@ def test_there_is_no_delete_and_no_cloud_operation(w):
         with pytest.raises(Exception):
             w.dispatch(op + " anything")
     source = io.open(_WRITER, encoding="utf-8").read()
+    source = re.sub(r"(?<![0-9a-f])[a-f0-9]{40,64}(?![0-9a-f])", "<digest>", source, flags=re.I)
     assert "b2" not in source.lower().replace("b2 or", "").replace("no b2", "")
 
 
@@ -1022,10 +1062,10 @@ def test_host_writer_session_expires_even_if_wall_clock_moves_back(tmp_path, mon
     monotonic_start = time.monotonic()
     session = writer._start_write_session("root@pam", {})
     monkeypatch.setattr(writer.time, "time", lambda: session["expires_at"] - 120)
-    assert writer.WRITE_SESSION_SECONDS == 18000
-    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 4 * 60 * 60)
+    assert writer.WRITE_SESSION_SECONDS == 86_400
+    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 23 * 60 * 60)
     assert writer._check_write_session("root@pam", ticket) == session["expires_at"]
-    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 18001)
+    monkeypatch.setattr(writer.time, "monotonic", lambda: monotonic_start + 86_401)
     with pytest.raises(writer.Refused, match="authorization expired"):
         writer._check_write_session("root@pam", ticket)
 

@@ -2,7 +2,7 @@
 """Root-owned forced-command WRITER for the PROX VOX host account. (SS-1507)
 
 The host completes the owner's Proxmox TOTP challenge on verified local TLS.
-The resulting writer session lasts up to five hours, is checked again immediately
+The resulting writer session lasts up to 24 hours, is checked again immediately
 before file replacement, and can be revoked on the host. A Proxmox ticket
 obtained any other way cannot open a writer session. Each file write requires a
 host-issued, one-use nonce for the exact target, bytes and expected live hash.
@@ -42,6 +42,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 REMOTE_COMMAND_TIMEOUT_SECONDS = 120
@@ -99,6 +100,27 @@ NEVER_WRITE = (
 # as the allowlist: a capability appears when it is approved, not when it is
 # plausible.
 MAINTENANCE = {}
+
+FLEET_RELEASE = "0.7.1009D"
+FLEET_BEFORE = "0.7.1007D"
+FLEET_PACKAGE_SHA = "b6399d0c6028ecdb78bdb519426bd2adcd2ed800a41d62a20c61a1ce231f5fc4"
+FLEET_SOURCE = ("https://raw.githubusercontent.com/baddaywithacamera/snapsmack/"
+                "cc978d4508d5b23793001e570bfa936bfcaa864a/tools/proxvox/server/")
+FLEET_ACTION = {
+    "apply_signed_release.py": "64dfc7e4bccc425be9402e5a10e445cd07ac0792344906628592dace38582a88",
+    "apply-signed-release.php": "8d78a57b1cd20d750886554e9c4f56ea9912f0a25ed4e9ed8f93607f812b014e",
+}
+FLEET_SITES = (
+    "acolourlesslife.ca", "allinthewrist.photoblogs.fyi", "craptasti.ca",
+    "curbappeal.photoblogs.fyi", "dithering.pixhellated.ca", "foreverphotograph.ing",
+    "hal.photoblogs.fyi", "hekeepsdroningon.ca", "hockneyjoiner.com", "iswa.ca",
+    "crapshoot.photoblogs.fyi", "fauxlaroid.fyi", "lightafterdark.ca", "pixhellated.ca",
+    "squared.pixhellated.ca", "someshitifound.photoblogs.fyi", "squaredstraight.ca",
+    "strathmore.pics", "swirlybokeh.photoblogs.fyi", "theschoolofhardnocks.ca",
+    "unzucked.ca", "usedcarparts.photoblogs.fyi", "wateronthebrain.ca",
+)
+FLEET_STATE = "/var/lib/proxvox-signed-releases"
+FLEET_OPERATIONS = {"signed-release-status", "issue-signed-release-nonce", "start-signed-release"}
 
 
 class Refused(Exception):
@@ -775,7 +797,7 @@ SPENT_GRANTS = "/var/lib/proxvox/spent-grants"
 WRITE_NONCES = "/run/proxvox/write-nonces"
 WRITE_NONCE_SECONDS = 60
 WRITE_SESSIONS = "/run/proxvox/write-sessions"
-WRITE_SESSION_SECONDS = 5 * 60 * 60
+WRITE_SESSION_SECONDS = 24 * 60 * 60
 MAINTENANCE_LOCKS = "/run/proxvox/maintenance"
 ATTESTED_MAINTENANCE = {"preview-maintenance", "issue-maintenance-nonce", "run-maintenance"}
 ATTESTED_DATABASE = {"preview-db-update", "issue-db-update-nonce", "run-db-update"}
@@ -1292,6 +1314,162 @@ def _attested_database(op, user, request):
         raise Refused("Database operation failed; verify the row before retrying.") from None
 
 
+def _apply_fleet_release(domain):
+    """Run the pinned, reviewed updater with the site's web account in CT102."""
+    from urllib.request import Request, urlopen
+
+    request = Request("https://snapsmack.ca/releases/latest-dev.json",
+                      headers={"User-Agent": "SnapSmack-Updater/" + FLEET_RELEASE})
+    with urlopen(request, timeout=20) as response:
+        manifest_bytes = response.read(2 * 1024 * 1024 + 1)
+    if len(manifest_bytes) > 2 * 1024 * 1024:
+        raise Refused("release manifest exceeds the size limit")
+    manifest = json.loads(manifest_bytes)
+    package_url = f"https://snapsmack.ca/releases/snapsmack-{FLEET_RELEASE}.zip"
+    if (manifest.get("version") != FLEET_RELEASE or manifest.get("download_url") != package_url
+            or manifest.get("checksum_sha256") != FLEET_PACKAGE_SHA):
+        raise Refused("the approved signed release is no longer the published release")
+
+    payloads = {"release.json": manifest_bytes}
+    for filename, expected in FLEET_ACTION.items():
+        with urlopen(FLEET_SOURCE + filename, timeout=20) as response:
+            data = response.read(128 * 1024 + 1)
+        if hashlib.sha256(data).hexdigest() != expected:
+            raise Refused("reviewed release action checksum mismatch")
+        payloads[filename] = data
+
+    ct = _ct("102")
+    web = ct + ["runuser", "-u", "www-data", "--"]
+    stage = _run(web + ["mktemp", "-d", "/tmp/proxvox-fleet.XXXXXXXXXX"]).decode("ascii").strip()
+    if not re.fullmatch(r"/tmp/proxvox-fleet\.[a-zA-Z0-9]{10}", stage):
+        raise Refused("container did not create a valid staging directory")
+    backup_base = "/var/backups/snapsmack-release"
+    backup_parent = f"{backup_base}/{domain}-{FLEET_RELEASE}-{secrets.token_hex(16)}"
+    try:
+        for filename, data in payloads.items():
+            _run(web + ["tee", f"{stage}/{filename}"], data)
+        _run(ct + ["install", "-d", "-o", "root", "-g", "root", "-m", "0711", backup_base])
+        _run(ct + ["install", "-d", "-o", "www-data", "-g", "www-data", "-m", "0700",
+                   backup_parent])
+        package = f"{stage}/package.zip"
+        _run(web + ["curl", "--fail", "--silent", "--show-error", "--max-time", "90",
+                    "-A", "SnapSmack-Updater/" + FLEET_BEFORE, "-o", package, package_url])
+        result = subprocess.run(
+            web + ["python3", f"{stage}/apply_signed_release.py", domain, FLEET_BEFORE,
+                   package, f"{stage}/release.json", f"{backup_parent}/snapshot"],
+            stdin=subprocess.DEVNULL, capture_output=True, check=False,
+        )
+        if result.returncode:
+            error = result.stderr.decode("utf-8", "replace").strip().splitlines()
+            raise Refused(error[-1][:400] if error else "the signed updater returned an error")
+        receipt = json.loads(result.stdout)
+        if (receipt.get("site") != domain or receipt.get("version") != FLEET_RELEASE
+                or receipt.get("http") != 200):
+            raise Refused("the signed updater returned an unexpected receipt")
+        return receipt
+    finally:
+        try:
+            _run(web + ["rm", "-f", "--", *(f"{stage}/{name}" for name in payloads),
+                        f"{stage}/package.zip"])
+            _run(web + ["rmdir", "--", stage])
+        except (OSError, Refused, subprocess.SubprocessError):
+            _audit("signed-release-staging-retained", {"site": domain, "stage": stage})
+
+
+def _save_fleet_result(path, result):
+    fd, temp = tempfile.mkstemp(dir=FLEET_STATE)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as record:
+            json.dump(result, record, separators=(",", ":"))
+            record.flush()
+            os.fsync(record.fileno())
+        os.replace(temp, path)
+        fd = os.open(FLEET_STATE, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    finally:
+        if os.path.exists(temp):
+            os.unlink(temp)
+
+
+def _fleet_worker(domain, path, detail):
+    try:
+        os.setsid()
+        with open(os.devnull, "r+b", buffering=0) as null:
+            for fd in (0, 1, 2):
+                os.dup2(null.fileno(), fd)
+        try:
+            result = {"state": "verified", "receipt": _apply_fleet_release(domain)}
+        except Exception as error:
+            result = {"state": "failed", "error": str(error)[:500]}
+        _save_fleet_result(path, result)
+        _audit("signed-release-result", {**detail, **result}, durable=True)
+    finally:
+        os._exit(0)
+
+
+def _attested_fleet(op, user, request):
+    ticket = request.get("ticket")
+    expires = _check_write_session(user, ticket)
+    domain = request.get("site")
+    if domain not in FLEET_SITES or request.get("version") != FLEET_RELEASE:
+        raise Refused("site or release is outside the approved update scope")
+    operation = hashlib.sha256(json.dumps(
+        ["signed-release", _write_session_path(ticket), user, domain, FLEET_RELEASE],
+        separators=(",", ":"),
+    ).encode()).hexdigest()
+    if op == "issue-signed-release-nonce":
+        return {"write_nonce": _issue_write_nonce(operation, expires)}
+
+    import fcntl
+
+    os.makedirs(FLEET_STATE, mode=0o700, exist_ok=True)
+    _assert_private_state_directory(FLEET_STATE)
+    path = os.path.join(FLEET_STATE, f"{domain}-{FLEET_RELEASE}.json")
+    lock = os.path.join(FLEET_STATE, FLEET_RELEASE + ".lock")
+    fd = os.open(lock, os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            locked = True
+        else:
+            locked = False
+        try:
+            with open(path, encoding="utf-8") as record:
+                result = json.load(record)
+        except FileNotFoundError:
+            result = None
+        if result is not None:
+            if result["state"] == "running" and not locked:
+                return {"state": "interrupted", "error": "Update ended without a receipt. Inspect the site."}
+            return result
+        if locked:
+            return {"state": "busy"}
+        if op == "signed-release-status":
+            return {"state": "pending"}
+
+        _consume_write_nonce(request.get("nonce"), operation)
+        detail = {"site": domain, "version": FLEET_RELEASE, "user": user}
+        if not _audit("signed-release-intent", detail, durable=True):
+            raise Refused("could not persist the update audit")
+        _check_write_session(user, ticket)
+        result = {"state": "running"}
+        _save_fleet_result(path, result)
+        try:
+            pid = os.fork()
+        except OSError:
+            os.unlink(path)
+            raise
+        if pid == 0:
+            _fleet_worker(domain, path, detail)
+        return result
+    finally:
+        os.close(fd)
+
+
 def _audit_command(command):
     """The command line with any grant blob removed.
 
@@ -1304,7 +1482,7 @@ def _audit_command(command):
         args = shlex.split(str(command or ""), posix=True)
     except ValueError:
         return "(unparsable command)"
-    if args and (args[0] in ATTESTED_MAINTENANCE | ATTESTED_DATABASE or args[0] in {
+    if args and (args[0] in ATTESTED_MAINTENANCE | ATTESTED_DATABASE | FLEET_OPERATIONS or args[0] in {
         "authorize-write-session", "check-write-session", "revoke-write-session"
     }):
         return args[0]
@@ -1415,6 +1593,11 @@ def dispatch(command):
             raise Refused("The account cannot authorize a host writer session.")
         return _attested_database(op, args[1], _read_session_request())
 
+    if op in FLEET_OPERATIONS and len(args) == 2:
+        if args[1] not in OWNER_USERS:
+            raise Refused("the account cannot authorize a host writer session")
+        return _attested_fleet(op, args[1], _read_session_request())
+
     # ── what may I write? The allowlist, readable so Sean can check it. ──
     if op == "scope" and len(args) == 1:
         return {
@@ -1423,7 +1606,9 @@ def dispatch(command):
             "maintenance": sorted(MAINTENANCE),
             "attested_maintenance": ["chmod", "chown", "reload", "restart", "status"],
             "attested_database": ["row-update"],
+            "signed_release": {"version": FLEET_RELEASE, "sites": list(FLEET_SITES)},
             "owner_users": list(OWNER_USERS),
+            "write_session_seconds": WRITE_SESSION_SECONDS,
             "max_write_bytes": MAX_WRITE_BYTES,
             "note": "Without a live owner session, only listed paths can be rehearsed. "
                     "With host-witnessed TOTP and an operation nonce, the file writer supports "

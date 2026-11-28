@@ -235,20 +235,20 @@ class ProxVoxP3Tests(unittest.TestCase):
             p1.call("POST", "/nodes/pve/lxc/101/status/start")
         self.assertEqual(len(self.server.requests), 0)
 
-    def test_one_host_authorization_covers_distinct_actions_for_five_hours(self):
+    def test_one_host_authorization_covers_distinct_actions_for_twenty_four_hours(self):
         from unittest.mock import Mock
 
         host = Mock()
         host.authorize_session.return_value = {
-            "ticket": "PVE:proxvox@pve:fixture-five-hour-session",
+            "ticket": "PVE:proxvox@pve:fixture-host-session",
             "csrf": "fixture-host-csrf",
-            "expires_at": self.clock() + 18_000,
+            "expires_at": self.clock() + 86_400,
         }
         client = self._client(host_writer=host, ticket_ttl=None)
         client.authorize("proxvox@pve", "good-pass", "123456")
-        self.assertEqual(client.seconds_remaining(), 18_000)
+        self.assertEqual(client.seconds_remaining(), 86_400)
         first = json.loads(client.mint_file_grant(target="101", path="/first", sha256="a" * 64))
-        self.clock.advance(4 * 60 * 60)
+        self.clock.advance(23 * 60 * 60)
         second = json.loads(client.mint_file_grant(target="101", path="/second", sha256="b" * 64))
         self.assertEqual(client.seconds_remaining(), 3600)
         self.assertEqual(first["ticket"], second["ticket"])

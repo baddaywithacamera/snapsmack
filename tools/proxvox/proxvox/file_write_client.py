@@ -54,6 +54,7 @@ SESSION_OPERATIONS = {
     "authorize-write-session", "check-write-session", "revoke-write-session",
     "preview-maintenance", "issue-maintenance-nonce", "run-maintenance",
     "preview-db-update", "issue-db-update-nonce", "run-db-update",
+    "signed-release-status", "issue-signed-release-nonce", "start-signed-release",
 }
 
 
@@ -131,6 +132,19 @@ class ScopedFileWriter:
 
     def preview_db_update(self, user, ticket, plan):
         return self._session_request("preview-db-update", user, ticket=ticket, **plan)
+
+    def signed_release_status(self, user, ticket, site, version):
+        return self._session_request("signed-release-status", user, ticket=ticket,
+                                     site=site, version=version)
+
+    def start_signed_release(self, user, ticket, site, version):
+        plan = dict(ticket=ticket, site=site, version=version)
+        issued = self._session_request("issue-signed-release-nonce", user, **plan)
+        nonce = issued.get("write_nonce") if isinstance(issued, dict) else None
+        if (not isinstance(nonce, str) or len(nonce) != 64
+                or any(digit not in "0123456789abcdef" for digit in nonce)):
+            raise Refused("the host did not issue a valid release nonce")
+        return self._session_request("start-signed-release", user, nonce=nonce, **plan)
 
     def run_db_update(self, user, ticket, plan, expected):
         request = dict(plan, ticket=ticket, expected=expected)

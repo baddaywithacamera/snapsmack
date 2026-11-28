@@ -129,7 +129,7 @@ credentials above keep working without this setup.
    `host_writer`. Authorize with the enrolled owner account once per working
    session. The password goes to the Proxmox login and the next TOTP is
    confirmed by the host writer. Keep both in the local authorization form.
-   Host-backed file, database and maintenance operations share one five-hour
+   Host-backed file, database, maintenance and signed release operations share one 24-hour
    session. Each operation still needs its own grant. End the session early
    from the authorization form. Native Proxmox API calls retain their own
    Proxmox ticket lifetime.
