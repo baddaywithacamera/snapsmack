@@ -14,7 +14,7 @@ $_pc_sections = [
         'smack-edit.php', 'smack-comments.php', 'smack-pages.php', 'smack-fediverse.php',
     ],
     'fediverse' => [
-        'smack-pixelfed.php', 'smack-photochallenge.php', 'smack-dms.php', 'smack-fediverse-portal.php',
+        'smack-pixelfed.php', 'smack-dms.php', 'smack-fediverse-portal.php',
         'smack-sv-followers.php', 'smack-sv-tools.php',
         'smack-sv-delivery-log.php',
     ],
@@ -25,6 +25,7 @@ $_pc_sections = [
         'smack-appearance-solo.php', 'smack-appearance-static.php',
     ],
     'turbo-boost' => [
+        'smack-photochallenge.php',
         'smack-photochallenge-queue.php',
         'smack-photochallenge-queued.php',
     ],
@@ -81,7 +82,6 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <li class="<?php echo $_pc_active_class('smack-sv-followers.php'); ?>"><a href="smack-sv-followers.php">Followers</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-tools.php'); ?>"><a href="smack-sv-tools.php">Fediverse Publishing Tools</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-delivery-log.php'); ?>"><a href="smack-sv-delivery-log.php">Delivery Log</a></li>
-                    <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Photo Challenge</a></li>
                 </ul>
             </div>
 
@@ -110,6 +110,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                     <span class="nav-section-arrow"></span>
                 </button>
                 <ul class="nav-section-links">
+                    <li class="<?php echo $_pc_active_class('smack-photochallenge.php'); ?>"><a href="smack-photochallenge.php">Contest &amp; Feed</a></li>
                     <li class="<?php echo $_pc_active_class('smack-photochallenge-queue.php'); ?>"><a href="smack-photochallenge-queue.php">Queue Contest Post</a></li>
                     <li class="<?php echo $_pc_active_class('smack-photochallenge-queued.php'); ?>"><a href="smack-photochallenge-queued.php">Queued Posts</a></li>
                 </ul>

@@ -313,11 +313,12 @@ pc_test(str_contains($photo, "'tags'        => \$hash['display']"),
     'the card must be tagged via ingest opts so discovery works without an inline hashtag');
 preg_match('/data-section="fediverse"[^>]*>(.*?)<\/ul>/s', $sidebar, $fediverseNav);
 preg_match('/data-section="turbo-boost"[^>]*>(.*?)<\/ul>/s', $sidebar, $challengeNav);
-pc_test(str_contains($fediverseNav[1] ?? '', 'smack-photochallenge.php">Photo Challenge</a>')
+pc_test(!str_contains($fediverseNav[1] ?? '', 'href="smack-photochallenge.php"')
+    && str_contains($challengeNav[1] ?? '', 'smack-photochallenge.php">Contest &amp; Feed</a>')
     && str_contains($challengeNav[1] ?? '', 'smack-photochallenge-queue.php">Queue Contest Post</a>')
     && str_contains($challengeNav[1] ?? '', 'smack-photochallenge-queued.php">Queued Posts</a>')
     && str_contains($admin, 'id="queue-contest-post"'),
-    'Photo Challenge and the two queue task pages must remain in their sidebar sections');
+    'Contest & Feed and the two queue task pages must remain under Challenge Me');
 pc_test(is_file(__DIR__ . '/../smack-photochallenge-queue.php')
     && is_file(__DIR__ . '/../smack-photochallenge-queued.php'),
     'queue composer and queued-post management must be separate pages');
