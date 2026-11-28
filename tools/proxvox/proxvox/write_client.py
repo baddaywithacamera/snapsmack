@@ -26,6 +26,7 @@ import urllib.request
 
 from . import host_guard
 from .broker import Refused, _path_refusal
+from .secrets import redact_command
 from .tls_pin import CertificatePinError, pinned_https_opener
 
 ALLOWED_METHODS = ("POST", "PUT", "DELETE", "GET")
@@ -627,16 +628,20 @@ class WriteClient:
         # So the text goes in. The hash stays beside it, because it is what
         # proves the text was not edited afterwards.
         #
-        # SAID PLAINLY, BECAUSE IT IS A REAL COST: a command carrying a
-        # password now puts that password in the local audit buffer. There is
-        # no secrets blocklist to redact against -- Muse recorded at OPAUDIT
-        # 042 that none exists in the room or the continuity material, and the
-        # PM is asking Sean for one. Until it exists, an unreadable log is the
-        # worse of the two risks: the buffer is local, and a 24-hour window
-        # nobody can audit is not.
+        # THE COST THIS PARAGRAPH USED TO DESCRIBE IS PAID. It said a typed
+        # password landed in the buffer and there was no blocklist to redact
+        # against. Sean answered at 14:56 with one word, "blank", and
+        # redact_command() below does it. Kept as a note rather than deleted,
+        # because the reasoning is why the text is logged at all.
+        # SEAN, 2026-11-28 14:56: "blank". The command text goes in the log so
+        # a day of unattended work can be read, and the SECRET VALUES in it are
+        # blanked before anything is written. The sha256 is of the ORIGINAL
+        # command, not the redacted text, so the entry is still provable even
+        # though what it shows has been edited -- which is the only reason
+        # redacting a log is honest rather than just tidy.
         self.audit.record("container_write_call", {
             "username": self._username,
-            "command": text,
+            "command": redact_command(text),
             "command_sha256": hashlib.sha256(text.encode()).hexdigest(),
         })
         return console.run(text)
