@@ -2150,17 +2150,60 @@ body.alfred-lb-open { overflow: hidden; }
    ========================================================================== */
 
 :root {
+    --tilez-bg: #ffffff;
+    --tilez-surface: #f2f2f2;
+    --tilez-border: #dddddd;
     --tilez-ink: #171717;
-    --tilez-muted: #777;
+    --tilez-muted: #777777;
+    --tilez-nav-link: #444444;
+    --tilez-nav-link-hover: var(--alfred-accent, #1e73be);
+    --tilez-nav-active: #b3261e;
+    --tilez-body-link: var(--alfred-accent, #1e73be);
+    --tilez-body-link-hover: var(--alfred-accent, #1e73be);
+    --tilez-sidebar-link: var(--tilez-ink);
+    --tilez-sidebar-link-hover: var(--alfred-accent, #1e73be);
+    --tilez-footer-link: var(--tilez-ink);
+    --tilez-footer-link-hover: var(--alfred-accent, #1e73be);
+    --tilez-icon-color: #1a1a1a;
+    --tilez-icon-border: rgba(26, 26, 26, .3);
+    --tilez-icon-border-hover: rgba(26, 26, 26, .7);
+    --tilez-icon-bg-hover: rgba(255, 255, 255, .95);
+    --tilez-icon-contrast: #ffffff;
     --tilez-gap: 18px;
     --tilez-page: 1180px;
     --tilez-content-start: 64px;
 }
 
-html, body { background: #fff; color: var(--tilez-ink); }
-body.tilez-v2 > #page { min-height: 100vh; display: flex; flex-direction: column; }
+html, body { background: var(--tilez-bg); color: var(--tilez-ink); }
+body.tilez-v2 > #page { min-height: 100vh; display: flex; flex-direction: column; background: var(--tilez-bg); }
 body.tilez-v2 > #page > #system-footer { margin-top: auto; width: 100%; }
-body.blog, body.single, body.archive { background: #fff; }
+body.blog, body.single, body.archive { background: var(--tilez-bg); }
+body.tilez-v2 .navigation { background: var(--tilez-bg); border-color: var(--tilez-border); }
+body.tilez-v2 .main-menu a { color: var(--tilez-nav-link); }
+body.tilez-v2 .main-menu a:hover,
+body.tilez-v2 .main-menu a:focus-visible { color: var(--tilez-nav-link-hover); }
+body.tilez-v2 .main-menu > li.current-menu-item > a,
+body.tilez-v2 .main-menu > li.active > a { color: var(--tilez-nav-active); }
+body.tilez-v2 .post-content a,
+body.tilez-v2 .entry-content a { color: var(--tilez-body-link); }
+body.tilez-v2 .post-content a:hover,
+body.tilez-v2 .entry-content a:hover { color: var(--tilez-body-link-hover); }
+body.tilez-v2 .post-record,
+body.tilez-v2 .taxonomy-record,
+body.tilez-v2 .widget-content { color: var(--tilez-ink); border-color: var(--tilez-border); }
+body.tilez-v2 .post-record a,
+body.tilez-v2 .taxonomy-links a,
+body.tilez-v2 .widget-content a { color: var(--tilez-sidebar-link); }
+body.tilez-v2 .post-record a:hover,
+body.tilez-v2 .taxonomy-links a:hover,
+body.tilez-v2 .taxonomy-links a:hover strong,
+body.tilez-v2 .widget-content a:hover { color: var(--tilez-sidebar-link-hover); }
+body.tilez-v2 .post-date,
+body.tilez-v2 .post-facts dt,
+body.tilez-v2 .taxonomy-links small { color: var(--tilez-muted); }
+body.tilez-v2 #system-footer { background: var(--tilez-bg); border-color: var(--tilez-border); color: var(--tilez-muted); }
+body.tilez-v2 #system-footer a { color: var(--tilez-footer-link); }
+body.tilez-v2 #system-footer a:hover { color: var(--tilez-footer-link-hover); }
 
 /* The TILEZ masthead is the identity. The old full-viewport ALFRED backdrop is
    deliberately absent. The masthead and menu are two left-aligned rows. */
@@ -2199,9 +2242,9 @@ body.blog, body.single, body.archive { background: #fff; }
     width: 38px;
     height: 38px;
     place-items: center;
-    color: #1a1a1a;
+    color: var(--tilez-icon-color);
     background: transparent;
-    border: 2px solid rgba(26, 26, 26, .3);
+    border: 2px solid var(--tilez-icon-border);
     border-radius: 50%;
     text-decoration: none;
     cursor: pointer;
@@ -2210,16 +2253,16 @@ body.blog, body.single, body.archive { background: #fff; }
 .tilez-icon-nav a:hover,
 .tilez-icon-nav a:focus-visible,
 .tilez-icon-nav summary:hover,
-.tilez-icon-nav summary:focus-visible { color: #1a1a1a; background: rgba(255, 255, 255, .95); border-color: rgba(26, 26, 26, .7); outline: none; transform: none; }
+.tilez-icon-nav summary:focus-visible { color: var(--tilez-icon-color); background: var(--tilez-icon-bg-hover); border-color: var(--tilez-icon-border-hover); outline: none; transform: none; }
 .tilez .social-dock .dock-link {
     background: transparent;
-    border-color: rgba(26, 26, 26, .3);
-    color: #1a1a1a;
+    border-color: var(--tilez-icon-border);
+    color: var(--tilez-icon-color);
 }
 .tilez .social-dock .dock-link:hover,
 .tilez .social-dock .dock-link:focus-visible {
-    background: rgba(255, 255, 255, .95);
-    border-color: rgba(26, 26, 26, .7);
+    background: var(--tilez-icon-bg-hover);
+    border-color: var(--tilez-icon-border-hover);
     transform: none;
 }
 .tilez-icon-nav a:active,
