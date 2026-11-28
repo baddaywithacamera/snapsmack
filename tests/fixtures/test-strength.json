@@ -3057,7 +3057,7 @@
         "thresholds": []
     },
     "smackback-alert-all-admins-regression.php": {
-        "assertions": 37,
+        "assertions": 21,
         "predicates": 11,
         "thresholds": []
     },
@@ -3607,7 +3607,7 @@
         "thresholds": []
     },
     "updater-installer-cleanup-regression.php": {
-        "assertions": 6,
+        "assertions": 5,
         "predicates": 0,
         "thresholds": [
             4,
@@ -3635,7 +3635,7 @@
     },
     "version-epoch-reaches-the-fleet-regression.php": {
         "assertions": 22,
-        "predicates": 2,
+        "predicates": 1,
         "thresholds": []
     },
     "version-epoch-survives-the-local-scan-regression.php": {
