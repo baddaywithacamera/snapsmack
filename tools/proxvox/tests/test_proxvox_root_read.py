@@ -84,6 +84,42 @@ class RootReadTests(unittest.TestCase):
             credential_reader=lambda *_: "stored", ssh_factory=factory,
         )
 
+    def test_a_blocked_read_is_refused_and_LOGGED(self):
+        """Sean 15:02: "A blocked read gets logged, not silently dropped."
+
+        A MUTANT SURVIVED WITHOUT THIS. I fixed the silent path Muse flagged
+        (room 9414, nit 4) and never asserted the log line, so removing the
+        record() call again left every test passing. The fix was real and
+        nothing was holding it.
+        """
+        from proxvox.broker import Refused
+
+        before = len(self.clients)
+        for path in ("/etc/pve/priv/tfa.cfg",
+                     "/etc/pve/priv/authkey.key",
+                     "/etc/pve/priv/token.cfg",
+                     "/var/lib/proxvox/session.json"):
+            self.audit_reset = len(self.audit.records())
+            with self.assertRaises(Refused):
+                self.broker.read_file(path)
+
+            rows = [r for r in self.audit.records()
+                    if r["action"] == "host_read_blocked"]
+            self.assertTrue(rows, "the block was not logged for " + path)
+            detail = rows[-1]["detail"]
+            self.assertEqual(detail["path"], path)
+            # The reason has to say WHY and cite the ruling, or the log line
+            # is as unhelpful as no line at all.
+            self.assertIn("2026-11-28", detail["why"])
+
+        # AND NOTHING LEFT THE MACHINE. No SSH client was ever constructed,
+        # because the block is checked before the connection.
+        self.assertEqual(len(self.clients), before)
+
+        # A path he deliberately left readable still works, so the guard has
+        # not quietly become a deny-all.
+        self.assertIsInstance(self.broker.read_file("/root/.ssh/id_rsa"), dict)
+
     def test_inventory_host_and_arbitrary_container_reads(self):
         self.assertEqual([row["vmid"] for row in self.broker.inventory()], [102, 106, 110])
         self.assertEqual(self.broker.listdir("/etc/pve"), ["nodes", "storage.cfg"])
