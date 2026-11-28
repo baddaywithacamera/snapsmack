@@ -301,15 +301,8 @@ class _Objects(QPyTextObject):
             if align in ("left", "right") and size != "full":
                 iw = int(col_w * 0.36)
         iw = max(48, iw)
-        path = ""
-        if data.get("asset_uuid"):
-            path = self.canvas.assets.get(str(data["asset_uuid"]), "")
-        else:
-            sid = str(data.get("img_id", "")).strip().lower()
-            if sid.startswith("bucket:") and sid[7:].isdigit():
-                n = int(sid[7:])
-                if 1 <= n <= len(self.canvas.bucket):
-                    path = self.canvas.bucket[n - 1]
+        identity = _image_identity(data)
+        path = self.canvas._image_path(identity)
         ih = int(iw * 0.66)
         if path:
             src_w, src_h = _image_size(path)
@@ -611,8 +604,7 @@ class _Objects(QPyTextObject):
         x = r.left() if align == "left" else (r.right() - iw if align == "right"
                                               else r.left() + (r.width() - iw) // 2)
         box = QRect(x, r.top() + 2, iw, max(16, r.height() - 4 - cap_h))
-        identity = "asset:" + str(data["asset_uuid"]) if data.get("asset_uuid") else str(data.get("img_id", ""))
-        pix = self.canvas.image_pixmap(identity, iw)
+        pix = self.canvas.image_pixmap(_image_identity(data), iw)
         painted = box
         if pix is not None and not pix.isNull():
             scaled = pix.scaled(box.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -651,6 +643,11 @@ class _Objects(QPyTextObject):
             align_flag = Qt.AlignHCenter if cap_align == "center" else (Qt.AlignRight if cap_align == "right" else Qt.AlignLeft)
             painter.drawText(cap_rect, align_flag | Qt.AlignVCenter, cap_text)
             painter.restore()
+
+
+def _image_identity(data: dict) -> str:
+    asset = data.get("asset_uuid")
+    return f"asset:{asset}" if asset else str(data.get("img_id", ""))
 
 
 def _data(fmt) -> dict:
@@ -1132,13 +1129,21 @@ class BiggieCanvas(QTextEdit):
         self._image_resolver = fn
 
     def set_published_image_paths(self, paths):
-        self._published_image_paths = dict(paths)
-        self.viewport().update()
+        paths = dict(paths)
+        if paths != self._published_image_paths:
+            self._published_image_paths = paths
+            self._relayout_images()
 
     def _apply_gallery_paths(self, site, paths):
         if site == self._gallery_site:
             self._gallery_paths = paths
-            self.viewport().update()
+            self._relayout_images()
+
+    def _relayout_images(self):
+        document = self.document()
+        document.markContentsDirty(0, document.characterCount())
+        self._sync_canvas_height()
+        self.viewport().update()
 
     def _load_gallery_paths(self, site):
         self._gallery_site = site
@@ -1169,30 +1174,30 @@ class BiggieCanvas(QTextEdit):
         except Exception:  # noqa: BLE001
             return ""
 
+    def _image_path(self, img_id: str) -> str:
+        sid = str(img_id).strip().lower()
+        if sid.startswith("asset:"):
+            return self.assets.get(sid[6:], "")
+        if sid.startswith("bucket:") and sid[7:].isdigit():
+            n = int(sid[7:])
+            return self.bucket[n - 1] if 1 <= n <= len(self.bucket) else ""
+        published = self._published_image_paths.get(sid)
+        if published:
+            return published
+        return self._gallery_paths.get(sid, "") if self._gallery_site == self._site() else ""
+
     def image_pixmap(self, img_id: str, width: int):
         try:
             side = max(64, int(width))
             sid = str(img_id).strip().lower()
-            if sid.startswith("asset:"):
-                path = self.assets.get(sid[6:])
-                return self._objects._cached_cell_pixmap(path, QSize(side, side))
-            if sid.startswith("bucket:") and sid[7:].isdigit():
-                n = int(sid[7:])
-                if 1 <= n <= len(self.bucket):
-                    path = self.bucket[n - 1]
-                    return self._objects._cached_cell_pixmap(path, QSize(side, side))
-                return None
-            if self._image_resolver is not None:
-                return self._image_resolver(img_id, width)
-            path = self._published_image_paths.get(sid)
-            if path:
-                return self._objects._cached_cell_pixmap(path, QSize(side, side))
-            site = self._site()
-            if site:
-                if site != self._gallery_site:
+            if not sid.startswith("asset:") and not (sid.startswith("bucket:") and sid[7:].isdigit()):
+                if self._image_resolver is not None:
+                    return self._image_resolver(img_id, width)
+                site = self._site() if sid not in self._published_image_paths else ""
+                if site and site != self._gallery_site:
                     self._load_gallery_paths(site)
-                path = self._gallery_paths.get(sid)
-                return self._objects._cached_cell_pixmap(path, QSize(side, side)) if path else None
+            path = self._image_path(sid)
+            return self._objects._cached_cell_pixmap(path, QSize(side, side)) if path else None
         except Exception:  # noqa: BLE001 — a preview must never break typing
             return None
         return None

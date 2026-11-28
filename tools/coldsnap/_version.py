@@ -11,7 +11,7 @@ it and bump_version.py increments it. No imports — safe to load from anywhere,
 frozen or not, with no risk of an import cycle.
 """
 
-BUILD_VERSION = "0.7.75"
+BUILD_VERSION = "0.7.76"
 
 # WHAT IS ACTUALLY ON THE OWNER'S MACHINE. A floor, not a target.
 #
@@ -29,5 +29,5 @@ BUILD_VERSION = "0.7.75"
 # bump_version.py now refuses to produce a version at or below this floor, so a
 # stale checkout fails loudly instead of quietly rolling him back. Raise it when
 # a build is confirmed installed.
-INSTALLED_VERSION = "0.7.74"
+INSTALLED_VERSION = "0.7.75"
 # ===== SNAPSMACK EOF =====

@@ -104,6 +104,27 @@ def take_resize_checks(mode, output):
                           caption=biggie.serialize_blocks(blocks))
             imported_width = "[img:7|full|center|40]" in SmacktalkPoster._body_text_for_sync(draft)
 
+    canvas.set_image_resolver(None)
+    portrait = QPixmap(180, 240)
+    portrait.fill(QColor("#1968aa"))
+    portrait_file = output / "published-portrait-fixture.png"
+    assert portrait.save(str(portrait_file), "PNG")
+    canvas.from_blocks(biggie.parse_site_html("<p>[img:7|full|center|50]</p>"))
+    canvas.set_published_image_paths({"7": str(portrait_file)})
+    canvas.select_block_at(0)
+    app.processEvents()
+    half_box, column, _ = canvas._painted_images[0]
+    grip, _, _, drag_width, _ = canvas._image_resize_handle
+    QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=grip.center())
+    QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=grip.center() + QPoint(round(drag_width / 4), 0))
+    app.processEvents()
+    full_box, _, _ = canvas._painted_images[0]
+    full_portrait = (abs(half_box.width() - column.width() / 2) <= 4
+                     and abs(full_box.width() - column.width()) <= 4
+                     and abs(full_box.height() - full_box.width() * 4 / 3) <= 4
+                     and canvas.body_text() == "[img:7|full|center|100]"
+                     and canvas.viewport().grab().save(str(output / "published-portrait-full.png"), "PNG"))
+    canvas.set_published_image_paths({})
     canvas.set_image_resolver(lambda *_: fixture)
     mode.body._set_biggie(False)
     editor = mode.body.editor
@@ -134,7 +155,8 @@ def take_resize_checks(mode, output):
     mode.body._set_biggie(False)
     return {"visual_image_resize": visual, "text_image_resize": editor.toPlainText() == expected,
             "selected_portrait": selected["portrait"], "selected_landscape": selected["landscape"],
-            "resized_imported_image_reaches_wire": imported_width}
+            "resized_imported_image_reaches_wire": imported_width,
+            "published_portrait_resizes_to_column_width": full_portrait}
 
 
 def take_composer_checks(mode, files, *, check_renderer=False):
