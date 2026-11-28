@@ -725,12 +725,13 @@ def signature_fields_for_blocks(blocks: list) -> dict:
     OMIT THESE FIELDS. That is the contract's "preserve" state, and it matters:
     a draft that never mentioned signatures must not clear one.
 
-    The LAST signature block wins if somebody adds two. A post has one
+    The last explicitly authored signature block wins if somebody adds two. A post has one
     signature, and declining to choose would mean sending nothing, which reads
     as "preserve" and would quietly ignore what the author did.
     """
     found = [b for b in (blocks or [])
-             if isinstance(b, dict) and b.get("type") == "signature"]
+             if isinstance(b, dict) and b.get("type") == "signature"
+             and not b.get("published_signature")]
     return signature_fields(found[-1]) if found else {}
 
 

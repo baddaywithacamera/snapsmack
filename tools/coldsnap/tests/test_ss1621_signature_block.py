@@ -383,6 +383,8 @@ def test_open_published_signature_is_visible_and_text_edit_preserves_it(monkeypa
         assert "Word. Before edit." in payload["content"]
         assert payload["post_id"] == 4
         assert not set(biggie.PUBLISHED_SIGNATURE_KEYS).intersection(payload)
+        explicit = {"type": "signature", "mode": "custom", "light_image_id": 414}
+        assert biggie.signature_fields_for_blocks([explicit, blocks[-1]])["signature_image_id"] == 414
     finally:
         mode.close()
 
