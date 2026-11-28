@@ -1295,7 +1295,8 @@ class TakeMode(QWidget):
         self._set_page_zoom(getattr(self, "_page_zoom", 100))
 
     def _update_page_chrome(self):
-        status = (self.status_combo.currentText() or "draft").strip().upper()
+        status = self.status_combo.currentText() if getattr(self, "_remote_post_id", 0) else "draft"
+        status = (status or "draft").strip().upper()
         visual = self.body.is_biggie()
         self.page_eyebrow.setText(
             f"ESSAY · {status}" if visual else f"ESSAY · {status} — TEXT VIEW")
@@ -4535,6 +4536,7 @@ class TakeMode(QWidget):
         self._refresh_bucket(sync_assets=False)
         self._loading = False
         self._update_linked_banner()
+        self._update_page_chrome()
         self.save_state.setText("Safe on this computer")
 
     def _clear(self):
@@ -4556,6 +4558,7 @@ class TakeMode(QWidget):
         self._refresh_bucket()
         self._update_linked_banner()
         self._loading = False
+        self._update_page_chrome()
         self.save_state.setText("Begin the story… changes will be safe on this computer.")
 
     def _new_signature(self):

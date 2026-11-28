@@ -44,7 +44,7 @@ def take_resize_checks(mode, output):
     from PySide6.QtCore import QPoint, Qt
     from PySide6.QtGui import QColor, QPixmap
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QDialog
+    from PySide6.QtWidgets import QApplication, QDialog, QStyle, QStyleOptionButton
 
     from coldsnap_qt import biggie
     from coldsnap_qt.mode_take import _ImageWidthPreview
@@ -53,6 +53,15 @@ def take_resize_checks(mode, output):
 
     app = QApplication.instance()
     mode.body._set_biggie(True)
+    app.processEvents()
+    toggle = mode.body.biggie_btn
+    option = QStyleOptionButton()
+    toggle.initStyleOption(option)
+    text_rect = toggle.style().subElementRect(QStyle.SE_PushButtonContents, option, toggle)
+    visual_label_fits = (
+        option.fontMetrics.horizontalAdvance(toggle.text()) <= text_rect.width()
+        and toggle.grab().save(str(output / "visual-toggle.png"), "PNG")
+    )
     canvas = mode.body.canvas
     fixture = QPixmap(240, 120)
     fixture.fill(QColor("#1968aa"))
@@ -166,6 +175,7 @@ def take_resize_checks(mode, output):
     mode.body._set_biggie(False)
     return {"visual_image_resize": visual, "text_image_resize": editor.toPlainText() == expected,
             "selected_portrait": selected["portrait"], "selected_landscape": selected["landscape"],
+            "visual_toggle_label_fits": visual_label_fits,
             "resized_imported_image_reaches_wire": imported_width,
             "published_portrait_resizes_to_column_width": full_portrait}
 

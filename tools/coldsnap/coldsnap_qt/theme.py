@@ -371,10 +371,10 @@ def stylesheet() -> str:
     }}
     QPushButton#FaceToggle {{
         background: transparent; color: {BODY}; border: none;
-        border-radius: 4px; padding: 5px 12px; font-size: 13px; font-weight: 600;
+        border-radius: 4px; padding: 5px 12px; font-size: 13px; font-weight: 700;
     }}
     QPushButton#FaceToggle:checked {{
-        background: {ACCENT}; color: {CANVAS}; font-weight: 700;
+        background: {ACCENT}; color: {CANVAS};
     }}
     QPushButton#FormatBtn {{
         background: transparent; color: {BODY}; border: 1px solid transparent;
