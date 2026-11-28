@@ -132,8 +132,15 @@ foreach (['frost-on-the-gate', 'blue-hour', 'three-crows', 'snow-fence', 'gatepo
     $check("the page carries the photograph {$slug}", strpos($html, $slug) !== false);
 }
 
+// The class list grew when SS-1640 put the masonry engine on these tiles
+// (snap-pocket-tile ss-masonry-item), and this assertion was pinned to the
+// exact old attribute, so it broke on dev at that merge and stayed broken --
+// Gemini ran three named tests rather than the suite, and Muse has no PHP.
+// Matching the FIRST class and allowing whatever follows keeps the check
+// about what it is really asserting -- every photograph is a link -- without
+// pinning it to a class list that appearance work is entitled to change.
 $check('each photograph is a link to its own page',
-    preg_match_all('~<a class="snap-pocket-tile" href="~', $html) === 5);
+    preg_match_all('~<a class="snap-pocket-tile[^"]*" href="~', $html) === 5);
 $check('every tile states its shape, so the grid does not reflow',
     preg_match_all('~<img[^>]*width="\d+" height="\d+"~', $html) === 5);
 $check('photographs load lazily', preg_match_all('~loading="lazy"~', $html) === 5);
