@@ -439,6 +439,185 @@ class ProxVoxP3Tests(unittest.TestCase):
         with self.assertRaises(Refused):
             wc.run_container_command(console, "touch /tmp/after-revoke")
 
+    # ── SS-1658: the host shell, and a log somebody can actually read ───────
+    def test_the_command_text_is_audited_not_only_its_hash(self):
+        """Under a 24-hour unattended window the log is the only record.
+
+        This used to store a sha256 and nothing else. A hash cannot be read --
+        it can only CONFIRM a command somebody already guessed -- so a day of
+        unattended work was unreviewable. The digest stays beside the text as
+        the proof the text was not edited afterwards.
+        """
+        class Console:
+            def __init__(self):
+                self.ran = []
+            def run(self, text):
+                self.ran.append(text)
+                return "ok"
+            def close(self):
+                pass
+
+        console = Console()
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        opened = wc.open_container_console("proxmox", 106, connector=lambda **_: console)
+        wc.run_container_command(opened, "mysql -e 'UPDATE snap_posts SET x=1'")
+
+        rows = [r for r in self.audit.records() if r["action"] == "container_write_call"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["detail"]["command"],
+                         "mysql -e 'UPDATE snap_posts SET x=1'")
+        # The digest is still there and still matches the text.
+        import hashlib as _h
+        self.assertEqual(
+            rows[0]["detail"]["command_sha256"],
+            _h.sha256("mysql -e 'UPDATE snap_posts SET x=1'".encode()).hexdigest())
+
+        # AND THE CREDENTIALS ARE STILL ABSENT. Logging the command must not
+        # have widened what else ends up in the log.
+        raw = str(self.audit.records())
+        for secret in ("good-pass", "123456", self.server.ticket_value,
+                       self.server.csrf_value):
+            self.assertNotIn(secret, raw)
+
+    def test_host_shell_uses_the_node_path_not_a_container_path(self):
+        """'and on the host' needed a path that did not exist."""
+        class Console:
+            def run(self, text):
+                return "ok"
+            def close(self):
+                self.closed = True
+
+        console = Console()
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        seen = {}
+        opened = wc.open_host_console(
+            "proxmox",
+            connector=lambda **kw: (seen.update(kw) or console),
+        )
+        self.assertIs(opened, console)
+
+        # The POST went to the NODE's termproxy, with no lxc segment anywhere.
+        paths = [r["path"] for r in self.server.requests if r.get("path")]
+        self.assertIn("/api2/json/nodes/proxmox/termproxy", paths)
+        self.assertFalse([p for p in paths if "/lxc/" in p])
+
+        # vmid 0 marks it as the host rather than a guest.
+        self.assertEqual(seen["vmid"], 0)
+        actions = [r["action"] for r in self.audit.records()]
+        self.assertIn("host_console_open", actions)
+
+        # A command runs on it through the same audited path as a container.
+        wc.run_container_command(opened, "pvesh get /version")
+        rows = [r for r in self.audit.records() if r["action"] == "container_write_call"]
+        self.assertEqual(rows[-1]["detail"]["command"], "pvesh get /version")
+
+    def test_the_host_console_url_is_the_node_not_container_zero(self):
+        """THE BUG MUSE FOUND (room 9390), and it would have failed live.
+
+        open_host_console passes vmid=0, and the shared connector hard-coded
+        /nodes/{node}/lxc/{vmid}/vncwebsocket -- so in production the "host
+        shell" would have opened a console on LXC CONTAINER 0. My other tests
+        injected a fake connector and asserted vmid==0, so they never built a
+        URL and never saw it; the real line sat behind pragma: no cover.
+
+        The URL construction is a pure function now, so this asserts the thing
+        that was wrong instead of the thing next to it.
+        """
+        from proxvox.container_console import console_websocket_url
+
+        host_url = console_websocket_url("pve.example:8006", "proxmox", 0,
+                                         "port=5901&vncticket=t", host=True)
+        self.assertEqual(
+            host_url,
+            "wss://pve.example:8006/api2/json/nodes/proxmox/vncwebsocket"
+            "?port=5901&vncticket=t")
+        # The container segment must be ABSENT, not merely different.
+        self.assertNotIn("/lxc/", host_url)
+
+        guest_url = console_websocket_url("pve.example:8006", "proxmox", 106,
+                                          "port=5901&vncticket=t")
+        self.assertEqual(
+            guest_url,
+            "wss://pve.example:8006/api2/json/nodes/proxmox/lxc/106/vncwebsocket"
+            "?port=5901&vncticket=t")
+
+        # And the flag decides it, NOT the id. vmid=0 without the flag is a
+        # container console, which is what made the sentinel dangerous.
+        self.assertIn("/lxc/0/", console_websocket_url(
+            "pve.example:8006", "proxmox", 0, "q=1"))
+
+        # A node name with a slash cannot escape the path. Checked on the NODE
+        # SEGMENT alone -- my first version of this assertion split on /nodes/
+        # and then forbade any slash in the remainder, which includes
+        # /vncwebsocket, so it failed on correct output. The code was right and
+        # the check was wrong.
+        escaped = console_websocket_url("h", "a/b", 0, "q=1", host=True)
+        node_segment = escaped.split("/nodes/")[1].split("/")[0]
+        self.assertEqual(node_segment, "a%2Fb")
+
+    def test_open_host_console_asks_the_connector_for_the_host(self):
+        """The write client must set the flag, not rely on vmid."""
+        class Console:
+            def close(self):
+                pass
+
+        seen = {}
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        wc.open_host_console("proxmox",
+                             connector=lambda **kw: (seen.update(kw) or Console()))
+        self.assertIs(seen.get("host"), True)
+
+        # And the container path must NOT set it.
+        seen.clear()
+        wc.open_container_console("proxmox", 106,
+                                  connector=lambda **kw: (seen.update(kw) or Console()))
+        self.assertNotEqual(seen.get("host"), True)
+
+    def test_revoke_closes_a_host_shell_too(self):
+        """A host shell must die with the session, like a container one."""
+        class Console:
+            closed = False
+            def close(self):
+                self.closed = True
+
+        console = Console()
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        wc.open_host_console("proxmox", connector=lambda **_: console)
+        wc.revoke(reason="sean clicked stop")
+        self.assertTrue(console.closed)
+        self.assertFalse(wc.is_authorized())
+
+    def test_a_host_shell_is_refused_without_a_ticket_and_on_a_bad_node(self):
+        wc = self._client()
+        before = len(self.server.requests)
+        with self.assertRaises(Refused):
+            wc.open_host_console("proxmox")          # never authorised
+        self.assertEqual(len(self.server.requests), before)
+
+        # ASSERTED ON THE AUDIT ACTION, NOT JUST THE REFUSAL. A mutant that
+        # removed the host method's own is_authorized() check SURVIVED,
+        # because call() has its own guard and refuses anyway -- so the
+        # request is still turned down, one layer later, logged as
+        # "write_refused" instead. That is defence in depth working, not a
+        # hole, but the thing this method ADDS is the early, specifically
+        # labelled refusal: you can tell from the log that somebody tried to
+        # open a HOST shell with no ticket, which "write_refused" on a POST
+        # does not tell you.
+        self.assertIn("host_write_refused",
+                      [r["action"] for r in self.audit.records()])
+
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        before = len(self.server.requests)
+        for bad in ("prox mox", "../etc", "prox;mox", ""):
+            with self.assertRaises(Refused):
+                wc.open_host_console(bad)
+        # Refused BEFORE the network, every time.
+        self.assertEqual(len(self.server.requests), before)
+
     # ── SS-1657: one TOTP, a 24-hour window, renewal that never extends it ──
     def _timer_factory(self, timers):
         class Timer:

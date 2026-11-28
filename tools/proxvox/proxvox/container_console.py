@@ -43,9 +43,38 @@ class PVEConsole:
         self._websocket.close()
 
 
+def console_websocket_url(netloc: str, node: str, vmid: int, query: str,
+                          host: bool = False) -> str:
+    """The console websocket URL, for a container or for the HOST.
+
+    PULLED OUT AS A PURE FUNCTION BECAUSE IT WAS WRONG AND NOTHING COULD SEE
+    IT. This URL was built inline, after the socket and the TLS pin check, so
+    the only way to reach it was a real connection to a real Proxmox -- which
+    is why the one line that mattered sat behind `pragma: no cover`.
+
+    SS-1658 added a host shell and passed vmid=0 into this, and the inline
+    version hard-coded /lxc/%d, so live it would have opened a console on LXC
+    CONTAINER 0 instead of the node. My tests injected a fake connector and
+    asserted vmid==0, so they never built a URL at all and never saw it. Muse
+    found it by reading the path I had marked as uncovered (room 9390).
+
+    HOST IS AN EXPLICIT FLAG, not vmid==0. The write client already refuses to
+    treat a container id of 0 as "the host" -- open_host_console is a separate
+    method precisely so a typo cannot land a command on the host -- and then I
+    handed this a sentinel anyway. A flag says what it means.
+    """
+    node_part = urllib.parse.quote(str(node), safe="")
+    if host:
+        return "wss://%s/api2/json/nodes/%s/vncwebsocket?%s" % (netloc, node_part, query)
+    return "wss://%s/api2/json/nodes/%s/lxc/%d/vncwebsocket?%s" % (
+        netloc, node_part, int(vmid), query,
+    )
+
+
 def connect_console(*, base_url: str, node: str, vmid: int, port: int,
                     vncticket: str, pve_ticket: str,
-                    certificate_sha256: str, timeout: int = 15):
+                    certificate_sha256: str, timeout: int = 15,
+                    host: bool = False):
     """Connect the websocket over the same socket whose certificate is pinned."""
     try:
         import websocket
@@ -60,9 +89,7 @@ def connect_console(*, base_url: str, node: str, vmid: int, port: int,
         tls.close()
         raise CertificatePinError(CHANGED_CERTIFICATE_MESSAGE)
     query = urllib.parse.urlencode({"port": port, "vncticket": vncticket})
-    url = "wss://%s/api2/json/nodes/%s/lxc/%d/vncwebsocket?%s" % (
-        parsed.netloc, urllib.parse.quote(node, safe=""), vmid, query,
-    )
+    url = console_websocket_url(parsed.netloc, node, vmid, query, host=host)
     try:
         ws = websocket.create_connection(
             url, socket=tls, timeout=timeout,
