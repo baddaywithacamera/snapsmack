@@ -573,7 +573,7 @@ function smackback_dev_dir_prefixes(): array {
     if (is_file(SNAPSMACK_ROOT . '/smack-central/sc-config.php')) {
         return [];
     }
-    return ['tests/', 'core/tests/', 'wip/', 'smack-central/'];
+    return ['tests/', 'core/tests/', 'wip/', 'smack-central/', '_review/'];
 }
 
 /** True when a webroot-relative path sits inside a never-trust dev directory. */
@@ -1135,6 +1135,18 @@ function smackback_init_from_disk(bool $cleanup_installers = true): bool {
     // cleanup failure by blessing them as trusted files.
     require_once __DIR__ . '/installer-cleanup.php';
     if ($cleanup_installers && snapsmack_cleanup_installers(dirname(__DIR__), $pdo)) return false;
+
+    // Finalization loads this library from the new release even when a hub
+    // request still has the previous updater in memory.
+    if ($cleanup_installers) {
+        require_once __DIR__ . '/shipped-review-cleanup.php';
+        $review_cleanup = snapsmack_cleanup_shipped_review_files(dirname(__DIR__));
+        if ($review_cleanup['removed'] || $review_cleanup['failed']) {
+            error_log(sprintf('SnapSmack review capture cleanup: %d removed, %d could not be removed.',
+                count($review_cleanup['removed']), count($review_cleanup['failed'])));
+        }
+        if ($review_cleanup['failed']) return false;
+    }
 
     $files = smackback_get_monitored_files();
     if (empty($files)) {

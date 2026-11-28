@@ -2515,9 +2515,10 @@
         "thresholds": []
     },
     "release-ships-no-screenshots-regression.php": {
-        "assertions": 21,
-        "predicates": 15,
+        "assertions": 29,
+        "predicates": 26,
         "thresholds": [
+            2,
             2
         ]
     },
@@ -2712,6 +2713,11 @@
         "thresholds": [
             5
         ]
+    },
+    "shipped-review-cleanup-regression.php": {
+        "assertions": 4,
+        "predicates": 1,
+        "thresholds": []
     },
     "show-n-tell-parity-regression.php": {
         "assertions": 3,
