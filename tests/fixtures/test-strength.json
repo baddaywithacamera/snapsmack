@@ -3695,8 +3695,8 @@
         "thresholds": []
     },
     "user-default-signature-regression.php": {
-        "assertions": 25,
-        "predicates": 16,
+        "assertions": 26,
+        "predicates": 18,
         "thresholds": [
             2,
             413

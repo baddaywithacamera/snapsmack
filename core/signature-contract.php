@@ -99,6 +99,18 @@ function snap_user_signature_ensure_columns(PDO $pdo): void {
         } catch (PDOException $e) {
             $errno = (int)($e->errorInfo[1] ?? 0);
             $msg   = $e->getMessage();
+            if ($errno === 1054 && str_contains($def, ' AFTER ')) {
+                // Pre-0.7.148 snap_users without ui_mode: retry without AFTER.
+                $fallbackDef = preg_replace('/\s+AFTER\s+`[^`]+`$/', '', $def);
+                try {
+                    $stmt2 = $pdo->query("ALTER TABLE `snap_users` ADD COLUMN `{$col}` {$fallbackDef}");
+                    if ($stmt2 !== false) { $stmt2->closeCursor(); }
+                    continue;
+                } catch (PDOException $e2) {
+                    $errno = (int)($e2->errorInfo[1] ?? 0);
+                    $msg   = $e2->getMessage();
+                }
+            }
             if (!in_array($errno, [1060, 1091], true) && stripos($msg, 'duplicate column') === false) {
                 throw $e;
             }

@@ -95,6 +95,7 @@ ox(!str_contains($auth, "'smack-profile.php'"), 'smack-profile.php is not admin-
 
 $profile = (string)file_get_contents($root . '/smack-profile.php');
 ox(str_contains($profile, 'snap_user_signature_ensure_columns($pdo)'), 'smack-profile runs defensive ALTER');
+ox(str_contains($profile, 'try {') && str_contains($profile, 'catch (Throwable $e)'), 'smack-profile guards defensive ALTER');
 ox(str_contains($profile, "\$_SESSION['user_id']"), 'smack-profile scopes updates to logged-in user_id');
 ox(str_contains($profile, '// ===== SNAPSMACK EOF ====='), 'smack-profile carries EOF marker');
 

@@ -24,7 +24,11 @@ if ($uid <= 0) {
     exit;
 }
 
-snap_user_signature_ensure_columns($pdo);
+try {
+    snap_user_signature_ensure_columns($pdo);
+} catch (Throwable $e) {
+    // Degrade gracefully if schema cannot be altered by this DB user.
+}
 
 $msg      = '';
 $msg_type = 'success';
@@ -57,13 +61,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     }
 }
 
-$stmt = $pdo->prepare(
-    "SELECT id, username, display_name, email, user_role,
-            default_signature_light_image_id, default_signature_dark_image_id
-     FROM snap_users WHERE id = ? LIMIT 1"
-);
-$stmt->execute([$uid]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+$sig_columns_available = true;
+try {
+    $stmt = $pdo->prepare(
+        "SELECT id, username, display_name, email, user_role,
+                default_signature_light_image_id, default_signature_dark_image_id
+         FROM snap_users WHERE id = ? LIMIT 1"
+    );
+    $stmt->execute([$uid]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $sig_columns_available = false;
+    $stmt = $pdo->prepare(
+        "SELECT id, username, display_name, email, user_role
+         FROM snap_users WHERE id = ? LIMIT 1"
+    );
+    $stmt->execute([$uid]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+}
 
 if (!$user) {
     die('User not found.');
