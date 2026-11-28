@@ -2136,8 +2136,8 @@
         ]
     },
     "pocket-album-display-regression.php": {
-        "assertions": 74,
-        "predicates": 62,
+        "assertions": 78,
+        "predicates": 67,
         "thresholds": [
             2,
             2,

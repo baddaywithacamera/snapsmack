@@ -396,8 +396,44 @@ $check('  the stylesheet still ends with its EOF marker',
        str_ends_with(rtrim($css), '/* ===== SNAPSMACK EOF ===== */'));
 
 $display = (string)file_get_contents($root . '/core/pocket-album-display.php');
-$check('pocket album reads cached items newest-first (sort_rank DESC)',
-       str_contains($display, 'ORDER BY sort_rank DESC, id DESC'));
+// SS-1643: the ordering is now built from what the cache table actually has.
+// A posted date wins where the source gave one; everything else keeps the
+// reversed album order this assertion was written for.
+$check('pocket album prefers the SOURCE publication date',
+       str_contains($display, "CASE WHEN posted_on <> '' THEN 0 ELSE 1 END ASC, posted_on DESC, "));
+$check('  and still falls back to the reversed album order',
+       str_contains($display, 'sort_rank DESC,'));
+$check('  with the ordering built only when the column exists',
+       str_contains($display, 'SELECT posted_on FROM snap_pocket_album_items LIMIT 0'));
+
+// THESE TWO EXIST BECAUSE A MUTANT SURVIVED. Replacing the row build with
+// 'posted_on' => '' -- the cache storing no posted date at all, which is the
+// original bug restored -- left every assertion above GREEN, because they all
+// read the ORDER BY and nothing read the WRITE. An ordering clause over a
+// column nothing fills sorts every row into the "else 1" bucket and falls
+// back to sort_rank silently.
+$check('  and the cached posted date comes from the feed, not a blank',
+       str_contains($display, "'posted_on' => (string)(\$row['date_posted'] ?? '')"));
+// The binding is positional, so posted_on must sit at the SAME index in the
+// column list and in the bound values. Counted from the real INSERT rather
+// than eyeballed: a column added to one list and not the other shifts every
+// value after it, which stores a date in the wrong field and passes a text
+// search for both names.
+$check('  and posted_on is bound at the same position it is named',
+       (static function (string $src): bool {
+           if (!preg_match('~INSERT INTO snap_pocket_album_items\s*\(([^)]*)\)~', $src, $cols)) {
+               return false;
+           }
+           if (!preg_match('~\$insert->execute\(\[(.*?)\]\);~s', $src, $vals)) {
+               return false;
+           }
+           $columns = array_map('trim', explode(',', $cols[1]));
+           $bound = array_map('trim', explode(',', $vals[1]));
+           $bound = array_values(array_filter($bound, static fn($v) => $v !== ''));
+           $ci = array_search('posted_on', $columns, true);
+           $vi = array_search("\$row['posted_on']", $bound, true);
+           return $ci !== false && $vi !== false && $ci === $vi;
+       })($display));
 
 $colsJs = (string)file_get_contents($root . '/assets/js/ss-engine-columns.js');
 $check('ss-engine-columns falls back to intrinsic width/height attributes',
