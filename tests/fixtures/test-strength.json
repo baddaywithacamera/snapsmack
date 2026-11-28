@@ -90,6 +90,11 @@
             2
         ]
     },
+    "alfred-signature-renders-regression.php": {
+        "assertions": 15,
+        "predicates": 10,
+        "thresholds": []
+    },
     "api-input-safety-regression.php": {
         "assertions": 36,
         "predicates": 8,

@@ -1353,6 +1353,18 @@ body.archive-page #scroll-stage.post-inner {
     position: relative;
 }
 
+.post-signature {
+    margin: 0 0 24px;
+}
+.post-signature--closing {
+    margin: 44px 0 0;
+}
+.post-signature img {
+    display: block;
+    width: min(340px, 72%);
+    height: auto;
+}
+
 /* Alignment */
 
 .alignnone,
@@ -1771,18 +1783,6 @@ p.comment-form-author { margin-right: 5%; }
     margin: 0;
     line-height: 1.9;
 }
-
-#system-footer .footer-metadata-bar p:first-child {
-    color: #fff;
-    font-size: 1.175em;
-    font-weight: 600;
-    letter-spacing: 0.025em;
-}
-
-#system-footer .footer-metadata-bar p:first-child a,
-#system-footer .footer-metadata-bar p:first-child .footer-link { color: #fff; }
-#system-footer .footer-metadata-bar p:first-child a:hover,
-#system-footer .footer-metadata-bar p:first-child .footer-link:hover { color: var(--alfred-accent); }
 
 #system-footer .footer-metadata-bar p + p {
     margin-top: 12px;

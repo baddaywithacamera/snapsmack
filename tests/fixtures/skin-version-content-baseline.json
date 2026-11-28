@@ -13,8 +13,8 @@
             "manifest_css_sha256": "53759ac9939ee3eaf2b45aca9c121d761fd38a74b98c2315e0f7505cfbeac57d"
         },
         "alfred": {
-            "version": "1.0.30",
-            "files_sha256": "4d334b696cbfc49fedce4a0058a611864fc1763f04ff87d60872b2ca7308b660",
+            "version": "0.7.31",
+            "files_sha256": "769ff83e7033173b3d0f8d362280d9a0833e7358ba82bb0dd79bac6b4fa4aee5",
             "manifest_css_sha256": "f468a5ecd88eb36426dd3ff8065984b9bb503697e8d7d9baa2613229525439b7"
         },
         "aurora": {
