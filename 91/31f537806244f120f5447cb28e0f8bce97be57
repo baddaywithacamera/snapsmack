@@ -1,0 +1,56 @@
+{
+  "commit": "9131f537806244f120f5447cb28e0f8bce97be57",
+  "security": "pass",
+  "parity": "pass",
+  "skin_render_parity": "pass",
+  "authority_review": "approved",
+  "authority": "Sean McCormick requested release in Codex chat; PM 9081 confirms exact scope and requested tag.",
+  "independent_review": "Muse 9066 and 9016; Muse 9035 with MariaDB evidence 9038.",
+  "skin_count": 30,
+  "skin_inventory_sha256": "d9559be77cfc2a7bddd42c7b90b824a42b9cc4471ab6ff303e0d2abf9bda7c3d",
+  "skin_render_changes": [],
+  "skin_render_scope": "No skin or asset files changed. Shared inline-frame geometry checked with all 30 skin CSS files. IMPACT PRINTER keeps its pre-existing fit-content geometry; no width change in that skin.",
+  "browser_regressions": "pass",
+  "fleet_before": "pass",
+  "fleet_before_site_count": 17,
+  "fleet_before_surface_count": 102,
+  "fleet_before_manifest_sha256": "055ad92b2acb43e0e5e1101e33c1d99c9eadaed73d492d40b00f1ceb68f77ecb",
+  "demo_parity": "pass",
+  "demo_parity_checked_by": "Codex",
+  "demo_parity_checked_at": "2026-11-28T06:38:29.731638+00:00",
+  "demo_parity_record_sha256": "ca610bc2d2f40b6161a9b007669f8b6d9db09d9fcbccc64dabd392a867ad04ad",
+  "demo_parity_features": [
+    {
+      "ticket": "SS-1589",
+      "site": "Local CMS navigation fixture (PhotoFri.day)",
+      "room_message_id": "jdHdXxpngsv-Wiiob-EfEFVY",
+      "capture_count": 1
+    },
+    {
+      "ticket": "SS-1641",
+      "site": "Loopback PHP and MariaDB, canonical schema",
+      "room_message_id": "G9CBNOJsALKpRRMeWqUcRX4a",
+      "capture_count": 1
+    },
+    {
+      "ticket": "SS-1610",
+      "site": "Local strict-render fixture using TILEZ (Bad Day)",
+      "room_message_id": "XJcapma0IVW862BFbMjMbH4_",
+      "capture_count": 2
+    }
+  ],
+  "tests": "512 PHP pass; 1 deliberate SS-1641 skip; 1 Git hook fixture failure reproduced on unchanged shared checkout. PM accepted both exclusions in room 9065. Browser suite PASS. Both hand update paths PASS with an ephemeral fixture-only Ed25519 key.",
+  "php_exclusions": [
+    {
+      "test": "smackpress-keeps-albums-it-was-not-told-about-regression.php",
+      "status": "skip",
+      "alternate_evidence": "Real PHP HTTP and MariaDB with all five cases, room 9038"
+    },
+    {
+      "test": "git-hook-behaviour-regression.php",
+      "status": "baseline_failure",
+      "evidence": "Reproduced on unchanged shared checkout; gate source and hooks byte-identical to origin dev."
+    }
+  ],
+  "candidate_package_sha256": "5099fb002e934c6a1a24e8cfe292316d03178266bd7d2c66c963cd7e909d83e8"
+}
