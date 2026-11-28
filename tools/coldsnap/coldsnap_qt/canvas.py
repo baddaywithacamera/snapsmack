@@ -355,7 +355,7 @@ class _Objects(QPyTextObject):
         if kind == "mosaic":
             self._draw_mosaic(painter, r, data, pos)
         elif kind == "image":
-            self._draw_image(painter, r, data)
+            self._draw_image(painter, r, data, pos)
         elif kind == "signature":
             self._draw_signature(painter, r, data)
         elif kind in ("site_mosaic", "site_raw"):
@@ -455,6 +455,7 @@ class _Objects(QPyTextObject):
             status = self.canvas._inline_browser_error or 'Loading mosaic preview…'
             painter.drawText(inner, Qt.AlignCenter, status)
         tile_hits = {}
+        photo_hits = {}
         for n, tile in enumerate(out["items"], 1):
             cell = QRect(inner.left() + int(round(tile["x"])),
                          inner.top() + int(round(tile["y"])),
@@ -462,11 +463,12 @@ class _Objects(QPyTextObject):
                          max(1, int(round(tile["height"]))))
             path = tile["image"].get("src", "")
             pix = self._cached_cell_pixmap(path, cell.size())
+            painted = cell
             if pix is not None and not pix.isNull():
-                painter.drawPixmap(
-                    QRect(cell.left() + (cell.width() - pix.width()) // 2,
-                          cell.top() + (cell.height() - pix.height()) // 2,
-                          pix.width(), pix.height()), pix)
+                painted = QRect(cell.left() + (cell.width() - pix.width()) // 2,
+                                cell.top() + (cell.height() - pix.height()) // 2,
+                                pix.width(), pix.height())
+                painter.drawPixmap(painted, pix)
                 painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
                 painter.setBrush(Qt.NoBrush)
                 painter.drawRect(cell.adjusted(0, 0, -1, -1))
@@ -485,6 +487,7 @@ class _Objects(QPyTextObject):
             painter.setPen(QColor("#ffffff"))
             painter.drawText(badge, Qt.AlignCenter, str(n))
             tile_hits[tile['id']] = (tile['image']['identity'], cell)
+            photo_hits[tile['id']] = (tile['image']['identity'], painted)
 
         clusters = uniform_clusters(out['items'], _mosaic_gap(data))
         buttons = []
@@ -502,6 +505,7 @@ class _Objects(QPyTextObject):
             buttons.append((button, [tile_hits[tile['id']][0] for tile in cluster]))
         if pos is not None:
             self.canvas._inline_mosaic_hits[pos] = (tile_hits, buttons)
+            self.canvas._inline_mosaic_photo_hits[pos] = photo_hits
             self.canvas._inline_mosaic_sections[pos] = out.get("sections", ())
         self._mosaic_footer(painter, r, len(paths), layout, len(clusters))
 
@@ -599,21 +603,23 @@ class _Objects(QPyTextObject):
             note = metrics.elidedText(mosaic_note(count, layout), Qt.ElideRight, foot.width())
             painter.drawText(foot, Qt.AlignVCenter | Qt.AlignLeft, note)
 
-    def _draw_image(self, painter, r, data):
+    def _draw_image(self, painter, r, data, pos=None):
         iw, _ih, align, cap_text, cap_h = self._image_box_metrics(data, r.width())
         x = r.left() if align == "left" else (r.right() - iw if align == "right"
                                               else r.left() + (r.width() - iw) // 2)
         box = QRect(x, r.top() + 2, iw, max(16, r.height() - 4 - cap_h))
         identity = "asset:" + str(data["asset_uuid"]) if data.get("asset_uuid") else str(data.get("img_id", ""))
         pix = self.canvas.image_pixmap(identity, iw)
+        painted = box
         if pix is not None and not pix.isNull():
             scaled = pix.scaled(box.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            painter.drawPixmap(QRect(box.left() + (box.width() - scaled.width()) // 2,
-                                     box.top() + (box.height() - scaled.height()) // 2,
-                                     scaled.width(), scaled.height()), scaled)
+            painted = QRect(box.left() + (box.width() - scaled.width()) // 2,
+                            box.top() + (box.height() - scaled.height()) // 2,
+                            scaled.width(), scaled.height())
+            painter.drawPixmap(painted, scaled)
             painter.setPen(QPen(QColor(theme.ACCENT_DIM), 1))
             painter.setBrush(Qt.NoBrush)
-            painter.drawRect(box.adjusted(0, 0, -1, -1))
+            painter.drawRect(painted.adjusted(0, 0, -1, -1))
         else:
             outline_col, text_col = self._placeholder_colors()
             painter.setPen(QPen(QColor(outline_col), 1, Qt.DashLine))
@@ -629,6 +635,9 @@ class _Objects(QPyTextObject):
                 what = (f"IMAGE — photo {sid[7:]} missing from bucket" if sid.lower().startswith("bucket:")
                         else f"IMAGE — #{sid} not in COLD STORAGE yet")
             painter.drawText(box.adjusted(8, 4, -8, -4), Qt.AlignCenter | Qt.TextWordWrap, what)
+        if pos is not None:
+            transform = painter.worldTransform()
+            self.canvas._painted_images[pos] = (transform.mapRect(painted), transform.mapRect(r), iw)
         if cap_text and cap_h > 0:
             cap_font, cap_color = self.canvas.caption_font_and_color()
             cap_align = str(self.canvas._caption_style.get("align") or "left").lower()
@@ -874,6 +883,7 @@ class BiggieCanvas(QTextEdit):
         self.bucket = []                 # ordered local paths of the post's photos
         self.assets = {}                 # immutable asset UUID -> local preview path
         self._image_resize_handle = None
+        self._painted_images = {}
         self._image_resize_drag = None
         self._image_resolver = None      # callable(img_id, width) -> QPixmap|None
         self._published_image_paths = {}
@@ -907,6 +917,7 @@ class BiggieCanvas(QTextEdit):
         self._inline_browser_jobs = {}
         self._inline_browser_cache = {}
         self._inline_mosaic_hits = {}
+        self._inline_mosaic_photo_hits = {}
         self._inline_mosaic_sections = {}
         self.mosaic_tray_additions = lambda _order: ()
         self._selected_obj_pos = None
@@ -1779,9 +1790,13 @@ class BiggieCanvas(QTextEdit):
         )
 
     def _object_under_mouse(self, point):
+        for position, (painted, _, _) in self._painted_images.items():
+            if painted.contains(int(point.x()), int(point.y())):
+                return self._object_at(position)
         pt = self._unscale_point(point)
         pos = self.document().documentLayout().hitTest(pt, Qt.FuzzyHit)
-        return self._object_at(pos) if pos >= 0 else None
+        hit = self._object_at(pos) if pos >= 0 else None
+        return hit if hit and hit[0] != "image" else None
 
     def _ensure_gutter_margin(self):
         rf = self.document().rootFrame().frameFormat()
@@ -1842,7 +1857,9 @@ class BiggieCanvas(QTextEdit):
         return r
 
     def paintEvent(self, event):
+        self._painted_images.clear()
         self._inline_mosaic_hits.clear()
+        self._inline_mosaic_photo_hits.clear()
         self._inline_mosaic_sections.clear()
         scale = float(getattr(self, "_zoom_scale", 1.0) or 1.0)
         doc = self.document()
@@ -1915,7 +1932,11 @@ class BiggieCanvas(QTextEdit):
 
         self._block_close_rect = None
         if self._selected_block_pos is not None:
-            sel_r = self._block_selection_rect(self._selected_block_pos)
+            hit = self._object_at(self._selected_block_pos)
+            if hit and hit[0] == "image":
+                sel_r = self._painted_images.get(hit[2], (None, None, None))[0]
+            else:
+                sel_r = self._block_selection_rect(self._selected_block_pos)
             if sel_r is not None:
                 painter.setPen(QPen(QColor(theme.ACCENT), 2))
                 painter.setBrush(Qt.NoBrush)
@@ -1932,30 +1953,30 @@ class BiggieCanvas(QTextEdit):
         if self._selected_obj_pos is not None:
             hit = self._object_at(self._selected_obj_pos)
             if hit and hit[0] == "image":
-                self._paint_image_resize(painter, hit, scale)
+                self._paint_image_resize(painter, hit)
         painter.end()
 
-    def _paint_image_resize(self, painter, hit, scale):
+    def _paint_image_resize(self, painter, hit):
         _, data, position = hit
-        block = self._block_selection_rect(position)
-        if block is None:
+        geometry = self._painted_images.get(position)
+        if geometry is None:
             return
-        width = self._objects._width(self.document())
-        image_width, _, align, _, _ = self._objects._image_box_metrics(data, width)
-        left = block.left()
-        x = left if align == "left" else left + round((width - image_width) * scale * (.5 if align == "center" else 1))
-        edge = x if align == "right" else x + round(image_width * scale) - 1
+        painted, block, image_width = geometry
+        align = data.get("align", "center")
+        edge = painted.left() if align == "right" else painted.right()
         handle_width = 16
         handle_left = min(self.viewport().width() - handle_width, edge - 6)
-        handle = QRect(max(0, handle_left), block.center().y() - 11, handle_width, 22)
+        handle = QRect(max(0, handle_left), painted.center().y() - 11, handle_width, 22)
+        width = self._objects._width(self.document())
         initial = biggie.image_width_percent(data) or round(100 * image_width / width)
-        self._image_resize_handle = (handle, position, initial, width * scale, align)
+        self._image_resize_handle = (handle, position, initial, block.width(), align)
         painter.fillRect(handle, QColor(theme.ACCENT))
         if self._image_resize_drag is not None:
             _, _, _, _, _, percent = self._image_resize_drag
-            preview = round(width * scale * percent / 100)
-            offset = (round(width * scale) - preview) * (.5 if align == "center" else 1 if align == "right" else 0)
-            new_rect = QRect(left + round(offset), block.top(), preview, block.height())
+            preview = round(painted.width() * percent / initial)
+            offset = (painted.width() - preview) * (.5 if align == "center" else 1 if align == "right" else 0)
+            new_rect = QRect(painted.left() + round(offset), painted.top(), preview,
+                             round(painted.height() * percent / initial))
             painter.setPen(QPen(QColor(theme.ACCENT), 1, Qt.DashLine))
             painter.setBrush(Qt.NoBrush)
             painter.drawRect(new_rect)
@@ -2123,7 +2144,8 @@ class BiggieCanvas(QTextEdit):
     def _add_inline_photo_actions(self, menu, hit, point):
         _kind, data, pos = hit
         tiles, buttons = self._inline_mosaic_hits.get(pos, ({}, []))
-        picked = next(((number, ident) for number, (ident, rect) in tiles.items()
+        photos = self._inline_mosaic_photo_hits.get(pos, tiles)
+        picked = next(((number, ident) for number, (ident, rect) in photos.items()
                        if rect.contains(point)), None)
         if not picked:
             return False

@@ -48,6 +48,8 @@ def take_resize_checks(mode, output):
 
     from coldsnap_qt import biggie
     from coldsnap_qt.mode_take import _ImageWidthPreview
+    from sumna_offline import Draft, KIND_SMACKTALK, MODE_SMACKTALK
+    from sumna_post import SmacktalkPoster
 
     app = QApplication.instance()
     mode.body._set_biggie(True)
@@ -71,6 +73,38 @@ def take_resize_checks(mode, output):
     visual = handle_visible and width == 100 and canvas.body_text() == "[img:7|80%|decorative]"
     canvas.grab().save(str(output / "visual-image-resize.png"), "PNG")
 
+    selected = {}
+    imported_width = False
+    for orientation, size in (("portrait", (120, 240)), ("landscape", (240, 120))):
+        image = QPixmap(*size)
+        image.fill(QColor("#1968aa"))
+        canvas.set_image_resolver(lambda *_: image)
+        canvas.from_blocks(biggie.parse_site_html("<p>[img:7|full|center|60]</p>"))
+        canvas.select_block_at(0)
+        app.processEvents()
+        capture = canvas.viewport().grab()
+        painted, column, _ = canvas._painted_images[0]
+        grip, _, _, drag_width, _ = canvas._image_resize_handle
+        close = canvas._block_close_rect
+        selected[orientation] = (
+            QColor(capture.toImage().pixel(painted.center())).name() == "#1968aa"
+            and painted.width() < column.width()
+            and painted.contains(close.center())
+            and grip.contains(painted.right(), painted.center().y())
+            and canvas._object_under_mouse(painted.center())[0] == "image"
+            and canvas._object_under_mouse(QPoint(column.left() + 1, painted.center().y())) is None
+            and capture.save(str(output / f"selected-{orientation}.png"), "PNG")
+        )
+        if orientation == "portrait":
+            QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=grip.center())
+            QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=grip.center() - QPoint(round(drag_width * .1), 0))
+            blocks = canvas.to_blocks()
+            draft = Draft(draft_id="imported-width", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                          body_blocks=biggie.blocks_to_json(blocks),
+                          caption=biggie.serialize_blocks(blocks))
+            imported_width = "[img:7|full|center|40]" in SmacktalkPoster._body_text_for_sync(draft)
+
+    canvas.set_image_resolver(lambda *_: fixture)
     mode.body._set_biggie(False)
     editor = mode.body.editor
     text = "Lead [img:7|40%|decorative] then [img:8|30]"
@@ -98,7 +132,9 @@ def take_resize_checks(mode, output):
     expected = text.replace("40%", "60%")
     mode.body._set_biggie(True)
     mode.body._set_biggie(False)
-    return {"visual_image_resize": visual, "text_image_resize": editor.toPlainText() == expected}
+    return {"visual_image_resize": visual, "text_image_resize": editor.toPlainText() == expected,
+            "selected_portrait": selected["portrait"], "selected_landscape": selected["landscape"],
+            "resized_imported_image_reaches_wire": imported_width}
 
 
 def take_composer_checks(mode, files, *, check_renderer=False):

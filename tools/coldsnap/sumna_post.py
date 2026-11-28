@@ -896,6 +896,11 @@ class SmacktalkPoster:
             signature_fields = biggie.signature_fields_for_blocks(
                 biggie.blocks_from_json(draft.body_blocks))
         if signature_fields:
+            # The app's per-site signature is an explicit local preference.
+            # An inherited block already previews that image, so send the same
+            # choice. With no configured image, let the site resolve inheritance.
+            if self.signature_image_id and all(value is None for value in signature_fields.values()):
+                signature_fields = dict.fromkeys(signature_fields, self.signature_image_id)
             payload.update(signature_fields)
         elif not draft.signature_enabled:
             payload["signature_image_id"] = 0

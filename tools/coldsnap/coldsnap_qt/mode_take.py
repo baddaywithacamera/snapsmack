@@ -89,17 +89,19 @@ class _ImageWidthPreview(QWidget):
         offset = width - image_width
         left = 13 + (offset if self.align == "right" else offset // 2 if self.align == "center" else 0)
         box = QRect(left, 12, image_width, self.height() - 24)
+        painted = box
         pixmap = self.canvas.image_pixmap(self.image_id, width)
         if pixmap is not None and not pixmap.isNull():
             self._retry.stop()
             scaled = pixmap.scaled(box.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            painter.drawPixmap(box.center() - scaled.rect().center(), scaled)
+            painted = QRect(box.center() - scaled.rect().center(), scaled.size())
+            painter.drawPixmap(painted, scaled)
         else:
             painter.setPen(QColor(theme.DIM))
             painter.drawRect(box)
             painter.drawText(box, Qt.AlignCenter | Qt.TextWordWrap, "Preview unavailable")
-        edge = box.left() if self.align == "right" else box.right()
-        self._handle = QRect(edge - 6, box.center().y() - 11, 13, 22)
+        edge = painted.left() if self.align == "right" else painted.right()
+        self._handle = QRect(edge - 6, painted.center().y() - 11, 13, 22)
         painter.fillRect(self._handle, QColor(theme.ACCENT))
         painter.end()
 
