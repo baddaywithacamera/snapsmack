@@ -128,6 +128,13 @@ function snapsmack_trusted_html(string $html): SnapTrustedHtml
         $keep = array_flip($allowed[$tag]);
         foreach (iterator_to_array($node->attributes ?? []) as $attribute) {
             $name = strtolower($attribute->nodeName);
+            // The image parser emits a bounded percentage for inline frames.
+            // Preserve the generated declaration verbatim without accepting other CSS.
+            if ($name === 'style' && $tag === 'div'
+                && preg_match('/(?:^|[\x09-\x0D ])snap-inline-frame(?:$|[\x09-\x0D ])/D', $node->getAttribute('class'))
+                && preg_match('/^--snap-image-width:(?:[2-9][0-9]|100)%$/D', $attribute->nodeValue)) {
+                continue;
+            }
             if (!isset($keep[$name])) {
                 $node->removeAttributeNode($attribute);
                 continue;

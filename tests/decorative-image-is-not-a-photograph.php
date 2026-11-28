@@ -97,6 +97,23 @@ $sized = $p->parseContent('[img:7|small|left|30]');
 $check('an ordinary sized image is unchanged by this work',
     str_contains($sized, 'data-lightbox-src') && str_contains($sized, '--snap-image-width:30%'));
 
+$published = (string)snapsmack_trusted_html($p->parseContent('[img:24|full|center|75]'));
+$check('75% survives the public HTML conversion', str_contains($published, 'style="--snap-image-width:75%"'));
+$check('decorative widths survive the same public conversion', str_contains($sanitised, 'style="--snap-image-width:30%"'));
+$check('default images remain full width after conversion',
+    str_contains((string)snapsmack_trusted_html($photo), 'style="--snap-image-width:100%"'));
+
+foreach ([
+    ['snap-inline-frame', '--snap-image-width:19%'],
+    ['snap-inline-frame', '--snap-image-width:101%'],
+    ['snap-inline-frame', '--snap-image-width:75%; color:red'],
+    ['other-inline-frame', '--snap-image-width:75%'],
+] as [$class, $style]) {
+    $fragment = '<div class="' . $class . '" style="' . $style . '">Photo</div>';
+    $check('reject CSS outside the generated frame width: ' . $style . ' on ' . $class,
+        !str_contains((string)snapsmack_trusted_html($fragment), 'style='));
+}
+
 // --- THE GRAMMAR, IN THE FORMS SOMEBODY WILL ACTUALLY TYPE -----------------
 $check('[img:7|decorative] works with no size or align given',
     !str_contains($p->parseContent('[img:7|decorative]'), 'data-lightbox-src'));
