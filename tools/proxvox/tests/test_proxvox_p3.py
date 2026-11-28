@@ -535,6 +535,18 @@ class ProxVoxP3Tests(unittest.TestCase):
             wc.open_host_console("proxmox")          # never authorised
         self.assertEqual(len(self.server.requests), before)
 
+        # ASSERTED ON THE AUDIT ACTION, NOT JUST THE REFUSAL. A mutant that
+        # removed the host method's own is_authorized() check SURVIVED,
+        # because call() has its own guard and refuses anyway -- so the
+        # request is still turned down, one layer later, logged as
+        # "write_refused" instead. That is defence in depth working, not a
+        # hole, but the thing this method ADDS is the early, specifically
+        # labelled refusal: you can tell from the log that somebody tried to
+        # open a HOST shell with no ticket, which "write_refused" on a POST
+        # does not tell you.
+        self.assertIn("host_write_refused",
+                      [r["action"] for r in self.audit.records()])
+
         wc.authorize("proxvox@pve", "good-pass", "123456")
         before = len(self.server.requests)
         for bad in ("prox mox", "../etc", "prox;mox", ""):
