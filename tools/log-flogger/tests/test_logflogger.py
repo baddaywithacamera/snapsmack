@@ -95,6 +95,16 @@ def test_finds_an_app_that_stopped(tmp_path):
     assert "cronometer" in found[0].headline
 
 
+def test_duplicate_log_timestamps_do_not_hide_a_stopped_tool(tmp_path):
+    start = datetime(2026, 9, 1, 9, 0)
+    for day in range(4):
+        when = start + timedelta(days=day)
+        for kind in ("debug", "audit", "run"):
+            _log(tmp_path, f"cronometer_{kind}_{when:%Y-%m-%d-%H-%M}.log", "tick", when)
+    findings = analyze.find_silences(gather.gather(roots=[tmp_path]), now=datetime(2026, 10, 17))
+    assert [(item.app, item.count) for item in findings] == [("cronometer", 4)]
+
+
 def test_an_app_still_running_is_not_reported_as_silent(tmp_path):
     root = str(tmp_path)
     now = datetime(2026, 10, 17)
@@ -112,6 +122,20 @@ def test_too_little_history_is_not_called_a_silence(tmp_path):
     _log(root, "rare_debug_2026-01-02-09-00.log", "x")
     h = gather.gather(roots=[root])
     assert analyze.find_silences(h, now=datetime(2026, 10, 17)) == []
+
+
+def test_save_failures_group_photo_names_but_keep_different_causes(tmp_path):
+    _log(tmp_path, "sybu_debug_2026-10-01-10-00.log", "\n".join([
+        "SAVE FAILED — a.jpg: disk full.",
+        "SAVE FAILED — fall colour.tiff: disk full.",
+        "SAVE FAILED — b.jpg: permission denied.",
+    ]))
+    findings = analyze.find_errors(gather.gather(roots=[tmp_path]))
+    assert {item.headline: item.count for item in findings} == {
+        "SAVE FAILED — <photo>: disk full.": 2,
+        "SAVE FAILED — <photo>: permission denied.": 1,
+    }
+    assert "a.jpg" in findings[0].evidence[0]
 
 
 def test_identical_errors_collapse_to_one_finding_with_a_count(tmp_path):

@@ -56,6 +56,12 @@ _SECURITY = re.compile(
 )
 
 
+_SAVE_FAILED_ASSET = re.compile(
+    r"(\bsave failed\s*[—–-]\s*)[^:\r\n]+\.(?:jpe?g|png|tiff?|webp|heic|dng|cr[23]|nef|arw)(?=\s*:)",
+    re.IGNORECASE,
+)
+
+
 @dataclass
 class Finding:
     band: str
@@ -90,6 +96,7 @@ def _normalise(line: str) -> str:
     """Collapse a line to its shape so 400 occurrences of the same fault count as
     one finding with count=400 rather than 400 findings."""
     out = re.sub(r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}", "<ts>", line)
+    out = _SAVE_FAILED_ASSET.sub(r"\g<1><photo>", out)
     out = re.sub(r"\b[0-9a-f]{8,}\b", "<hex>", out, flags=re.IGNORECASE)
     out = re.sub(r"\b\d+\b", "<n>", out)
     out = re.sub(r"[A-Za-z]:\\\\[^\s'\"]+|/[\w./-]{8,}", "<path>", out)
@@ -141,7 +148,8 @@ def find_silences(harvest, quiet_days: int = 14, now: datetime | None = None) ->
     out = []
 
     for app, files in harvest.apps.items():
-        stamps = sorted(f.when for f in files if f.when)
+        # Debug and audit logs can carry the same start time for one run.
+        stamps = sorted({f.when for f in files if f.when})
         if len(stamps) < 3:
             continue  # too little history to call anything unusual
 
