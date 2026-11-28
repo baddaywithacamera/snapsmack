@@ -549,6 +549,51 @@ class WriteClient:
         })
         return console
 
+    def open_host_console(self, node: str, connector=None, timeout: int = 15):
+        """Open a shell on the Proxmox HOST, not inside a container.
+
+        Sean's 2026-11-28 12:56 ruling: inside the authorised window PROX VOX
+        gives a general shell in any container AND ON THE HOST. Everything
+        here already reached into containers -- /nodes/{node}/lxc/{vmid}/
+        termproxy -- and there was no host path at all, so "and on the host"
+        was not buildable by the shared app however its menu was arranged.
+
+        It is the SAME Proxmox mechanism one level up: /nodes/{node}/termproxy.
+        Deliberately a SEPARATE method rather than a vmid=0 special case on the
+        container one, so a typo in a container id can never silently land a
+        command on the host instead of in the guest.
+        """
+        node_name = str(node or "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", node_name):
+            raise Refused("A safe node name is required for a host shell.")
+        if not self.is_authorized():
+            self.audit.record("host_write_refused", {
+                "node": node_name, "why": "no active TOTP ticket",
+            })
+            raise Refused("Host console refused: authorize with TOTP first.")
+
+        response = self.post("/nodes/%s/termproxy" % node_name, timeout=timeout)
+        data = response.get("data") if isinstance(response, dict) else None
+        if not isinstance(data, dict) or not data.get("port") or not data.get("ticket"):
+            raise Refused("Proxmox did not return a usable host terminal proxy.")
+        if connector is None:                                   # pragma: no cover
+            from .container_console import connect_console
+            connector = connect_console
+        console = connector(
+            base_url=self.base_url, node=node_name, vmid=0,
+            port=int(data["port"]), vncticket=str(data["ticket"]),
+            pve_ticket=self._ticket,
+            certificate_sha256=self._certificate_sha256, timeout=timeout,
+        )
+        # Tracked in the SAME list as container consoles, so revoke() and the
+        # window closing shut a host shell exactly as they shut a guest one.
+        # A second list would have been a second thing to remember to close.
+        self._container_consoles.append(console)
+        self.audit.record("host_console_open", {
+            "node": node_name, "username": self._username,
+        })
+        return console
+
     def run_container_command(self, console, command: str):
         """Run one audited command while both the console and TOTP ticket live."""
         if not self.is_authorized() or console not in self._container_consoles:
@@ -559,8 +604,33 @@ class WriteClient:
         text = str(command or "")
         if not text.strip() or "\x00" in text:
             raise Refused("A non-empty command without NUL bytes is required.")
+        # THE LOG MUST SAY WHAT WAS RUN, NOT JUST THAT SOMETHING WAS.
+        #
+        # This recorded ONLY a sha256 of the command. That was arguably enough
+        # while every operation had its own TOTP and Sean watched each dialog
+        # go by: he saw the action, and the hash tied the log to it. Sean's
+        # 2026-11-28 12:56 ruling replaced that with a 24-HOUR UNATTENDED
+        # WINDOW across the host, every container and every database -- and the
+        # log is now the ONLY record of what happened on his servers.
+        #
+        # A hash cannot be read. It can only CONFIRM a command somebody has
+        # already guessed. Nobody can review a day's work from a column of
+        # digests, which makes "append-only log retained" (the condition the
+        # open-door ruling kept, OPAUDIT 042) worth nothing in practice.
+        #
+        # So the text goes in. The hash stays beside it, because it is what
+        # proves the text was not edited afterwards.
+        #
+        # SAID PLAINLY, BECAUSE IT IS A REAL COST: a command carrying a
+        # password now puts that password in the local audit buffer. There is
+        # no secrets blocklist to redact against -- Muse recorded at OPAUDIT
+        # 042 that none exists in the room or the continuity material, and the
+        # PM is asking Sean for one. Until it exists, an unreadable log is the
+        # worse of the two risks: the buffer is local, and a 24-hour window
+        # nobody can audit is not.
         self.audit.record("container_write_call", {
             "username": self._username,
+            "command": text,
             "command_sha256": hashlib.sha256(text.encode()).hexdigest(),
         })
         return console.run(text)

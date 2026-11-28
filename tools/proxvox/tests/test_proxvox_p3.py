@@ -439,6 +439,110 @@ class ProxVoxP3Tests(unittest.TestCase):
         with self.assertRaises(Refused):
             wc.run_container_command(console, "touch /tmp/after-revoke")
 
+    # ── SS-1658: the host shell, and a log somebody can actually read ───────
+    def test_the_command_text_is_audited_not_only_its_hash(self):
+        """Under a 24-hour unattended window the log is the only record.
+
+        This used to store a sha256 and nothing else. A hash cannot be read --
+        it can only CONFIRM a command somebody already guessed -- so a day of
+        unattended work was unreviewable. The digest stays beside the text as
+        the proof the text was not edited afterwards.
+        """
+        class Console:
+            def __init__(self):
+                self.ran = []
+            def run(self, text):
+                self.ran.append(text)
+                return "ok"
+            def close(self):
+                pass
+
+        console = Console()
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        opened = wc.open_container_console("proxmox", 106, connector=lambda **_: console)
+        wc.run_container_command(opened, "mysql -e 'UPDATE snap_posts SET x=1'")
+
+        rows = [r for r in self.audit.records() if r["action"] == "container_write_call"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["detail"]["command"],
+                         "mysql -e 'UPDATE snap_posts SET x=1'")
+        # The digest is still there and still matches the text.
+        import hashlib as _h
+        self.assertEqual(
+            rows[0]["detail"]["command_sha256"],
+            _h.sha256("mysql -e 'UPDATE snap_posts SET x=1'".encode()).hexdigest())
+
+        # AND THE CREDENTIALS ARE STILL ABSENT. Logging the command must not
+        # have widened what else ends up in the log.
+        raw = str(self.audit.records())
+        for secret in ("good-pass", "123456", self.server.ticket_value,
+                       self.server.csrf_value):
+            self.assertNotIn(secret, raw)
+
+    def test_host_shell_uses_the_node_path_not_a_container_path(self):
+        """'and on the host' needed a path that did not exist."""
+        class Console:
+            def run(self, text):
+                return "ok"
+            def close(self):
+                self.closed = True
+
+        console = Console()
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        seen = {}
+        opened = wc.open_host_console(
+            "proxmox",
+            connector=lambda **kw: (seen.update(kw) or console),
+        )
+        self.assertIs(opened, console)
+
+        # The POST went to the NODE's termproxy, with no lxc segment anywhere.
+        paths = [r["path"] for r in self.server.requests if r.get("path")]
+        self.assertIn("/api2/json/nodes/proxmox/termproxy", paths)
+        self.assertFalse([p for p in paths if "/lxc/" in p])
+
+        # vmid 0 marks it as the host rather than a guest.
+        self.assertEqual(seen["vmid"], 0)
+        actions = [r["action"] for r in self.audit.records()]
+        self.assertIn("host_console_open", actions)
+
+        # A command runs on it through the same audited path as a container.
+        wc.run_container_command(opened, "pvesh get /version")
+        rows = [r for r in self.audit.records() if r["action"] == "container_write_call"]
+        self.assertEqual(rows[-1]["detail"]["command"], "pvesh get /version")
+
+    def test_revoke_closes_a_host_shell_too(self):
+        """A host shell must die with the session, like a container one."""
+        class Console:
+            closed = False
+            def close(self):
+                self.closed = True
+
+        console = Console()
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        wc.open_host_console("proxmox", connector=lambda **_: console)
+        wc.revoke(reason="sean clicked stop")
+        self.assertTrue(console.closed)
+        self.assertFalse(wc.is_authorized())
+
+    def test_a_host_shell_is_refused_without_a_ticket_and_on_a_bad_node(self):
+        wc = self._client()
+        before = len(self.server.requests)
+        with self.assertRaises(Refused):
+            wc.open_host_console("proxmox")          # never authorised
+        self.assertEqual(len(self.server.requests), before)
+
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        before = len(self.server.requests)
+        for bad in ("prox mox", "../etc", "prox;mox", ""):
+            with self.assertRaises(Refused):
+                wc.open_host_console(bad)
+        # Refused BEFORE the network, every time.
+        self.assertEqual(len(self.server.requests), before)
+
     # ── SS-1657: one TOTP, a 24-hour window, renewal that never extends it ──
     def _timer_factory(self, timers):
         class Timer:
