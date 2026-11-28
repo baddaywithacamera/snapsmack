@@ -128,6 +128,8 @@ final class SnapPublicRepository
      */
     /** null until asked. See mediumThumbSelect(). */
     private ?bool $mediumThumbColumn = null;
+    /** SS-1643: cached answer to "does snap_images have img_date_posted?" */
+    private ?bool $postedDateColumn = null;
 
     /**
      * ',img_thumb_medium' if that column can be selected, '' if it cannot.
@@ -149,6 +151,30 @@ final class SnapPublicRepository
      *
      * @param string $prefix Table alias used by the calling query ('i.' or '').
      */
+    /**
+     * SS-1643. ",<prefix>img_date_posted" where the column exists, '' where it
+     * does not.
+     *
+     * THIS IS NOT CAUTION, IT IS A MEASURED NEAR-MISS. Selecting the column
+     * unconditionally made tests/images-page-renders-fixture.php die with
+     * "no such column: i.img_date_posted" -- and that fixture is standing in
+     * for every install whose schema has not been synced yet. The code of a
+     * release reaches a site before anyone has run an import there, so the
+     * defensive ALTER on the import path cannot be relied on to have fired.
+     * An unguarded column reference here would have taken out the public
+     * archive page on any site in that state.
+     *
+     * Same shape as mediumThumbSelect() below, deliberately: this file already
+     * had the answer to "an optional column on a shared public read".
+     */
+    private function postedDateSelect(string $prefix = ''): string {
+        if ($this->postedDateColumn === null) {
+            $this->postedDateColumn =
+                ($this->imagesColumnSelectable('`img_date_posted`') === true);
+        }
+        return $this->postedDateColumn ? ",{$prefix}img_date_posted" : '';
+    }
+
     private function mediumThumbSelect(string $prefix = ''): string {
         if ($this->mediumThumbColumn === null) {
             $this->mediumThumbColumn =
@@ -726,6 +752,7 @@ final class SnapPublicRepository
         }
         $params[] = max(1, min(5000, $limit));
         $params[] = max(0, $offset);
+        $posted = $this->postedDateSelect('i.');
         $med = $this->mediumThumbSelect('i.');
         return $this->all(
             // img_orientation decides which shape a thumbnail tile takes, and
@@ -741,7 +768,15 @@ final class SnapPublicRepository
             // archive item reached the skin with no way to answer the question,
             // so an overlay could only either always offer the pane or never.
             // One column on a query that already runs; no extra round trip.
+            // SS-1643: i.img_date and i.img_date_posted are SELECTED here.
+            // img_date was missing from this list while core/pocket-album-feed.php
+            // mapped 'date' => $row['img_date'], so every photograph the POCKET
+            // ALBUM feed served carried date:"" -- measured, 0 of 100 populated on
+            // album 191. A consumer cannot order by a date this query never
+            // returns. img_date_posted is the source's publication date and is
+            // NULL where unknown; the two are never interchangeable.
             "SELECT i.id,i.img_title,i.img_slug,i.img_alt,i.img_file,i.img_width,i.img_height,
+                    i.img_date{$posted},
                     i.img_thumb_square,i.img_thumb_aspect{$med},i.allow_comments,
                     CASE
                       WHEN COALESCE(NULLIF(i.img_orientation,0),0) <> 0 THEN i.img_orientation

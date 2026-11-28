@@ -238,7 +238,7 @@ class FlkrDckrClient:
         img_file:         str,          # server-relative path (after FTP)
         img_title:        str,
         img_description:  str,
-        img_date:         str,          # 'YYYY-MM-DD HH:MM:SS'
+        img_date:         str,          # 'YYYY-MM-DD HH:MM:SS' (taken)
         img_width:        int,
         img_height:       int,
         img_orientation:  str,
@@ -252,6 +252,9 @@ class FlkrDckrClient:
         like_seed:        int = 0,      # Flickr fave count → initial like tally
         view_seed:        int = 0,      # Flickr view count → initial view tally
         source_url:       str = '',     # Flickr photopage URL (provenance backlink)
+        img_date_posted:  str = '',     # SS-1643: date posted AT THE SOURCE (Flickr
+                                        # date_imported). '' means Flickr gave us none;
+                                        # it is never filled from the taken date.
     ) -> ImportResult:
         """
         POST to flkrfckr/images. Handles duplicate detection.
@@ -263,6 +266,7 @@ class FlkrDckrClient:
             'img_title':        img_title,
             'img_description':  img_description,
             'img_date':         img_date,
+            'img_date_posted':  img_date_posted,
             'img_width':        img_width,
             'img_height':       img_height,
             'img_orientation':  img_orientation,
@@ -505,9 +509,28 @@ def run_import(
             # ── 1. Determine import status ────────────────────────────────────
             status = private_status if photo.privacy != 'public' else 'published'
 
-            # ── 2. Determine best date ────────────────────────────────────────
+            # ── 2. Determine the dates — BOTH OF THEM ─────────────────────────
+            #
+            # SS-1643. These are two different facts and they are no longer
+            # collapsed. `date_taken` is when the shutter fired (EXIF).
+            # `create_date` is when the photograph was POSTED TO FLICKR
+            # (date_imported in the export). The line below used to be
+            #     best_date = photo.date_taken or photo.create_date
+            # which kept the taken date and DESTROYED the posted date for every
+            # photograph that carried EXIF -- that is nearly all of them. The
+            # posted date was then unrecoverable from the CMS, and album 191
+            # ended up ordered by a camera with a dead clock reporting 1980.
+            #
+            # img_date keeps its existing meaning and its existing precedence,
+            # so nothing that reads it changes. The posted date rides alongside
+            # in its own field and is sent ONLY when Flickr actually gave us
+            # one: an absent posted date stays absent rather than borrowing the
+            # taken date, because a reader must be able to tell them apart.
             best_date = photo.date_taken or photo.create_date
             img_date_str = best_date.strftime('%Y-%m-%d %H:%M:%S') if best_date else ''
+            img_date_posted_str = (
+                photo.create_date.strftime('%Y-%m-%d %H:%M:%S') if photo.create_date else ''
+            )
 
             # ── 3. Prepare image (full original + EXIF + client-built t_/a_
             #       thumbnails). Building thumbs here lets the server skip its
@@ -559,6 +582,7 @@ def run_import(
                 img_title=photo.title,
                 img_description=photo.description,
                 img_date=img_date_str,
+                img_date_posted=img_date_posted_str,
                 img_width=prepped.width,
                 img_height=prepped.height,
                 img_orientation=prepped.orientation,

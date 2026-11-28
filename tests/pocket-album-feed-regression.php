@@ -157,9 +157,16 @@ $flat = json_encode($page1);
 foreach (['email', 'password', 'token', 'setting', 'user_id', 'owner', 'secret'] as $leak) {
     $check("  no {$leak} field", !str_contains(strtolower($flat), $leak));
 }
+// SS-1643 adds date_posted: the date the photograph was published at its
+// SOURCE, which is what a displaying site means by "newest first". It is a
+// publication date on a feed that already carries one, so it leaks nothing the
+// public album page does not already show. The list stays EXACT on purpose --
+// this assertion is the gate that makes anyone adding a field to the wire come
+// here and justify it, which is why it is widened by hand rather than relaxed.
 $check('  each photograph carries exactly the display fields and no more',
        array_keys($one) === ['id', 'title', 'alt', 'page_url', 'image_url',
-                             'thumb_url', 'square_url', 'width', 'height', 'date']);
+                             'thumb_url', 'square_url', 'width', 'height', 'date',
+                             'date_posted']);
 
 // ─────────────────────────────────────────────────────────────────────────────
 echo "\nREFUSALS\n";

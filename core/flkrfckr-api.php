@@ -426,6 +426,9 @@ if ($sub === 'images' && $method === 'POST') {
     $img_title        = trim($body['img_title']         ?? '');
     $img_description  = trim($body['img_description']   ?? '');
     $img_date         = trim($body['img_date']           ?? '');
+    // SS-1643: the SOURCE's publication date, kept beside the taken date rather
+    // than collapsed into it. An importer that does not send it leaves NULL.
+    $img_date_posted  = trim($body['img_date_posted']    ?? '');
     $img_width        = (int)($body['img_width']        ?? 0);
     $img_height       = (int)($body['img_height']       ?? 0);
     // img_orientation is an INT column (0 = landscape/square, 1 = portrait),
@@ -513,6 +516,18 @@ if ($sub === 'images' && $method === 'POST') {
         $img_date = flkrfckr_exif_date(dirname(__DIR__) . '/' . ltrim($img_file, '/')) ?: date('Y-m-d H:i:s');
     }
 
+    // SS-1643. img_date_posted gets NO FALLBACK, and that is deliberate. The
+    // rescue above is right for img_date, which the schema requires and which
+    // every render path reads. The posted date is different: it is a FACT ABOUT
+    // THE SOURCE, and the only honest value when the importer did not send one
+    // is NULL. Substituting EXIF would silently re-create the exact bug this
+    // column exists to undo -- a taken date sitting in a field everything
+    // downstream believes is a publication date -- and substituting "now" would
+    // claim every old photograph was posted the day it was imported.
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}/', $img_date_posted)) {
+        $img_date_posted = null;
+    }
+
     // Validate img_exif is JSON or empty
     if ($img_exif !== '' && json_decode($img_exif) === null) {
         $img_exif = '';
@@ -537,6 +552,14 @@ if ($sub === 'images' && $method === 'POST') {
         $pdo->exec("ALTER TABLE snap_images ADD COLUMN user_id INT UNSIGNED DEFAULT NULL AFTER post_id");
     }
 
+    // SS-1643. Ensure img_date_posted exists (canonical owns it; defensive add
+    // for installs that haven't synced yet), same pattern as img_license above.
+    try {
+        $pdo->query("SELECT img_date_posted FROM snap_images LIMIT 0");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE snap_images ADD COLUMN img_date_posted DATETIME NULL DEFAULT NULL AFTER img_date");
+    }
+
     // sort_order=0: imported images join the recency group like any fresh post,
     // instead of being stamped MAX+1. Positive sort_order is reserved for MANUAL
     // curation only (see the model note in core/gram-client-authoring.php);
@@ -549,14 +572,14 @@ if ($sub === 'images' && $method === 'POST') {
     $pdo->prepare("
         INSERT INTO snap_images (
             img_slug, img_file, img_title, img_description,
-            img_date, img_width, img_height, img_orientation,
+            img_date, img_date_posted, img_width, img_height, img_orientation,
             img_exif, img_source_file,
             img_thumb_square, img_thumb_aspect,
             img_license, img_status, sort_order, img_like_seed,
             img_view_seed, img_source_url, user_id
         ) VALUES (
             ?, ?, ?, ?,
-            ?, ?, ?, ?,
+            ?, ?, ?, ?, ?,
             ?, ?,
             ?, ?,
             ?, ?, ?, ?,
@@ -564,7 +587,7 @@ if ($sub === 'images' && $method === 'POST') {
         )
     ")->execute([
         $slug, $img_file, $img_title, $img_description,
-        $img_date, $img_width, $img_height, $img_orientation,
+        $img_date, $img_date_posted, $img_width, $img_height, $img_orientation,
         $img_exif, $img_source_file,
         $img_thumb_square ?: null, $img_thumb_aspect ?: null,
         $img_license ?: null, $status, $sort_order, $img_like_seed,

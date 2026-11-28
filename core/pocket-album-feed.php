@@ -117,6 +117,11 @@ function snapsmack_pocket_album_payload(
             'width' => max(0, (int)($row['img_width'] ?? 0)),
             'height' => max(0, (int)($row['img_height'] ?? 0)),
             'date' => (string)($row['img_date'] ?? ''),
+            // SS-1643. The date the photograph was published at its SOURCE,
+            // which is what a displaying site means by "newest first". Empty
+            // when unknown -- it is NOT back-filled from 'date' above, because
+            // collapsing those two is the fault this field exists to repair.
+            'date_posted' => (string)($row['img_date_posted'] ?? ''),
         ];
     }
 
