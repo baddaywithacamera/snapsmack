@@ -113,6 +113,9 @@ const POCKET_ALBUM_REFRESH_MAX_PAGES = 200;
 /** Cache rows older than this with no successful refresh are still served. */
 const POCKET_ALBUM_STALE_SECONDS = 86400;
 
+/** Whole-album page size for 100-at-a-time endless scroll. */
+const POCKET_ALBUM_PAGE_SIZE = 100;
+
 /** The cache of remote photographs. Local albums are never cached: they are a query. */
 function pocket_album_ensure_table(PDO $pdo): void
 {
@@ -380,16 +383,19 @@ function pocket_album_refresh(PDO $pdo, ?callable $log = null): array
 /**
  * The photographs to display, newest first, in the ONE shape the renderer uses.
  *
- * @return array{photographs:list<array>,album_name:string,total:int,archive_url:string}
+ * @return array{photographs:list<array>,album_name:string,total:int,archive_url:string,whole_album:bool,has_more:bool,next_page:?int}
  */
-function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit): array
+function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit, int $page = 0): array
 {
-    // 0 (or anything negative) means the whole album. The sanity bound is the
-    // only ceiling and it is not a product limit -- see POCKET_ALBUM_SANITY_MAX.
+    // 0 (or anything negative) means the whole album, paged 100 at a time for
+    // endless scroll so the first response stays light and fast.
     $wholeAlbum = $limit <= 0;
-    $limit = $wholeAlbum ? POCKET_ALBUM_SANITY_MAX : min($limit, POCKET_ALBUM_SANITY_MAX);
+    $page = $page > 0 ? $page : max(1, (int)($_GET['page'] ?? 1));
+    $queryLimit = $wholeAlbum ? POCKET_ALBUM_PAGE_SIZE : min($limit, POCKET_ALBUM_SANITY_MAX);
+    $offset = $wholeAlbum ? ($page - 1) * POCKET_ALBUM_PAGE_SIZE : 0;
     $out = ['photographs' => [], 'album_name' => '', 'total' => 0,
-            'archive_url' => '', 'whole_album' => $wholeAlbum];
+            'archive_url' => '', 'whole_album' => $wholeAlbum,
+            'has_more' => false, 'next_page' => null];
     if ($album <= 0) {
         return $out;
     }
@@ -401,7 +407,7 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
             require_once __DIR__ . '/public-repository.php';
         }
         $repository = new SnapPublicRepository($pdo);
-        $rows = $repository->archivePhotographs($limit, 0, 0, $album);
+        $rows = $repository->archivePhotographs($queryLimit, $offset, 0, $album);
         $details = $repository->publicAlbum($album);
         $out['album_name'] = (string)($details['album_name'] ?? '');
         $out['total'] = max(0, (int)($details['photograph_count'] ?? 0));
@@ -422,6 +428,8 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
                 'height' => max(0, (int)($row['img_height'] ?? 0)),
             ];
         }
+        $out['has_more'] = $wholeAlbum && ($offset + count($out['photographs'])) < $out['total'];
+        $out['next_page'] = $out['has_more'] ? ($page + 1) : null;
         return $out;
     }
 
@@ -434,7 +442,7 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
             "SELECT album_name, page_url, thumb_url, title, alt_text, img_width, img_height
              FROM snap_pocket_album_items
              WHERE source_url = ? AND album_id = ?
-             ORDER BY sort_rank DESC, id DESC LIMIT " . (int)$limit
+             ORDER BY sort_rank DESC, id DESC LIMIT " . (int)$queryLimit . " OFFSET " . (int)$offset
         );
         $statement->execute([rtrim($src, '/'), $album]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -456,6 +464,8 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
             'height' => max(0, (int)$row['img_height']),
         ];
     }
+    $out['has_more'] = $wholeAlbum && ($offset + count($out['photographs'])) < $out['total'];
+    $out['next_page'] = $out['has_more'] ? ($page + 1) : null;
     return $out;
 }
 
@@ -467,12 +477,12 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
  * data attribute, because both are stripped on this path and a stripped
  * attribute fails silently.
  */
-function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0, bool $adminPreview = false): string
+function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0, bool $adminPreview = false, int $page = 0): string
 {
     if (!function_exists('snap_escape_html')) {
         require_once __DIR__ . '/skin-render-helpers.php';
     }
-    $data = pocket_album_photographs($pdo, $src, $album, $limit);
+    $data = pocket_album_photographs($pdo, $src, $album, $limit, $page);
     if ($data['photographs'] === []) {
         if ($src !== '') {
             if (!$adminPreview) return '';
@@ -504,6 +514,10 @@ function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0, bo
             : '<div class="snap-pocket-tile ss-masonry-item">' . $image . '</div>';
     }
     $html .= '</div>';
+
+    if (!empty($data['has_more']) && !empty($data['next_page'])) {
+        $html .= '<a class="scroll-wall-sentinel" href="?page=' . (int)$data['next_page'] . '"></a>';
+    }
 
     // A LINK ONLY WHEN THE AUTHOR ASKED FOR A SUBSET. When the block is showing
     // the whole album there is nothing left to link to, and printing "all N

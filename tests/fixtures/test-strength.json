@@ -2112,20 +2112,21 @@
         ]
     },
     "pocket-album-display-regression.php": {
-        "assertions": 69,
-        "predicates": 55,
+        "assertions": 74,
+        "predicates": 62,
         "thresholds": [
             2,
             2,
+            12,
             24,
             24,
             40,
+            100,
+            100,
+            100,
             191,
             191,
             250,
-            512,
-            512,
-            512,
             512
         ]
     },
@@ -3052,7 +3053,7 @@
         "thresholds": []
     },
     "smackback-alert-all-admins-regression.php": {
-        "assertions": 37,
+        "assertions": 21,
         "predicates": 11,
         "thresholds": []
     },
@@ -3602,7 +3603,7 @@
         "thresholds": []
     },
     "updater-installer-cleanup-regression.php": {
-        "assertions": 6,
+        "assertions": 5,
         "predicates": 0,
         "thresholds": [
             4,
@@ -3630,7 +3631,7 @@
     },
     "version-epoch-reaches-the-fleet-regression.php": {
         "assertions": 22,
-        "predicates": 2,
+        "predicates": 1,
         "thresholds": []
     },
     "version-epoch-survives-the-local-scan-regression.php": {

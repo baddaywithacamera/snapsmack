@@ -64,12 +64,10 @@ final class PocketAlbumFakeStatement extends PDOStatement
         if (!str_contains($this->sql, 'snap_pocket_album_items')) {
             return [];
         }
-        // THE FAKE HONOURS LIMIT, because the real database does. Ignoring it
-        // made the subset test return all 512 rows and look like a product
-        // bug; a fake that quietly serves more than it was asked for cannot
-        // tell you whether the limit reached the query at all.
-        if (preg_match('/LIMIT\s+(\d+)/i', $this->sql, $m)) {
-            return array_slice($this->pdo->rows, 0, (int)$m[1]);
+        // THE FAKE HONOURS LIMIT AND OFFSET, because the real database does.
+        if (preg_match('/LIMIT\s+(\d+)(?:\s+OFFSET\s+(\d+))?/i', $this->sql, $m)) {
+            $offset = isset($m[2]) ? (int)$m[2] : 0;
+            return array_slice($this->pdo->rows, $offset, (int)$m[1]);
         }
         return $this->pdo->rows;
     }
@@ -254,14 +252,8 @@ $check('  and the album id it was asked for is the one it binds',
        str_contains($localSql, '191'));
 
 // ─────────────────────────────────────────────────────────────────────────────
-echo "THE WHOLE ALBUM RENDERS. THERE IS NO CAP.
-";
+echo "THE WHOLE ALBUM PAGES AT 100 PER BATCH FOR ENDLESS SCROLL.\n";
 // ─────────────────────────────────────────────────────────────────────────────
-// Sean's ruling of 2026-11-25 10:06. An earlier version of this file stopped
-// at 300 and printed a link to the archive underneath. A grid that stops at
-// 300 with a link under it is an archive stuck on page one by another name,
-// and pagination is never correct anywhere in this product. Proved with more
-// rows than the old cap, not by reading the constant.
 
 $big = new PocketAlbumFakePdo();
 $big->total = 512;
@@ -275,22 +267,35 @@ for ($i = 1; $i <= 512; $i++) {
         'img_width' => 1200, 'img_height' => 800,
     ];
 }
-$all = pocket_album_html($big, 'https://foreverphotograph.ing', 191);
-$check('all 512 photographs are rendered, well past the old 300 cap',
-       substr_count($all, 'class="snap-pocket-tile ss-masonry-item"') === 512);
-$check('  the last one is there, not just the first page',
-       str_contains($all, 'media/p512-a.jpg'));
-$check('  and NO "all N photographs" link is printed, because none is needed',
-       !str_contains($all, 'snap-pocket-album-all'));
+$page1 = pocket_album_html($big, 'https://foreverphotograph.ing', 191);
+$check('page 1 renders 100 photographs instead of dumping all 512 at once',
+       substr_count($page1, 'class="snap-pocket-tile ss-masonry-item"') === 100);
+$check('  and emits a scroll-wall sentinel pointing to page 2',
+       str_contains($page1, '<a class="scroll-wall-sentinel" href="?page=2"></a>'));
+$page1Safe = (string)snapsmack_trusted_html($page1);
+$check('  and the sentinel survives snapsmack_trusted_html() intact',
+       str_contains($page1Safe, 'class="scroll-wall-sentinel"') && str_contains($page1Safe, 'href="?page=2"'));
+$check('  and NO "all N photographs" link is printed on whole-album pages',
+       !str_contains($page1, 'snap-pocket-album-all'));
 $check('every tile is lazy-loaded, which is what makes a whole album affordable',
-       substr_count($all, 'loading="lazy"') === 512);
+       substr_count($page1, 'loading="lazy"') === 100);
 $check('  and every tile carries its own shape, so the grid does not reflow',
-       substr_count($all, 'width="1200" height="800"') === 512);
+       substr_count($page1, 'width="1200" height="800"') === 100);
+
+$page6 = pocket_album_html($big, 'https://foreverphotograph.ing', 191, 0, false, 6);
+$check('page 6 of 512 renders the remaining 12 photographs',
+       substr_count($page6, 'class="snap-pocket-tile ss-masonry-item"') === 12);
+$check('  including the 512th photograph',
+       str_contains($page6, 'media/p512-a.jpg'));
+$check('  and omits the sentinel on the final page so scroll stops',
+       !str_contains($page6, 'scroll-wall-sentinel'));
 
 // AND WHEN THE AUTHOR ASKED FOR A SUBSET, the link is the point.
 $subset = pocket_album_html($big, 'https://foreverphotograph.ing', 191, 24);
 $check('an author asking for 24 gets 24',
        substr_count($subset, 'class="snap-pocket-tile ss-masonry-item"') === 24);
+$check('  with no endless-scroll sentinel',
+       !str_contains($subset, 'scroll-wall-sentinel'));
 $check('  and THEN the link to the rest appears',
        str_contains($subset, 'All 512 photographs'));
 
