@@ -477,10 +477,39 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit,
     $postedOrder = '';
     try {
         $pdo->query("SELECT posted_on FROM snap_pocket_album_items LIMIT 0");
-        // Rows with no posted date keep the previous behaviour, the reversed
-        // album order, instead of an empty string sorting as the oldest date
-        // in the archive and scattering a partly-filled cache.
-        $postedOrder = "CASE WHEN posted_on <> '' THEN 0 ELSE 1 END ASC, posted_on DESC, ";
+        // ── ONE DATE ORDER, NOT TWO BLOCKS (SS-1659) ────────────────────
+        //
+        // The first version put every row WITH a posted date ahead of every
+        // row without, then fell back to the album order. That is correct on a
+        // cache where posted_on is all-or-nothing, and WRONG the moment the
+        // backfill lands: the guard only fills rows the source published at
+        // least a day after capture -- about a third of album 191 -- so
+        // /images would have shown a third sorted newest-first followed by
+        // two-thirds in the old album order. Sean would read that as still
+        // broken, and he would be right.
+        //
+        // So an unfilled row falls back to ITS CAPTURE DATE and joins the same
+        // ordering, which is sound precisely BECAUSE of what the guard skips:
+        // a row is skipped only when its posted date is less than a day after
+        // its capture date, so for those rows the capture date IS the posting
+        // date to within a day. The rows where the two differ wildly -- the
+        // 1980 dead-clock frames posted in 2024 -- are exactly the ones that
+        // get filled, so they sort on the real posting date and never on the
+        // dead clock. That is why this does not reintroduce SS-1644.
+        //
+        // NULLIF, NOT A BARE COALESCE, AND THIS IS THE WHOLE TRICK. Both
+        // columns are VARCHAR(40) NOT NULL DEFAULT '', so posted_on is NEVER
+        // null -- COALESCE(posted_on, taken_on) would return '' for every
+        // unfilled row and the fallback would never fire. It would look like a
+        // fix and change nothing.
+        //
+        // The CASE bucket is kept so rows with NEITHER date go after every
+        // dated row, rather than depending on where the engine sorts NULL in
+        // DESC. sqlite and MySQL agree today; the suite runs one and the fleet
+        // runs the other, and this ordering should not rest on that.
+        $sortDate = "COALESCE(NULLIF(posted_on,''), NULLIF(taken_on,''))";
+        $postedOrder = "CASE WHEN {$sortDate} IS NULL THEN 1 ELSE 0 END ASC, "
+                     . "{$sortDate} DESC, ";
     } catch (Throwable $e) {
         $postedOrder = '';
     }
@@ -494,19 +523,15 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit,
              -- AT ITS SOURCE, which is what Sean means by newest: \"it is
              -- supposed to sort by date posted to flickr\".
              --
-             -- posted_on is empty on rows cached before the source served the
-             -- field, and on any source that does not send it. Those rows keep
-             -- the previous behaviour -- the reversed album order -- instead of
-             -- being thrown to one end by an empty string. The CASE puts every
-             -- row that HAS a posted date ahead of every row that does not,
-             -- rather than letting '' sort as though it were the oldest date
-             -- in the archive, which would scatter a partly-filled cache.
+             -- ONE ORDER FOR THE WHOLE ALBUM (SS-1659). A row with a posted
+             -- date sorts on it; a row without falls back to its capture date
+             -- and sorts in the SAME sequence, so a partly-filled cache is not
+             -- two blocks stuck together. See the note above the clause for
+             -- why the capture date is a safe stand-in for exactly the rows
+             -- the backfill skips, and why this does not put the 1980
+             -- dead-clock frames back where SS-1644 found them.
              --
-             -- NOT sorted on taken_on, deliberately. The capture date is wrong
-             -- for this job: one photograph in album 191 carries a 1980 EXIF
-             -- stamp from a camera with a dead clock and was really posted in
-             -- February 2024. Ordering by when the shutter fired puts it 44
-             -- years out of place, which is the bug being fixed here.
+             -- Rows with NEITHER date keep the reversed album order.
              ORDER BY {$postedOrder}sort_rank DESC,
                       id DESC LIMIT " . (int)$queryLimit . " OFFSET " . (int)$offset
         );
