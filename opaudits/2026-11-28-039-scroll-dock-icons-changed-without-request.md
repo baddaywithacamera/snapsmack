@@ -21,4 +21,21 @@ Each change was verified against its own target: `9b7b972c` proved precedence or
 
 Commits `807e66132ed2ac550a5e1e8a6afee977c60b691c` and `1cc8b1688314564dae5ed945eff1ec3e83128f08` (`SCROLL 0.1.83`) pin `.scroll-sticky-nav .social-dock-inline .dock-link` in `skins/scroll/style.css` to SCROLL's exact nav-chip values (`background: transparent; border-color: rgba(26, 26, 26, .3); color: #1a1a1a;`, hover `rgba(255, 255, 255, .95)` / `rgba(26, 26, 26, .7)`), with `1920`/`1440`/`1024` before/after captures committed in `_review/scroll-dock-icons/`. Shared `assets/icons/crop-circles.svg` and other skins were not altered.
 
+### Shared grid-nav / social-dock inventory (NOT CHECKED)
+
+Eleven skins reference the grid-nav engine (`smack-grid-nav` in ten manifests plus `glide` via `grid-nav-links`), and `assets/css/ss-engine-grid-nav.css:100` pins only `width` and `height` on `.social-dock-inline .dock-link`. Only **SCROLL** renders the social dock inline inside the sticky nav row via `crop-circles`; the other ten skins render their own sticky navs with text-link `navigation-tree` and no inline dock:
+
+- `aurora` — text-link sticky nav, no inline dock (**NOT CHECKED** for floating dock vs nav appearance)
+- `game-on` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `glide` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `heuristic` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `instant-camera` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `jive-turkey` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `parade` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `sliders` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `sudden-impact` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+- `the-grid` — text-link sticky nav, no inline dock (**NOT CHECKED**)
+
+In addition, two conflicting `--dock-*` default families exist in core: `core/skin-render-helpers.php` defaults light (`transparent` / `rgba(26, 26, 26, .3)` / `#1a1a1a`), while `core/social-dock.php` and `assets/css/ss-engine-social-dock.css` default dark (`rgba(0, 0, 0, 0.7)` / `#fff`). No other skin was modified here; any further alignment awaits Sean's decision.
+
 <!-- ===== SNAPSMACK EOF ===== -->
