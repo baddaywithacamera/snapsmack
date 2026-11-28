@@ -74,9 +74,6 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 </button>
                 <ul class="nav-section-links">
                     <li><a href="pixel.php" target="_blank" rel="noopener">Pixelfed Gateway &#8599;</a></li>
-                    <?php if (smack_is_admin()): ?>
-                    <li class="<?php echo $_pc_active_class('smack-pixelfed.php'); ?>"><a href="smack-pixelfed.php">Pixelfed Client</a></li>
-                    <?php endif; ?>
                     <li class="<?php echo $_pc_active_class('smack-dms.php'); ?>"><a href="smack-dms.php">Messages</a></li>
                     <li class="<?php echo $_pc_active_class('smack-fediverse-portal.php'); ?>"><a href="smack-fediverse-portal.php">Portal</a></li>
                     <li class="<?php echo $_pc_active_class('smack-sv-followers.php'); ?>"><a href="smack-sv-followers.php">Followers</a></li>
