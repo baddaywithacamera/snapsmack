@@ -1999,6 +1999,13 @@
         "predicates": 4,
         "thresholds": []
     },
+    "password-reset-issues-its-own-token-regression.php": {
+        "assertions": 17,
+        "predicates": 15,
+        "thresholds": [
+            32
+        ]
+    },
     "pc-prompt-shortcode-regression.php": {
         "assertions": 5,
         "predicates": 3,
