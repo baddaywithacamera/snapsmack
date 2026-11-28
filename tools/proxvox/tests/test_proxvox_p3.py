@@ -513,6 +513,69 @@ class ProxVoxP3Tests(unittest.TestCase):
         rows = [r for r in self.audit.records() if r["action"] == "container_write_call"]
         self.assertEqual(rows[-1]["detail"]["command"], "pvesh get /version")
 
+    def test_the_host_console_url_is_the_node_not_container_zero(self):
+        """THE BUG MUSE FOUND (room 9390), and it would have failed live.
+
+        open_host_console passes vmid=0, and the shared connector hard-coded
+        /nodes/{node}/lxc/{vmid}/vncwebsocket -- so in production the "host
+        shell" would have opened a console on LXC CONTAINER 0. My other tests
+        injected a fake connector and asserted vmid==0, so they never built a
+        URL and never saw it; the real line sat behind pragma: no cover.
+
+        The URL construction is a pure function now, so this asserts the thing
+        that was wrong instead of the thing next to it.
+        """
+        from proxvox.container_console import console_websocket_url
+
+        host_url = console_websocket_url("pve.example:8006", "proxmox", 0,
+                                         "port=5901&vncticket=t", host=True)
+        self.assertEqual(
+            host_url,
+            "wss://pve.example:8006/api2/json/nodes/proxmox/vncwebsocket"
+            "?port=5901&vncticket=t")
+        # The container segment must be ABSENT, not merely different.
+        self.assertNotIn("/lxc/", host_url)
+
+        guest_url = console_websocket_url("pve.example:8006", "proxmox", 106,
+                                          "port=5901&vncticket=t")
+        self.assertEqual(
+            guest_url,
+            "wss://pve.example:8006/api2/json/nodes/proxmox/lxc/106/vncwebsocket"
+            "?port=5901&vncticket=t")
+
+        # And the flag decides it, NOT the id. vmid=0 without the flag is a
+        # container console, which is what made the sentinel dangerous.
+        self.assertIn("/lxc/0/", console_websocket_url(
+            "pve.example:8006", "proxmox", 0, "q=1"))
+
+        # A node name with a slash cannot escape the path. Checked on the NODE
+        # SEGMENT alone -- my first version of this assertion split on /nodes/
+        # and then forbade any slash in the remainder, which includes
+        # /vncwebsocket, so it failed on correct output. The code was right and
+        # the check was wrong.
+        escaped = console_websocket_url("h", "a/b", 0, "q=1", host=True)
+        node_segment = escaped.split("/nodes/")[1].split("/")[0]
+        self.assertEqual(node_segment, "a%2Fb")
+
+    def test_open_host_console_asks_the_connector_for_the_host(self):
+        """The write client must set the flag, not rely on vmid."""
+        class Console:
+            def close(self):
+                pass
+
+        seen = {}
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        wc.open_host_console("proxmox",
+                             connector=lambda **kw: (seen.update(kw) or Console()))
+        self.assertIs(seen.get("host"), True)
+
+        # And the container path must NOT set it.
+        seen.clear()
+        wc.open_container_console("proxmox", 106,
+                                  connector=lambda **kw: (seen.update(kw) or Console()))
+        self.assertNotEqual(seen.get("host"), True)
+
     def test_revoke_closes_a_host_shell_too(self):
         """A host shell must die with the session, like a container one."""
         class Console:

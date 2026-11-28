@@ -584,6 +584,12 @@ class WriteClient:
             port=int(data["port"]), vncticket=str(data["ticket"]),
             pve_ticket=self._ticket,
             certificate_sha256=self._certificate_sha256, timeout=timeout,
+            # host=True IS THE WHOLE FIX. Without it the shared connector
+            # builds /nodes/{node}/lxc/0/vncwebsocket -- a console on LXC
+            # container 0, not the node shell. vmid=0 is passed only so the
+            # audit and the connector signature stay the same shape as the
+            # container path; it is the FLAG that decides the URL.
+            host=True,
         )
         # Tracked in the SAME list as container consoles, so revoke() and the
         # window closing shut a host shell exactly as they shut a guest one.
