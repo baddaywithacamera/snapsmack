@@ -29,7 +29,12 @@ The live SnapSmack FAQ loaded the older standalone Security page ahead of BRASS 
 - SS-1656. The reviewed shared app exposes a fixed set of choices, so it cannot select the pending FAQ or settings actions.
 - SS-1657. The dedicated FAQ action ends its authorization after a single operation. The PM recorded Sean's 27 November request for one 24-hour authorization and the earlier instruction to reuse authorization across approved writes. I found no owner decision approving a single-operation limit. SS-1623 separately covers reusing an active session across launchers.
 - The 28 November ruling recorded at 12:56 in room 9349 changed the intended product behavior. One 24-hour owner authorization covers the supported work across the host and its containers, including general shell, SQL and file operations. The ruling removes the intended per-job dialogs, single-row limit and per-operation nonces. The append-only log, alerts and early revocation remain.
-- A search of the room and continuity material did not identify an exact owner-approved secrets read blocklist for this window. The earlier rehearsal restriction is a separate write control. The PM will confirm the intended list with Sean.
+- The earlier record did not identify an exact secrets read blocklist. Sean approved the complete list on 28 November at 15:02 as recorded in room 9402:
+  1. `/etc/pve/priv/tfa.cfg`.
+  2. `/etc/pve/priv/authkey.key`.
+  3. `/etc/pve/priv/token.cfg`.
+  4. PROX VOX's own session and grant state files.
+  The rule covers shell, file and SQL reads during the authorized window. Blocked reads are logged. The earlier rehearsal write restriction is separate. Implementation and installed verification of the approved list are pending.
 - Code's reviewed renewal change at `371bb7ca` replaces the two-hour Proxmox ticket during the active window using the current in-memory ticket. Renewal rotates the ticket without extending the fixed authorization deadline. Failed renewal closes the session and explicit revocation wins over renewal. This is reviewed source behavior and still requires installed acceptance. General shell and SQL are separate work.
 
 ## Closure
