@@ -2899,6 +2899,13 @@
         "predicates": 5,
         "thresholds": []
     },
+    "skin-packager-publishes-an-epoch-regression.php": {
+        "assertions": 20,
+        "predicates": 8,
+        "thresholds": [
+            3
+        ]
+    },
     "skin-packager-refuses-off-series-regression.php": {
         "assertions": 87,
         "predicates": 44,
