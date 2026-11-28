@@ -2179,8 +2179,8 @@
         ]
     },
     "pocket-album-one-date-order-regression.php": {
-        "assertions": 16,
-        "predicates": 6,
+        "assertions": 19,
+        "predicates": 9,
         "thresholds": []
     },
     "pocket-album-share-control-regression.php": {

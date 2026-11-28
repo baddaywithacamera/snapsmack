@@ -121,9 +121,34 @@ $insert = $pdo->prepare("INSERT INTO snap_pocket_album_items
     VALUES (?, 'https://src', 191, ?, ?, ?, ?)");
 foreach ($rows as $r) { $insert->execute([$r[0], $r[1], $r[2], $r[3], $r[4]]); }
 
-// The ORDER BY exactly as the product builds it.
-$order = "CASE WHEN {$sortDate} IS NULL THEN 1 ELSE 0 END ASC, {$sortDate} DESC, "
-       . "sort_rank DESC, id DESC";
+// THE ORDER BY IS EXTRACTED, NOT ASSEMBLED HERE, and a mutant is why.
+//
+// The first version of this test read $sortDate out of the file and then
+// BUILT THE BUCKET CLAUSE ITSELF. So a mutant that reverted $postedOrder to
+// the old two-block clause -- the exact regression this file exists to stop --
+// SURVIVED, because the test went on constructing the new clause from a
+// $sortDate the mutant had left alone. I was executing an ordering of my own
+// and calling it the product's.
+//
+// Both halves now come out of the source: the $postedOrder concatenation is
+// read whole, its double-quoted pieces joined the way PHP joins them, and
+// {$sortDate} interpolated as PHP would. Change EITHER line in the product
+// and this test changes with it.
+if (!preg_match('~\$postedOrder\s*=\s*((?:"[^"]*"\s*\.?\s*)+);~', $src, $pm)) {
+    ox(false, 'the assembled ordering clause is where this test expects it');
+    $postedOrderSql = '';
+} else {
+    $pieces = [];
+    preg_match_all('~"([^"]*)"~', $pm[1], $qm);
+    foreach ($qm[1] as $piece) { $pieces[] = $piece; }
+    $postedOrderSql = str_replace('{$sortDate}', $sortDate, implode('', $pieces));
+    ox($postedOrderSql !== '', 'the assembled ordering clause was extracted',
+       $postedOrderSql);
+}
+ox(str_contains($postedOrderSql, $sortDate),
+   '  and it really uses the sort-date expression, not a second spelling');
+
+$order = $postedOrderSql . "sort_rank DESC, id DESC";
 $got = $pdo->query("SELECT title FROM snap_pocket_album_items
                     WHERE source_url = 'https://src' AND album_id = 191
                     ORDER BY {$order}")->fetchAll(PDO::FETCH_COLUMN);
