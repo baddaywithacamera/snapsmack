@@ -96,6 +96,8 @@ CREATE TABLE IF NOT EXISTS `snap_images` (
   `img_license`         varchar(100)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Rights/licence label (e.g. Flickr import: "All Rights Reserved", CC BY 2.0). Optional; surfaced per-image.',
   `img_date`            datetime       NOT NULL,
+  `img_date_posted`     datetime                      DEFAULT NULL
+                        COMMENT 'SS-1643: the date the photograph was PUBLISHED AT ITS ORIGINAL SOURCE (Flickr date_imported), as distinct from img_date, which is when it was TAKEN. The Flickr importer used to collapse the two with taken winning, so the posted date was destroyed on import for every photograph that carried EXIF; album 191 then ordered by a 1980 camera clock. NULL means unknown, never "same as img_date" — a reader must not substitute one for the other.',
   `img_file`            varchar(255)   COLLATE utf8mb4_unicode_ci NOT NULL,
   `img_source_file`     varchar(255)   COLLATE utf8mb4_unicode_ci DEFAULT NULL
                         COMMENT 'Original filename on the posting machine at upload time',

@@ -979,6 +979,11 @@
             1219
         ]
     },
+    "flickr-import-keeps-both-dates-regression.php": {
+        "assertions": 31,
+        "predicates": 15,
+        "thresholds": []
+    },
     "followers-only-posts-stay-out-of-the-reader-regression.php": {
         "assertions": 14,
         "predicates": 4,
