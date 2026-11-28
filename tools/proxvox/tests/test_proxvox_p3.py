@@ -52,6 +52,7 @@ class _ProxmoxMockServer:
         self.renewed_ticket_value = "PVE:proxvox@pve:5678BEEF::sig"
         self.renewed_csrf_value = "ABCD2345:csrf-renewed-value"
         self.renew_401_mode = False
+        self.renew_empty_mode = False
         self.renew_requests = 0
         self.empty_csrf_mode = False
         self.force_401 = False
@@ -88,10 +89,17 @@ class _ProxmoxMockServer:
                             self.send_response(401)
                             self.end_headers()
                             return
-                        payload = {"data": {
-                            "ticket": server_ref.renewed_ticket_value,
-                            "CSRFPreventionToken": server_ref.renewed_csrf_value,
-                        }}
+                        if server_ref.renew_empty_mode:
+                            # 200, well-formed JSON, NO ticket. A different
+                            # failure path from the 401 and it has its own
+                            # clear_session() call, which a mutant proved was
+                            # unexercised.
+                            payload = {"data": {"ticket": "", "CSRFPreventionToken": ""}}
+                        else:
+                            payload = {"data": {
+                                "ticket": server_ref.renewed_ticket_value,
+                                "CSRFPreventionToken": server_ref.renewed_csrf_value,
+                            }}
                         body = json.dumps(payload).encode("utf-8")
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
@@ -457,6 +465,12 @@ class ProxVoxP3Tests(unittest.TestCase):
         self.assertTrue(wc.is_authorized())
         self.assertEqual(len(timers), 1)
 
+        # THE CLOCK MUST MOVE OR THIS TEST PROVES NOTHING. A mutant that set
+        # _window_ends_at = now + window_seconds on every renewal SURVIVED,
+        # because with a frozen clock that expression equals the window
+        # authorise already computed. Advancing makes extension visible.
+        self.clock.advance(6900)
+
         # It wakes BEFORE the ticket dies, not when it dies.
         self.assertEqual(timers[0].seconds, 7200 - 300)
 
@@ -488,6 +502,9 @@ class ProxVoxP3Tests(unittest.TestCase):
         opened = wc.authorize("proxvox@pve", "good-pass", "123456")
         window_at_authorise = opened["window_ends_at"]
         for _ in range(10):
+            # Same reason as above: time has to pass between renewals or an
+            # extended window is indistinguishable from an unchanged one.
+            self.clock.advance(6900)
             timers[-1].fire()
             self.assertTrue(wc.is_authorized())
             self.assertEqual(wc._window_ends_at, window_at_authorise)
@@ -526,6 +543,46 @@ class ProxVoxP3Tests(unittest.TestCase):
         # be asked: a revoke that only stops the NEXT write is not a revoke.
         self.assertFalse(wc.is_authorized())
         self.assertEqual(self.server.renew_requests, before)
+
+    def test_a_renewal_that_returns_no_ticket_also_fails_closed(self):
+        """The second failure path. A mutant proved this one was unexercised.
+
+        The 401 test below covers the transport failure. This covers a 200
+        with well-formed JSON and NO ticket in it, which is a different branch
+        with its own clear_session() -- and removing that call left every test
+        passing until this existed.
+        """
+        timers = []
+        wc = self._client(ticket_ttl=7200, expiry_timer_factory=self._timer_factory(timers),
+                          window_seconds=86400, renew_margin=300)
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        self.server.renew_empty_mode = True
+        self.clock.advance(6900)
+
+        timers[0].fire()
+
+        self.assertFalse(wc.is_authorized())
+        self.assertEqual(wc._ticket, "")
+        actions = [row["action"] for row in self.audit.records()]
+        self.assertIn("write_renew_failed", actions)
+        self.assertNotIn("write_renewed", actions)
+
+    def test_the_window_bound_alone_ends_the_session(self):
+        """Past the window, the session is dead even with a live ticket.
+
+        is_authorized() checks BOTH bounds. A mutant that dropped the window
+        check survived every other test here, because with a frozen clock the
+        ticket bound was always the one that mattered. This advances past the
+        window while the TICKET is still well inside its own lifetime, so only
+        the window check can end it.
+        """
+        wc = self._client(ticket_ttl=7200, window_seconds=600)
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        self.assertTrue(wc.is_authorized())
+
+        # 601s: past the 600s window, far inside the 7200s ticket.
+        self.clock.advance(601)
+        self.assertFalse(wc.is_authorized())
 
     def test_the_window_closes_even_though_the_ticket_renews(self):
         """The outer bound still ends the session. 24 hours is a box, not a lease."""
