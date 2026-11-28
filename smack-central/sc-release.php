@@ -624,6 +624,8 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         // The packaging loop also HARD-FAILS the build if any of these paths
         // reach the final zip — see the dev-dir tripwire after the copy loop.
         'tests/',
+        '_review/',
+        '_continuity/',
         'wip/',
         'core/tests/',
         '_spec/',
@@ -695,6 +697,8 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
 
         // Differential mode: only include files that changed
         if ($differential && !isset($include_set[$rel])) { $skipped++; continue; }
+
+        if (sc_is_release_evidence_path($rel)) { $skipped++; continue; }
 
         // Force-include overrides the always_exclude list
         $force_include = in_array($rel, $always_include, true);
@@ -805,6 +809,15 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
                 return ['ok' => false, 'msg' => "BUILD REFUSED — dev path '{$zrel}' reached the release zip. Fix the exclude list; never ship dev directories (SECAUDIT 055)."];
             }
         }
+        if (sc_is_release_evidence_path($zrel)
+            || (strtolower(pathinfo($zrel, PATHINFO_EXTENSION)) === 'png'
+                && !str_starts_with($zrel, 'assets/') && !str_starts_with($zrel, 'skins/'))) {
+            $dst->close();
+            $src->close();
+            @unlink($tmp_src);
+            @unlink($zip_dest);
+            return ['ok' => false, 'msg' => "BUILD REFUSED — evidence path '{$zrel}' reached the release zip."];
+        }
         // The release contains no screenshots. The filename rule above should
         // make this impossible; this refuses the build rather than shipping
         // quietly, because silence is how 1,331 KB rode to every install.
@@ -838,6 +851,50 @@ function sc_build_release_zip(string $tag, string $zip_dest, array $include_file
         'ok'  => true,
         'msg' => "Downloaded {$dl_kb} KB from GitHub, packaged {$mode}, skipped {$skipped}",
     ];
+}
+
+/** Review captures are never runtime files, even when nested. */
+function sc_is_release_evidence_path(string $path): bool {
+    return preg_match('~(?:^|/)(?:_review|_continuity|tests|evidence|captures|[^/]+-captures)/~i', $path) === 1;
+}
+
+/** Compare compressed file counts and payload size with the previous release. */
+function sc_release_zip_comparison(string $zip_path, string $previous_manifest): string {
+    $candidate = new ZipArchive();
+    if ($candidate->open($zip_path) !== true) return 'ZIP comparison unavailable: candidate could not be opened.';
+    $candidate_size = filesize($zip_path);
+    $summary = sprintf('ZIP: %d files, %.1f MiB', $candidate->numFiles, $candidate_size / 1048576);
+    $manifest = is_file($previous_manifest) ? json_decode((string)file_get_contents($previous_manifest), true) : null;
+    $previous_file = basename((string)parse_url((string)($manifest['download_url'] ?? ''), PHP_URL_PATH));
+    $previous_path = dirname($previous_manifest) . '/' . $previous_file;
+    $previous = new ZipArchive();
+    if ($previous_file === '' || !is_file($previous_path) || realpath($previous_path) === realpath($zip_path)
+        || $previous->open($previous_path) !== true) {
+        $candidate->close();
+        return $summary . '; previous ZIP unavailable.';
+    }
+
+    $previous_size = max(1, filesize($previous_path));
+    $growth = ($candidate_size - $previous_size) / $previous_size;
+    $summary .= sprintf(' vs %d files, %.1f MiB (%+.1f%%)', $previous->numFiles, $previous_size / 1048576, 100 * $growth);
+    if ($growth > 0.10) {
+        $added = [];
+        for ($i = 0; $i < $candidate->numFiles; $i++) {
+            $entry = $candidate->statIndex($i);
+            $before = $previous->statName($entry['name']);
+            $delta = $entry['comp_size'] - ($before['comp_size'] ?? 0);
+            if ($delta > 0) $added[$entry['name']] = $delta;
+        }
+        arsort($added);
+        $details = [];
+        foreach (array_slice($added, 0, 5, true) as $path => $bytes) {
+            $details[] = sprintf('%s (+%.1f KiB)', $path, $bytes / 1024);
+        }
+        $summary .= '; largest file increases: ' . ($details ? implode(', ', $details) : 'none');
+    }
+    $candidate->close();
+    $previous->close();
+    return $summary;
 }
 
 /**
@@ -1379,6 +1436,7 @@ if ($action === 'build' && $preflight_ok) {
         if (!$zip_result['ok']) {
             $build_error = $zip_result['msg'];
         } else {
+            $build_log[] = '→ ' . sc_release_zip_comparison($zip_dest, rtrim(RELEASES_DIR, '/') . '/latest.json');
             // Step 2b: Inject current Ed25519 pubkey into setup.php inside the zip.
             // setup.php hardcodes SETUP_RELEASE_PUBKEY — if this is not refreshed at
             // build time it will go stale whenever the signing key changes, causing
@@ -1720,6 +1778,7 @@ if ($action === 'build_dev' && $preflight_ok) {
                 $dev_build_error = $stamp_result['msg'];
             } else {
                 $dev_build_log[] = '→ ' . $stamp_result['msg'];
+                $dev_build_log[] = '→ ' . sc_release_zip_comparison($zip_dest, rtrim(RELEASES_DIR, '/') . '/latest-dev.json');
             }
 
             // Inject current pubkey into setup.php

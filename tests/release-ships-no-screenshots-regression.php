@@ -55,6 +55,20 @@ rs_test(preg_match('/BUILD REFUSED — screenshot.{0,400}/s', $screl)
         && substr_count($screl, '@unlink($zip_dest);') >= 2,
     'the refused build deletes the half-written package');
 
+// Exclusions also cover review and capture directories with arbitrary names.
+rs_test(str_contains($screl, "'_review/',") && str_contains($screl, "'_continuity/',"),
+    'review and continuity roots are excluded');
+rs_test(str_contains($screl, 'sc_is_release_evidence_path($rel)')
+    && str_contains($screl, 'sc_is_release_evidence_path($zrel)'),
+    'review, captures and test evidence are checked during selection and at the ZIP boundary');
+rs_test(str_contains($screl, 'BUILD REFUSED — evidence path')
+    && str_contains($screl, "PATHINFO_EXTENSION)) === 'png'")
+    && str_contains($screl, "!str_starts_with(\$zrel, 'assets/')")
+    && str_contains($screl, "!str_starts_with(\$zrel, 'skins/')"),
+    'unclassified PNGs outside runtime asset rails refuse the build');
+rs_test(substr_count($screl, 'sc_release_zip_comparison($zip_dest,') === 2,
+    'both build screens show size and file counts versus the previous release');
+
 // SKINS ARE A SEPARATE RAIL AND STAY ONE.
 $skins = (string)file_get_contents($root . '/smack-central/sc-skins.php');
 rs_test(!preg_match("/str_starts_with\(\\\$[a-z_]+, 'screenshot'\)/i", $skins),
