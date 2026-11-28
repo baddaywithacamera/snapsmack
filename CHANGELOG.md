@@ -11,7 +11,7 @@
 # SnapSmack Changelog
 ## Unreleased
 
-## 0.7.1012D
+## 0.7.1012D — opened
 
 - The Flickr publication date backfill skips records where the publication date is less than one day after capture.
 
