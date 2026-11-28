@@ -83,7 +83,11 @@ def apply_release(client, run_shell, domain, installed, manifest, source, expect
             f"{shlex.quote(domain)} {installed} {temp}/package.zip {temp}/release.json {backup}",
             "echo PROXVOX_SIGNED_RELEASE_PASS",
         ])
-        stage_file("update.sh", ("set -e\n" + "\n".join(messages)).encode())
+        update_script = ("set -e\n" + "\n".join(messages)).encode()
+        stage_file("update.sh", update_script)
+        script_hash = hashlib.sha256(update_script).hexdigest()
+        audited(f"printf '%s  %s\\n' '{script_hash}' '{temp}/update.sh' | sha256sum -c --status - "
+                "&& echo SCRIPT_VERIFIED", "SCRIPT_VERIFIED")
         worker = shlex.quote(
             f"bash {temp}/update.sh > {temp}/result.part 2>&1; "
             f"mv -- {temp}/result.part {temp}/result"

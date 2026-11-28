@@ -35,7 +35,7 @@ class SignedReleaseClientTest(unittest.TestCase):
     def run_release(self, receipts):
         def shell(command):
             self.commands.append(command)
-            for marker in ("STAGING_READY", "CHUNK_STAGED", "WORKER_STARTED"):
+            for marker in ("STAGING_READY", "CHUNK_STAGED", "SCRIPT_VERIFIED", "WORKER_STARTED"):
                 if f"echo {marker}" in command:
                     return marker + "\r\n"
             if "echo RESULT_CHECKED" in command:
