@@ -40,9 +40,9 @@ Numbers are **not strictly chronological** (for example, `064` is dated `2026-11
 | `070` | Used | `2026-11-28-070-1009d-to-1011d-updater-and-public-write-fixes.md` |
 | `071`+ | Open | Next available sequential SECAUDIT number |
 
-## Unnumbered audits (deliberately outside the numbered sequence)
+## Unnumbered audits (outside the numbered sequence)
 
-Four historical audits in `secaudits/` carry no sequence number:
+Four historical audits in `secaudits/` carry no sequence number; why is not recorded:
 - `2026-06-05-0.7.209-review.pdf`
 - `2026-06-15-mesh-roster-key-broadcast.pdf`
 - `2026-06-25-son-of-a-batch.pdf`

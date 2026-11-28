@@ -15,7 +15,7 @@
 | Components | `core/updater.php`, `smack-update.php`, `smackback`, `process-like.php`, `password-reset.php`, `smack-central/sc-release.php` |
 | Read point | Fixes merged into `Github/dev` (`153b44b5`, `3c32563b`, `dec45a06`, `d9e3560b`, `a1b9f2b7`, `9d41eb4c`) across SNAPSMACK `0.7.1009D`–`0.7.1011D`. |
 | Method | The public SNAPSMACK security-audit method: read-only source inspection, independent review, executed regressions where available, in-place loopback upgrade verification against prior shipped archives, and explicit separation of source, build, and live evidence. No live exploit was used. |
-| Status | **FIXED AND SHIPPED** (`0.7.1009D` / `0.7.1010D`): `3c32563b` (SECAUDIT-047), `e78dc49b` (legacy `constants.php` updater), `3672e364` (SMACKBACK alert deduplication). **FIXED IN DEV, NOT YET SHIPPED** (`0.7.1011D` untagged/unpublished): `dec45a06` (`process-like.php` CSRF), `d9e3560b` (`password-reset.php` CSRF), `9d41eb4c` (packager boundary), `a1b9f2b7` + `bd89c13b` (`_review/` cleanup, 79 in each tag / 76 shipped). |
+| Status | **FIXED AND SHIPPED** (`0.7.1009D` / `0.7.1010D`): `3c32563b` (SECAUDIT-047), `e78dc49b` (legacy `constants.php` updater), `3672e364` (SMACKBACK alert deduplication). **FIXED ON DEV (`c11c0732`), PENDING `0.7.1011D` TAG/PUBLISH**: `dec45a06` (`process-like.php` CSRF), `d9e3560b` (`password-reset.php` CSRF), `9d41eb4c` (packager boundary), `a1b9f2b7` + `bd89c13b` (`_review/` cleanup, 79 in each tag / 76 shipped). |
 | Reporters | Sean McCormick and Codex |
 
 ## 1. Findings

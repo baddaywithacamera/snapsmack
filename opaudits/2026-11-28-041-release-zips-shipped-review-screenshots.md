@@ -6,7 +6,7 @@ The last non-empty line must be the canonical SNAPSMACK EOF marker.
 
 ## What happened
 
-The `0.7.1009D` (9,838 KB) and `0.7.1010D` (9,839 KB, 646 files) release archives jumped from ~2.7 MB (`0.7.975`, 529 files) to ~9.8 MB. Measuring the `v0.7.1009D` and `v0.7.1010D` git tags vs. the physical release zips showed **79 files in each tag** under `_review/` and **76 shipped** in both zips (the 76 image captures shipped into spoke web roots; the 3 JSON files were present in both git tags and absent from both shipped zips):
+The `0.7.1009D` (9,838 KB) and `0.7.1010D` (9,839 KB, 646 files in the physical ZIP per Codex; an earlier central-directory check reported 643) release archives jumped from ~2.7 MB (`0.7.975`, 529 files) to ~9.8 MB. Measuring the `v0.7.1009D` and `v0.7.1010D` git tags vs. the physical release zips showed **79 files in each tag** under `_review/` and **76 shipped** in both zips (the 76 image captures shipped into spoke web roots; the 3 JSON files were present in both git tags and absent from both shipped zips):
 
 - `_review/alfred-launch-readiness` (+3,913 KB, including `old-hitchcock/results.json` at 6,406 bytes)
 - `_review/ss1563-navigation-current` (+2,293 KB, including `results.json` at 212,699 bytes)
