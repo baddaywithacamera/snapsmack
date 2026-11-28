@@ -118,9 +118,17 @@ $pkg = is_file($pkgPath) ? (string)file_get_contents($pkgPath) : '';
 
 px(str_contains($pkg, "/core/version-series.php'"),
    'it requires core/version-series.php rather than reimplementing the compare');
-px(substr_count($pkg, 'version_epoch') >= 3,
-   '  version_epoch appears in all three places (scan, guard, written entry)',
-   (string)substr_count($pkg, 'version_epoch'));
+// COUNTING OCCURRENCES WAS NOT ENOUGH, and a mutant proved it: deleting the
+// epoch from the repo scan left this file's own COMMENTS mentioning
+// version_epoch often enough to satisfy a >= 3 count, so the check passed
+// while the fault was back. The needle has to be the expression, not the word.
+// Comments are stripped first so a comment can never stand in for code.
+$pkgCode = (string)preg_replace('~//[^
+]*|/\*.*?\*/~s', '', $pkg);
+px(str_contains($pkgCode, "(int)(\$manifest['version_epoch'] ?? 0)"),
+   '  the repo SCAN carries the epoch out of the manifest');
+px(str_contains($pkgCode, "(int)(\$meta['version_epoch'] ?? 0)"),
+   '  and the WRITTEN registry entry carries it too');
 px(str_contains($pkg, 'snap_release_version_with_epoch($meta)'),
    '  the guard builds the candidate version WITH its epoch');
 px(str_contains($pkg, 'snap_compare_release_versions($candidate_cmp, $published_cmp'),

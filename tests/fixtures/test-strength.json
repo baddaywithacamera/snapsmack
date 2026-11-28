@@ -2889,7 +2889,7 @@
         "thresholds": []
     },
     "skin-packager-publishes-an-epoch-regression.php": {
-        "assertions": 19,
+        "assertions": 20,
         "predicates": 8,
         "thresholds": [
             3
