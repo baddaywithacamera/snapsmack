@@ -3399,6 +3399,9 @@ class TakeMode(QWidget):
         # and keeps each block's exact bytes, so an untouched post sends back
         # byte for byte. See the invariant in biggie.py.
         site_blocks = biggie.parse_site_html(draft.caption)
+        signature = biggie.published_signature_block(post)
+        if signature is not None:
+            site_blocks.append(signature)
         if site_blocks:
             draft.body_blocks = biggie.blocks_to_json(site_blocks)
         draft.colophon = str(post.get("colophon") or "")

@@ -641,6 +641,21 @@ def site_blocks_are_untouched(blocks: list) -> bool:
 # fields, which the import does not fetch; if that is ever wanted it is a
 # server-side change to what GET returns, not a parser change.
 SIGNATURE_MODES = ("inherit", "off", "custom")
+PUBLISHED_SIGNATURE_KEYS = ("signature_image_id", "signature_light_image_id",
+                            "signature_dark_image_id")
+
+
+def published_signature_block(post: dict) -> dict | None:
+    """Show existing signature choices without claiming an edit to them."""
+    fields = {}
+    for key in PUBLISHED_SIGNATURE_KEYS:
+        if key in post:
+            raw = post[key]
+            value = str(raw).strip()
+            fields[key] = int(value) if value.isdecimal() else None
+    if not any(value for value in fields.values()):
+        return None
+    return {"type": "signature", "mode": "custom", "published_signature": fields}
 
 
 def signature_block_normalise(block: dict) -> dict:
@@ -661,12 +676,17 @@ def signature_block_normalise(block: dict) -> dict:
             return None
         return number if number > 0 else None
 
-    return {
+    clean = {
         "type": "signature",
         "mode": mode,
         "light_image_id": _id((block or {}).get("light_image_id")),
         "dark_image_id": _id((block or {}).get("dark_image_id")),
     }
+    if isinstance((block or {}).get("published_signature"), dict):
+        imported = published_signature_block(block["published_signature"])
+        if imported is not None:
+            clean["published_signature"] = imported["published_signature"]
+    return clean
 
 
 def signature_fields(block: dict) -> dict:
@@ -681,6 +701,8 @@ def signature_fields(block: dict) -> dict:
                there is one, because light is the default surface (TILEZ).
     """
     clean = signature_block_normalise(block)
+    if "published_signature" in clean:
+        return {}
     if clean["mode"] == "off":
         return {"signature_image_id": 0,
                 "signature_light_image_id": 0,

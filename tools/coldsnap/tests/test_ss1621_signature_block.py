@@ -349,4 +349,42 @@ def test_new_signature_survives_text_edit_and_removal_persists(monkeypatch, tmp_
         mode.close()
 
 
+def test_open_published_signature_is_visible_and_text_edit_preserves_it(monkeypatch, tmp_path):
+    from PySide6.QtGui import QTextCursor
+    from sumna_post import SmacktalkPoster
+    from test_ss1514_open_published_preserves_draft import _FakePoster, _setup_mode
+
+    data = {"id": 4, "title": "Start your engines...", "content": "<p>Before edit.</p>",
+            "status": "published", "signature_image_id": 413,
+            "signature_light_image_id": 413, "signature_dark_image_id": 0}
+    app, mode = _setup_mode(monkeypatch, tmp_path, _FakePoster([], {}))
+    try:
+        draft = mode._draft_from_remote(data)
+        session = mode.rail.ensure_session()
+        session.add_draft(draft, copy_images=False)
+        mode._edit(draft)
+        mode.body._set_biggie(True)
+        canvas = mode.body.canvas
+        blocks = canvas.to_blocks()
+        assert blocks[-1]["type"] == "signature"
+        assert blocks[-1]["published_signature"] == {
+            "signature_image_id": 413, "signature_light_image_id": 413,
+            "signature_dark_image_id": 0,
+        }
+
+        cursor = canvas.textCursor()
+        cursor.movePosition(QTextCursor.Start)
+        cursor.insertText("Word. ")
+        canvas.setTextCursor(cursor)
+        app.processEvents()
+        edited = mode._build_draft(session)
+        payload = SmacktalkPoster("https://example.com", "fixture", signature_image_id=99).build_payload(
+            edited, [], None, SmacktalkPoster._body_text_for_sync(edited))
+        assert "Word. Before edit." in payload["content"]
+        assert payload["post_id"] == 4
+        assert not set(biggie.PUBLISHED_SIGNATURE_KEYS).intersection(payload)
+    finally:
+        mode.close()
+
+
 # ===== SNAPSMACK EOF =====

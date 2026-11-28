@@ -377,7 +377,13 @@ class _Objects(QPyTextObject):
         if block["mode"] != "off":
             light = self.canvas.palette().color(QPalette.Base).lightness() >= 128
             primary = "light_image_id" if light else "dark_image_id"
-            image_id = block[primary] or self.canvas.signature_default()
+            stored = block.get("published_signature")
+            if stored is not None:
+                image_id = stored.get(f"signature_{primary}", stored.get("signature_image_id", 0))
+                if image_id is None and f"signature_{primary}" in stored:
+                    image_id = self.canvas.signature_default()
+            else:
+                image_id = block[primary] or self.canvas.signature_default()
             if image_id:
                 pixmap = self.canvas.image_pixmap(str(image_id), 240)
                 if pixmap is None or pixmap.isNull():
