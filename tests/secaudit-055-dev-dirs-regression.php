@@ -60,8 +60,8 @@ sa_test($p_clean !== false && $p_base !== false && $p_clean < $p_base,
 // ── SMACKBACK: never-trust prefixes ─────────────────────────────────────────
 sa_test(str_contains($sb, "function smackback_dev_dir_prefixes(): array"),
     'smackback_dev_dir_prefixes() exists');
-sa_test(str_contains($sb, "return ['tests/', 'core/tests/', 'wip/', 'smack-central/'];"),
-    'all four dev prefixes are on the never-trust list');
+sa_test(str_contains($sb, "return ['tests/', 'core/tests/', 'wip/', 'smack-central/', '_review/'];"),
+    'all five dev prefixes are on the never-trust list');
 sa_test(preg_match('/function smackback_dev_dir_prefixes[^}]+sc-config\.php/s', $sb) === 1,
     'the never-trust list is empty on the Smack Central host itself');
 sa_test(str_contains($sb, 'function smackback_prune_dev_dir_rows(): int'),
