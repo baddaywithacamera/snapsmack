@@ -480,6 +480,50 @@ class ProxVoxP3Tests(unittest.TestCase):
                        self.server.csrf_value):
             self.assertNotIn(secret, raw)
 
+    def test_a_logged_command_is_redacted_but_its_digest_is_of_the_original(self):
+        """Sean 14:56 "blank", measured on what write_client ACTUALLY records.
+
+        A mutant that hashed the REDACTED text instead of the original
+        SURVIVED my first attempt, because the test asserting that property
+        computed both hashes itself and never looked at the audit record. It
+        proved the property in a vacuum and not the code implementing it.
+        """
+        import hashlib as _h
+
+        class Console:
+            def run(self, text):
+                return "ok"
+            def close(self):
+                pass
+
+        console = Console()
+        wc = self._client()
+        wc.authorize("proxvox@pve", "good-pass", "123456")
+        opened = wc.open_container_console("proxmox", 106, connector=lambda **_: console)
+
+        original = "mysql -u root -psup3rs3cret -e 'UPDATE snap_posts SET x=1'"
+        wc.run_container_command(opened, original)
+
+        row = [r for r in self.audit.records()
+               if r["action"] == "container_write_call"][-1]["detail"]
+
+        # The secret is GONE from the text that was written.
+        self.assertNotIn("sup3rs3cret", row["command"])
+        self.assertIn("[REDACTED]", row["command"])
+        # The rest of the command survives, or the log is useless.
+        self.assertIn("UPDATE snap_posts", row["command"])
+
+        # AND THE DIGEST IS OF THE ORIGINAL. This is the assertion the mutant
+        # walked through: hashing the redaction would destroy the only thing
+        # that makes an edited log provable.
+        self.assertEqual(row["command_sha256"],
+                         _h.sha256(original.encode()).hexdigest())
+        self.assertNotEqual(row["command_sha256"],
+                            _h.sha256(row["command"].encode()).hexdigest())
+
+        # And the secret is nowhere else in the log either.
+        self.assertNotIn("sup3rs3cret", str(self.audit.records()))
+
     def test_host_shell_uses_the_node_path_not_a_container_path(self):
         """'and on the host' needed a path that did not exist."""
         class Console:
