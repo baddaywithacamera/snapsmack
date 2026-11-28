@@ -2199,18 +2199,29 @@ body.blog, body.single, body.archive { background: #fff; }
     width: 38px;
     height: 38px;
     place-items: center;
-    color: var(--tilez-ink);
-    background: #fff;
-    border: 1px solid #aaa;
+    color: #1a1a1a;
+    background: transparent;
+    border: 2px solid rgba(26, 26, 26, .3);
     border-radius: 50%;
     text-decoration: none;
     cursor: pointer;
-    transition: color .15s ease, background-color .15s ease, border-color .15s ease, transform .15s ease;
+    transition: background-color .15s ease, border-color .15s ease;
 }
 .tilez-icon-nav a:hover,
 .tilez-icon-nav a:focus-visible,
 .tilez-icon-nav summary:hover,
-.tilez-icon-nav summary:focus-visible { color: #b3261e; background: #f2f2f2; border-color: #b3261e; outline: none; transform: translateY(-2px); }
+.tilez-icon-nav summary:focus-visible { color: #1a1a1a; background: rgba(255, 255, 255, .95); border-color: rgba(26, 26, 26, .7); outline: none; transform: none; }
+.tilez .social-dock .dock-link {
+    background: transparent;
+    border-color: rgba(26, 26, 26, .3);
+    color: #1a1a1a;
+}
+.tilez .social-dock .dock-link:hover,
+.tilez .social-dock .dock-link:focus-visible {
+    background: rgba(255, 255, 255, .95);
+    border-color: rgba(26, 26, 26, .7);
+    transform: none;
+}
 .tilez-icon-nav a:active,
 .tilez-icon-nav summary:active { transform: translateY(0) scale(.94); }
 .tilez-icon-nav a::after,
