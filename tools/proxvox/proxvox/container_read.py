@@ -11,6 +11,7 @@ import posixpath
 import re
 
 from .broker import Refused
+from .secrets import blocked_read_reason
 from .credentials import load_container_secret
 
 
@@ -185,6 +186,17 @@ class ContainerReadBroker:
                 sftp.close()
 
     def read_file(self, container: str, path: str) -> bytes:
+        # SEAN, 2026-11-28 15:02. The four-entry read blocklist, enforced
+        # BEFORE the target is resolved or any connection is made, and LOGGED
+        # rather than silently dropped -- his words: "A blocked read gets
+        # logged, not silently dropped."
+        blocked = blocked_read_reason(path)
+        if blocked:
+            self.audit.record("container_read_blocked", {
+                "container": str(container), "operation": "read",
+                "path": str(path), "why": blocked,
+            })
+            raise Refused(blocked)
         try:
             target = self._target(container)
             clean = _safe_path(target, path)

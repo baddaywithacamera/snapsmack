@@ -6,6 +6,7 @@
 
 import base64
 import io
+from .secrets import blocked_read_reason
 import json
 import shlex
 import socket
@@ -139,6 +140,17 @@ class RootReadBroker:
 
     def read_to(self, path, target, vmid=None):
         """Stream an ordinary file into a binary writer with bounded memory."""
+        # SEAN, 2026-11-28 15:02. The read blocklist, checked before the call
+        # leaves this machine. read_file() goes through here, so guarding this
+        # one covers both. Logged, not silently dropped.
+        blocked = blocked_read_reason(path)
+        if blocked:
+            recorder = getattr(self, "audit", None)
+            if recorder is not None:
+                recorder.record("host_read_blocked", {
+                    "path": str(path), "vmid": vmid, "why": blocked,
+                })
+            raise Refused(blocked)
         data = (self._call("host-read", path) if vmid is None
                 else self._call("ct-read", int(vmid), path))
         if not isinstance(data, dict):

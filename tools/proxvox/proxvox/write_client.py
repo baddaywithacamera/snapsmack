@@ -26,6 +26,7 @@ import urllib.request
 
 from . import host_guard
 from .broker import Refused, _path_refusal
+from .secrets import redact_command
 from .tls_pin import CertificatePinError, pinned_https_opener
 
 ALLOWED_METHODS = ("POST", "PUT", "DELETE", "GET")
@@ -634,9 +635,15 @@ class WriteClient:
         # PM is asking Sean for one. Until it exists, an unreadable log is the
         # worse of the two risks: the buffer is local, and a 24-hour window
         # nobody can audit is not.
+        # SEAN, 2026-11-28 14:56: "blank". The command text goes in the log so
+        # a day of unattended work can be read, and the SECRET VALUES in it are
+        # blanked before anything is written. The sha256 is of the ORIGINAL
+        # command, not the redacted text, so the entry is still provable even
+        # though what it shows has been edited -- which is the only reason
+        # redacting a log is honest rather than just tidy.
         self.audit.record("container_write_call", {
             "username": self._username,
-            "command": text,
+            "command": redact_command(text),
             "command_sha256": hashlib.sha256(text.encode()).hexdigest(),
         })
         return console.run(text)
