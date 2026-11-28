@@ -3085,6 +3085,11 @@
         "predicates": 0,
         "thresholds": []
     },
+    "smackpress-exact-media-reuse-regression.php": {
+        "assertions": 2,
+        "predicates": 0,
+        "thresholds": []
+    },
     "smackpress-gallery-shuffle-regression.php": {
         "assertions": 5,
         "predicates": 8,

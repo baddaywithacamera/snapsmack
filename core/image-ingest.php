@@ -187,6 +187,32 @@ function snap_exif_inject(string $path, string $app1): void {
 }
 }
 
+/** Find an existing published gallery asset and verify its stored bytes. */
+function snap_ingest_find_exact_image(PDO $pdo, string $checksum): ?array {
+    $stmt = $pdo->prepare(
+        "SELECT id, img_title, img_file, img_thumb_square
+         FROM snap_images
+         WHERE img_checksum = ? AND img_status = 'published' AND post_id IS NULL
+         ORDER BY id"
+    );
+    $stmt->execute([$checksum]);
+    $upload_root = realpath(dirname(__DIR__) . '/img_uploads');
+    if ($upload_root === false) return null;
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $path = realpath(dirname(__DIR__) . '/' . $row['img_file']);
+        if ($path === false || !str_starts_with($path, $upload_root . DIRECTORY_SEPARATOR)
+            || !is_file($path) || @hash_file('sha256', $path) !== $checksum) continue;
+        return [
+            'ok' => true,
+            'id' => (int)$row['id'],
+            'thumb' => $row['img_thumb_square'] ?: $row['img_file'],
+            'title' => $row['img_title'],
+            'reused' => true,
+        ];
+    }
+    return null;
+}
+
 /**
  * Ingest one uploaded image file into snap_images (a POST image / Gallery item).
  *
@@ -531,40 +557,83 @@ function snap_ingest_image(PDO $pdo, array $settings, array $file, array $opts =
     // on save. So it self-heals here on the next ingest, and the read path
     // asks whether the column is selectable rather than assuming.
     $pdo->exec("ALTER TABLE snap_images ADD COLUMN IF NOT EXISTS img_thumb_medium VARCHAR(255) NULL");
-    $stmt = $pdo->prepare("
-        INSERT INTO snap_images (
-            img_title, img_slug, img_file, img_description, img_alt, img_film, img_exif,
-            img_status, img_date, img_orientation, img_auto_orient, img_width, img_height,
-            allow_comments, allow_download, download_url,
-            img_thumb_square, img_thumb_aspect, img_thumb_medium, img_checksum, img_display_options, img_color_mode
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([
-        $title,
-        $slug,
-        $db_path,
-        $desc,
-        $alt,
-        '',
-        $exif_json,
-        $status,
-        $custom_date,
-        $auto_orientation,
-        1,
-        $orig_w,
-        $orig_h,
-        $allow_comments,
-        $allow_download,
-        '',
-        $db_thumb_square,
-        $db_thumb_aspect,
-        $db_thumb_medium,
-        $db_checksum,
-        $display_options_json,
-        $color_mode,
-    ]);
+    $lock_name = null;
+    $reuse = !empty($opts['reuse_exact_media']) && $status === 'published'
+        && $orig_w > 0 && $orig_h > 0;
+    if ($reuse && !$db_checksum) $db_checksum = hash_file('sha256', $target_path);
+    $provisional_files = [
+        $target_path, $thumb_full . '/t_' . $new_file_name,
+        $thumb_full . '/a_' . $new_file_name, $thumb_full . '/m_' . $new_file_name,
+    ];
+    $discard_provisional = static function () use ($provisional_files): bool {
+        $ok = true;
+        foreach ($provisional_files as $file) {
+            if (is_file($file) && !@unlink($file)) $ok = false;
+        }
+        return $ok;
+    };
 
-    $new_img_id = (int)$pdo->lastInsertId();
+    try {
+        if ($reuse && $db_checksum) {
+            $schema = (string)$pdo->query('SELECT DATABASE()')->fetchColumn();
+            $lock = 'sm:' . substr(hash('sha256', $schema . ':' . $db_checksum), 0, 61);
+            $get_lock = $pdo->prepare('SELECT GET_LOCK(?, 15)');
+            $get_lock->execute([$lock]);
+            if ((int)$get_lock->fetchColumn() !== 1) {
+                $discard_provisional();
+                return ['ok' => false, 'error' => 'This image is being imported. Retry shortly.'];
+            }
+            $lock_name = $lock;
+
+            $existing = snap_ingest_find_exact_image($pdo, $db_checksum);
+            if ($existing !== null) {
+                if (!$discard_provisional()) {
+                    return ['ok' => false, 'error' => 'Failed to remove a redundant upload.'];
+                }
+                return $existing;
+            }
+        }
+
+        $stmt = $pdo->prepare("
+            INSERT INTO snap_images (
+                img_title, img_slug, img_file, img_description, img_alt, img_film, img_exif,
+                img_status, img_date, img_orientation, img_auto_orient, img_width, img_height,
+                allow_comments, allow_download, download_url,
+                img_thumb_square, img_thumb_aspect, img_thumb_medium, img_checksum, img_display_options, img_color_mode
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $title,
+            $slug,
+            $db_path,
+            $desc,
+            $alt,
+            '',
+            $exif_json,
+            $status,
+            $custom_date,
+            $auto_orientation,
+            1,
+            $orig_w,
+            $orig_h,
+            $allow_comments,
+            $allow_download,
+            '',
+            $db_thumb_square,
+            $db_thumb_aspect,
+            $db_thumb_medium,
+            $db_checksum,
+            $display_options_json,
+            $color_mode,
+        ]);
+
+        $new_img_id = (int)$pdo->lastInsertId();
+    } finally {
+        if ($lock_name !== null) {
+            $release_lock = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+            $release_lock->execute([$lock_name]);
+        }
+    }
 
     // Sync hashtags from title + description + manual tags field.
     if (function_exists('snap_sync_tags')) {

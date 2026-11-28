@@ -133,13 +133,13 @@ if (preg_match('/INSERT INTO snap_images \((.*?)\) VALUES \((.*?)\)/s', $ingest,
 // parameter: the SQL still balanced and every upload would have thrown
 // "number of bound variables does not match".
 $exec = strpos($ingest, '$stmt->execute([', strpos($ingest, 'INSERT INTO snap_images'));
-$execEnd = $exec === false ? false : strpos($ingest, "
-    ]);", $exec);
+$execEnd = $exec !== false
+    && preg_match('/^\h*\]\);/m', $ingest, $end, PREG_OFFSET_CAPTURE, $exec)
+    ? $end[0][1] : false;
 if ($exec === false || $execEnd === false) {
     $failures[] = 'could not isolate the ingest execute() list';
 } else {
-    $bound = substr_count(substr($ingest, $exec, $execEnd - $exec + 1), ",
-");
+    $bound = preg_match_all('/,\R/', substr($ingest, $exec, $execEnd - $exec));
     if (isset($holes) && $bound !== $holes) {
         $failures[] = "the ingest INSERT binds {$bound} values for {$holes} "
             . 'placeholders; every upload would throw';
