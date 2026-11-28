@@ -50,6 +50,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// --- TOKEN: STILL MISSING, AND SAYING SO IS THE POINT (SS-1634, OPEN) ---
+// THE FAULT IS REAL. Both actions here are authorised by the session cookie
+// alone, so a form POST from any other page could run either one while a
+// member was signed in: SUBMIT writes a comment in their name, DELETE
+// soft-deletes one they wrote. Comment ids are sequential and comments are
+// public, so the id a deletion needs is not a secret.
+//
+// A CHECK WAS PUT HERE AND HAS BEEN TAKEN BACK OUT. It called
+// csrf_ok_public(), and this client -- ss-engine-community.js -- sends no
+// token at all, so the check had nothing to compare and waved every request
+// through. It read as protection on every subsequent audit while validating
+// nothing, which is worse than the honest hole: the next person greps for
+// csrf, sees a guard, and stops looking.
+//
+// WHAT CLOSING IT NEEDS, and it is not a line here: a token carrier for this
+// client. The like control was closeable because its button is CMS-built
+// (snap_tile_like_html), so the token rides on markup core already owns. This
+// form is assembled in the engine's JS from values the page does not carry,
+// so the carrier has to be added deliberately -- and this is the public
+// comment path on 25 live sites, which is not somewhere to bolt one on at
+// speed. SS-1634 stays OPEN with that named as the remaining work.
+
 // --- SETTINGS ---
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")
                 ->fetchAll(PDO::FETCH_KEY_PAIR);

@@ -542,6 +542,13 @@
         "predicates": 3,
         "thresholds": []
     },
+    "csrf-public-endpoints-regression.php": {
+        "assertions": 37,
+        "predicates": 24,
+        "thresholds": [
+            32
+        ]
+    },
     "curator-directory-regression.php": {
         "assertions": 68,
         "predicates": 40,
@@ -3484,8 +3491,8 @@
         ]
     },
     "tile-like-control-regression.php": {
-        "assertions": 43,
-        "predicates": 41,
+        "assertions": 44,
+        "predicates": 42,
         "thresholds": []
     },
     "tile-like-prepared-not-computed-regression.php": {

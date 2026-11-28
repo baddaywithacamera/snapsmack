@@ -28,7 +28,20 @@
     // not to whichever copy was clicked first.
     var pending = Object.create(null);
 
-    function csrf() {
+    // SS-1385. THE BUTTON FIRST, THE META TAG SECOND, and the order is the fix.
+    //
+    // This read the meta tag only. csrf_meta_tag() is emitted on ADMIN pages
+    // and never on a public one, so on a public page this returned '' and the
+    // request carried no token. The first server-side repair was failed on
+    // review for exactly that: a guard with nothing to check.
+    //
+    // The CMS now puts the token on the button itself, in
+    // snap_tile_like_html(), because the button is CMS-built and every skin
+    // prints it through a component -- so no skin file had to change. The meta
+    // tag is kept as a fallback so the admin pages that DO emit it keep
+    // working unchanged.
+    function csrf(button) {
+        if (button && button.dataset && button.dataset.csrf) return button.dataset.csrf;
         var tag = document.querySelector('meta[name="csrf-token"]');
         return tag ? tag.getAttribute('content') : '';
     }
@@ -70,7 +83,7 @@
 
         var body = new FormData();
         body.append('post_id', String(id));
-        var token = csrf();
+        var token = csrf(button);
         if (token) body.append('csrf_token', token);
 
         // ROOT-RELATIVE, exactly as ss-engine-community.js:89 posts it.

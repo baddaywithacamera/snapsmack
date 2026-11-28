@@ -454,6 +454,12 @@ function snapsmack_public_runtime(PDO $pdo, array $input, array $settings): arra
             && (!empty($response['items']) || !empty($response['rows']))) {
         require_once __DIR__ . '/tile-like-control.php';
         if (snap_tile_like_enabled($settings)) {
+            // SS-1385. The session is started HERE, before any heart is built,
+            // so each button can carry the token process-like.php now demands.
+            // Only inside this branch: a site with likes switched off gets no
+            // session, no cookie and no session file. The cost lands exactly
+            // where the token is needed and nowhere else.
+            snap_tile_like_session();
             require_once __DIR__ . '/like-identity.php';
             [$_tileUser, $_tileGuest] = snap_like_identity($pdo);
 
