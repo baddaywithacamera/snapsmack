@@ -11,6 +11,10 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1012D
+
+- The Flickr publication date backfill skips records where the publication date is less than one day after capture.
+
 ## 0.7.1011D — opened
 
 - Pocket Album uses masonry and loads up to 100 photos at a time. `[pocket_album limit="N"]` now returns the newest N photos.
