@@ -5,17 +5,63 @@
   string SNAPSMACK EOF, a space, and five equals.
 -->
 
-# 0.7.1011D — independent gate evidence for commit c11c0732
+# 0.7.1011D — independent gate evidence
 
 | Field | Value |
 |---|---|
-| Commit | `c11c073259fe55cfa1c8e4e7aab65110d77af1fe` (`Github/dev`, "Open SnapSmack 0.7.1011D") |
+| **Release commit (tagged)** | `b75f2bfc` — `Github/dev`, "Merge reviewed evidence for the 1011D gate" |
+| Commit the evidence was gathered on | `c11c073259fe55cfa1c8e4e7aab65110d77af1fe`, "Open SnapSmack 0.7.1011D" |
 | Version stamped | `core/constants.php`: `Alpha 0.7.1011D` / `0.7.1011D` |
 | Baseline tag | `v0.7.1010D` at `9131f537806244f120f5447cb28e0f8bce97be57` |
 | Written by | Code, 2026-11-28 |
 | Assembled by | Codex |
 | Independence | Code is the Claude Code seat. The `claude/` branch prefix is that seat's namespace, so `claude/1011d-gate-evidence` and "Code" are one author, not two. Separate from Codex, who assembled the build. (Muse's question, room sequence 9215.) |
-| Signature outstanding | `--authority=approved`. **Sean's, and only Sean's.** |
+| Authority | Sean, 2026-11-28 08:46, "approved" — relayed at room sequence 9229, for `b75f2bfc`. |
+
+## TWO COMMITS, AND WHY THE FILENAME SAYS THE OTHER ONE
+
+This file is named for `c11c0732` because that is the commit the evidence was
+GATHERED on. The commit TAGGED is `b75f2bfc`. Renaming the file would hide
+which tree was measured, so the name stays and this section says the rest.
+
+`tools/release-flow.php tag-dev` gates and tags **HEAD of dev** — its own code
+is `rf_require_release_gate(null, 'dev')`, whose body resolves `null` to
+`git rev-parse HEAD`, then `rf_git(['tag', $tag])` with no commit argument. It
+does not gate or tag a commit you name. The owner sign-off checkout had been
+prepared pinned to `c11c0732` while dev had moved on, so the signature would
+have produced a refusal rather than a tag. Raised at room sequence 9223; the
+ruling at 9227 was settle-then-sign, dev frozen, release commit `b75f2bfc`.
+
+**That changed which commit is certified, and nothing about what is certified.**
+The runtime at `b75f2bfc` is byte-identical to the runtime at `c11c0732`. The
+only differences are eight files: opaudits 038–041, SECAUDIT 070, REGISTER.md,
+this file, and two upward entries in `tests/fixtures/test-strength.json`.
+Nothing under `core/`, `skins/`, `assets/`, `smack-central/` or any root `.php`
+moved. Measured, not reasoned — and then measured again by running the suite.
+
+The changed skin/CSS scope was **re-derived** against `b75f2bfc` rather than
+carried over, because that scope comes from a diff and the diff had moved. It
+is still the same three targets.
+
+## THREE SUITE RUNS, EACH WITH ITS COMMIT
+
+A number without its moment is worth little, so each run is recorded against
+the commit it was run on. All three are the whole suite the gate runs — every
+`tests/*.php`, 520 files, not the ones whose names say "regression" — on a
+clean tree:
+
+| Commit | Result |
+|---|---|
+| `c11c0732` (gathered) | 519 pass, 1 skip, **0 failures** |
+| `53d37132` (after the audits merged) | 519 pass, 1 skip, **0 failures** |
+| **`b75f2bfc` (tagged)** | 519 pass, 1 skip, **0 failures** |
+
+**Identical file for file across all three.** Not "the totals match": the
+sorted per-file exit-code lists were diffed against each other and are
+byte-identical across all 520 entries in every pairing. The same files pass and
+the same one skips. The three lints `rf_tests()` runs afterwards —
+`smack-central/sc-release.php`, `core/updater.php`, `tools/release-flow.php` —
+are clean on each.
 
 ## Why this file exists, and what it is not
 
@@ -34,21 +80,12 @@ Sean's confirmation is the only remaining step.
 Where a figure is somebody else's measurement it says so. Nothing here is
 copied from another agent's report and presented as my own reading.
 
-## What I ran, on this commit, on this machine
+## What I ran, on this machine
 
-The working tree was `Github/dev` at `c11c0732`, clean, with none of my own
-branches present.
-
-**The whole PHP suite the gate runs — `tests/*.php`, every file, not the ones
-whose names say "regression".** 520 files:
-
-- **519 exit 0**
-- **1 exit 2**, a deliberate SKIP:
-  `tests/smackpress-keeps-albums-it-was-not-told-about-regression.php`
-- **0 failures**
-
-The three lints `rf_tests()` runs after the suite: `smack-central/sc-release.php`,
-`core/updater.php` and `tools/release-flow.php` all lint clean.
+The working tree was `Github/dev`, clean, with none of my own branches present,
+once at each of the three commits in the table above. The one non-zero exit in
+every run is the same deliberate SKIP,
+`tests/smackpress-keeps-albums-it-was-not-told-about-regression.php`.
 
 Named individually because they are the ones that have bitten this release:
 `agreed-rules-gate.php` **PASS** (it refused on every branch until 1011D was
@@ -84,8 +121,10 @@ them. No live site was read and nothing was deployed.
 
 `rf_dev_skin_scope()` diffs the baseline tag against HEAD and requires one
 `--skin-evidence=target:reference` for each result. I ran that diff myself
-rather than taking the count from the assembler. Between `v0.7.1010D`
-(`9131f537`) and `c11c0732` the targets are exactly three:
+rather than taking the count from the assembler, and ran it AGAIN against
+`b75f2bfc` once the release commit moved, because the scope comes from a diff
+and the diff had changed. Between `v0.7.1010D` (`9131f537`) and each of
+`c11c0732` and `b75f2bfc`, the targets are the same three:
 
 ### 1. `assets/css/shortcodes.css`
 
@@ -185,9 +224,9 @@ php tools/release-flow.php gate-note \
   --tests=pass \
   --code-review=pass \
   --reviewer=muse \
-  --review-reference=room:archive-recovery:9118,9120,9154,9182,9196,9199,9200 \
+  --review-reference=room:archive-recovery:9118,9120,9154,9182,9196,9199,9200,9220 \
   --test-reference=opaudits/evidence/1011D/gate-evidence-c11c0732.md \
-  --demo-parity-record=<Codex's parity record for c11c0732> \
+  --demo-parity-record=<Codex's parity record naming b75f2bfc> \
   --skin-evidence=assets/css/shortcodes.css:room:archive-recovery:9118 \
   --skin-evidence=skins/alfred:room:archive-recovery:9120+PM9167-regeneration \
   --skin-evidence=skins/scroll:_review/scroll-dock-icons+room:archive-recovery:9182
@@ -207,8 +246,13 @@ signature already supplied, which is the one thing "a gate that signs itself is
 not a gate" forbids, and the contradiction was in a file whose whole job is to
 be read carefully. Recorded rather than quietly amended.
 
+The review reference gained `9220` after the first version of this file: that is
+Muse's PASS on this evidence record itself, which did not exist when the list
+was first written.
+
 It must be run on the `dev` branch with a clean tree (`rf_require_dev()`,
-`rf_require_clean()`), and the parity record must name `c11c0732` exactly or the
+`rf_require_clean()`), and the parity record must name the release commit
+exactly — `b75f2bfc`, not `c11c0732` — or the
 tool refuses. The demo-parity record is Codex's; he reports it passing the
 validator with Muse-reviewed captures, and I have not read it.
 
