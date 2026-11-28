@@ -154,6 +154,7 @@ $already = 0;
 $albumMatched = 0;
 $albumUnmatched = 0;
 $moved = 0;           // rows whose posted date differs from the stored taken date
+$skippedNotLater = 0; // rows the source did not publish at least a day later
 
 foreach ($rows as $r) {
     $imageId = (int)$r['id'];
@@ -178,6 +179,32 @@ foreach ($rows as $r) {
         continue;
     }
 
+    // ── A PHOTOGRAPH CANNOT BE PUBLISHED BEFORE IT WAS TAKEN ─────────────────
+    //
+    // MEASURED ACROSS THE WHOLE EXPORT, 9,912 records: 4,664 carry a posted
+    // date EARLIER than the capture date, and the commonest signed offset is
+    // MINUS ONE HOUR on 4,164 of them. The export's date_imported carries a
+    // timezone artifact, so for 47% of the library it reads before the shutter.
+    //
+    // Writing that as a publication date puts something that cannot be true
+    // into thousands of rows, fleet-wide. And it would not even look wrong:
+    // an hour's shift reorders almost nothing, so it would sit there reading
+    // like a fact until somebody put the two dates on one photograph side by
+    // side. A quietly false field is worse than an empty one -- the empty one
+    // is honest, and the album ordering already falls back correctly when
+    // posted_on is blank.
+    //
+    // So a row is filled ONLY where the source really published it later, by
+    // at least a day. That is the case SS-1644 exists for: the 1980 EXIF
+    // stamp posted on 2024-02-25, 16,127 days out of place. 3,647 records
+    // qualify; the other 6,265 are left alone.
+    $takenAt  = strtotime((string)$r['img_date']);
+    $postedAt = strtotime($posted[$flickrId]);
+    if ($takenAt === false || $postedAt === false || $postedAt - $takenAt < 86400) {
+        $skippedNotLater++;
+        continue;
+    }
+
     if (substr((string)$r['img_date'], 0, 10) !== substr($posted[$flickrId], 0, 10)) { $moved++; }
 
     $updates[] = sprintf(
@@ -194,6 +221,12 @@ printf("  unmatched (no export file):   %d\n", count($unmatched));
 printf("  already correct, no change:   %d\n", $already);
 printf("  UPDATE statements emitted:    %d\n", count($updates));
 printf("  of those, landing on a DIFFERENT DAY than the stored taken date: %d\n", $moved);
+printf("  SKIPPED, source did not publish at least a day later: %d
+", $skippedNotLater);
+echo   "    (the export carries a timezone artifact: 4,664 of its 9,912 records
+"
+     . "     hold a posted date BEFORE the shutter, which cannot be true)
+";
 
 if ($albumId > 0) {
     printf("\n  album %d: matched %d, unmatched %d\n", $albumId, $albumMatched, $albumUnmatched);
