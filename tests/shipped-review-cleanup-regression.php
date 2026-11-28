@@ -6,8 +6,8 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/core/shipped-review-cleanup.php';
 
-$releaseFile = '_review/alfred-launch-readiness/current-alfred/archive-1024.png';
-$changedFile = '_review/alfred-launch-readiness/current-alfred/archive-1440.png';
+$releaseFile = '_review/scroll-dock-icons/scroll-dock-after-1024.png';
+$changedFile = '_review/scroll-dock-icons/scroll-dock-after-1440.png';
 $releaseBytes = file_get_contents(dirname(__DIR__) . '/' . $releaseFile);
 if (!in_array(hash('sha256', $releaseBytes), SNAPSMACK_SHIPPED_REVIEW_FILES[$releaseFile], true)) {
     throw new RuntimeException('Fixture is not a copy from the published release.');
@@ -42,7 +42,7 @@ try {
         $file = $root . '/' . $path;
         if (is_file($file)) unlink($file);
     }
-    foreach (['_review/alfred-launch-readiness/current-alfred', '_review/alfred-launch-readiness', '_review', 'core', ''] as $path) {
+    foreach (['_review/scroll-dock-icons', '_review', 'core', ''] as $path) {
         $directory = $root . ($path === '' ? '' : '/' . $path);
         if (is_dir($directory)) rmdir($directory);
     }
