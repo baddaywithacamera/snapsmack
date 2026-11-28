@@ -243,7 +243,7 @@ $page_css = <<<'CSS'
 .desktop-tools-lead { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); gap: 48px; align-items: start; }
 .desktop-tools-copy { font-size: 1rem; line-height: 1.65; }
 .desktop-tools-copy p + p { margin-top: 20px; }
-.desktop-tools-quote { display: inline-block; margin: 24px 0; padding: 10px 14px; border-left: 3px solid var(--red); color: #d0d0d0; background: #000; font: italic .82rem/1.4 Georgia, serif; }
+.desktop-tools-quote { display: inline-block; margin: 0 0 28px; padding: 10px 14px; border-left: 3px solid var(--red); color: #d0d0d0; background: #000; font: italic .82rem/1.4 Georgia, serif; }
 .desktop-tools-quote cite { color: #ff3838; font-style: normal; font-weight: normal; }
 .desktop-tools-platform { display: inline-block; margin-top: 24px; padding: 8px 12px; color: var(--black); background: var(--white); font: 900 .72rem/1 Arial Black, Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
 .desktop-tools-shot { margin: 0; }
