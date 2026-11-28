@@ -1353,6 +1353,18 @@ body.archive-page #scroll-stage.post-inner {
     position: relative;
 }
 
+.post-signature {
+    margin: 0 0 24px;
+}
+.post-signature--closing {
+    margin: 44px 0 0;
+}
+.post-signature img {
+    display: block;
+    width: min(340px, 72%);
+    height: auto;
+}
+
 /* Alignment */
 
 .alignnone,
