@@ -98,8 +98,8 @@
             "manifest_css_sha256": "a1f5658d8ba757965e60af97702c2fbc6fa516b5fb153e1509967ae0c09a0d0f"
         },
         "scroll": {
-            "version": "0.1.82",
-            "files_sha256": "f13e837ccc1440d96f36b19a9e5c3ab6f1abfd75829868703186aea3470a3237",
+            "version": "0.1.83",
+            "files_sha256": "a4cdf330ae20c4b3daa295b36636cb9c26f003dcf9725083b0062270d7637ae4",
             "manifest_css_sha256": "c39951476d28171ca60f02879d5aa610061c4f44266f5d20a76119da6c49cf35"
         },
         "show-n-tell": {
