@@ -991,6 +991,19 @@
             1219
         ]
     },
+    "flickr-backfill-never-writes-an-impossible-date-regression.php": {
+        "assertions": 13,
+        "predicates": 5,
+        "thresholds": [
+            647,
+            664,
+            3650,
+            86400,
+            86400,
+            86400,
+            86400
+        ]
+    },
     "flickr-import-keeps-both-dates-regression.php": {
         "assertions": 31,
         "predicates": 15,
