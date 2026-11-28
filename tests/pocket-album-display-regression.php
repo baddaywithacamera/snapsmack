@@ -204,8 +204,8 @@ echo "THE BLOCK SURVIVES THE SANITISER A CMS PAGE PUTS CONTENT THROUGH\n";
 $raw = pocket_album_html($pdo, 'https://foreverphotograph.ing', 191, 100);
 $clean = (string)snapsmack_trusted_html($raw);
 
-$check('the grid wrapper survives', str_contains($clean, 'class="snap-pocket-album"'));
-$check('the tile link survives', str_contains($clean, 'class="snap-pocket-tile"'));
+$check('the grid wrapper survives', str_contains($clean, 'class="snap-pocket-album ss-masonry"'));
+$check('the tile link survives', str_contains($clean, 'class="snap-pocket-tile ss-masonry-item"'));
 $check('the photograph survives', str_contains($clean, 'snap-pocket-shot'));
 $check('the remote thumbnail url survives intact',
        str_contains($clean, 'src="https://foreverphotograph.ing/media/p1-a.jpg"'));
@@ -277,7 +277,7 @@ for ($i = 1; $i <= 512; $i++) {
 }
 $all = pocket_album_html($big, 'https://foreverphotograph.ing', 191);
 $check('all 512 photographs are rendered, well past the old 300 cap',
-       substr_count($all, 'class="snap-pocket-tile"') === 512);
+       substr_count($all, 'class="snap-pocket-tile ss-masonry-item"') === 512);
 $check('  the last one is there, not just the first page',
        str_contains($all, 'media/p512-a.jpg'));
 $check('  and NO "all N photographs" link is printed, because none is needed',
@@ -290,7 +290,7 @@ $check('  and every tile carries its own shape, so the grid does not reflow',
 // AND WHEN THE AUTHOR ASKED FOR A SUBSET, the link is the point.
 $subset = pocket_album_html($big, 'https://foreverphotograph.ing', 191, 24);
 $check('an author asking for 24 gets 24',
-       substr_count($subset, 'class="snap-pocket-tile"') === 24);
+       substr_count($subset, 'class="snap-pocket-tile ss-masonry-item"') === 24);
 $check('  and THEN the link to the rest appears',
        str_contains($subset, 'All 512 photographs'));
 
@@ -346,7 +346,7 @@ $rendered = (new SnapSmack($parserPdo))->parseContent(
 );
 $check('the shortcode is GONE from the output: it was actually expanded',
        !str_contains($rendered, '[pocket_album'));
-$check('  and the grid is there instead', str_contains($rendered, 'class="snap-pocket-album"'));
+$check('  and the grid is there instead', str_contains($rendered, 'class="snap-pocket-album ss-masonry"'));
 $check('  with the photograph and its shape',
        str_contains($rendered, 'media/p1-a.jpg') && str_contains($rendered, 'width="1200"'));
 $check('  and the surrounding page text is untouched',
@@ -385,8 +385,18 @@ $check('  and reads attributes through the one shared reader',
 $css = (string)file_get_contents($root . '/assets/css/shortcodes.css');
 $check('the grid is styled in shortcodes.css, which loads on the live page',
        str_contains($css, '.snap-pocket-album {') && str_contains($css, '.snap-pocket-shot {'));
+$check('the pocket album grid uses ss-cols masonry instead of row grid',
+       str_contains($css, '--ss-cols: 3;') && !str_contains($css, 'grid-template-columns: repeat(auto-fill, minmax(var(--pocket-album-min'));
 $check('  the stylesheet still ends with its EOF marker',
        str_ends_with(rtrim($css), '/* ===== SNAPSMACK EOF ===== */'));
+
+$display = (string)file_get_contents($root . '/core/pocket-album-display.php');
+$check('pocket album reads cached items newest-first (sort_rank DESC)',
+       str_contains($display, 'ORDER BY sort_rank DESC, id DESC'));
+
+$colsJs = (string)file_get_contents($root . '/assets/js/ss-engine-columns.js');
+$check('ss-engine-columns falls back to intrinsic width/height attributes',
+       str_contains($colsJs, "img.getAttribute('width')") && str_contains($colsJs, "img.getAttribute('height')"));
 
 $api = (string)file_get_contents($root . '/api.php');
 $check('the source feed has a route, so it is reachable rather than dead code',

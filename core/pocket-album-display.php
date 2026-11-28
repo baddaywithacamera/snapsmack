@@ -434,7 +434,7 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit)
             "SELECT album_name, page_url, thumb_url, title, alt_text, img_width, img_height
              FROM snap_pocket_album_items
              WHERE source_url = ? AND album_id = ?
-             ORDER BY sort_rank ASC, id ASC LIMIT " . (int)$limit
+             ORDER BY sort_rank DESC, id DESC LIMIT " . (int)$limit
         );
         $statement->execute([rtrim($src, '/'), $album]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -484,7 +484,7 @@ function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0, bo
             . $album . ' yet.</p>';
     }
 
-    $html = '<div class="snap-pocket-album">';
+    $html = '<div class="snap-pocket-album ss-masonry">';
     foreach ($data['photographs'] as $photograph) {
         $thumb = snap_escape_url($photograph['thumb_url']);
         if ($thumb === '') { continue; }
@@ -499,9 +499,9 @@ function pocket_album_html(PDO $pdo, string $src, int $album, int $limit = 0, bo
                 : '')
             . ' loading="lazy">';
         $html .= $href !== ''
-            ? '<a class="snap-pocket-tile" href="' . $href . '" title="'
+            ? '<a class="snap-pocket-tile ss-masonry-item" href="' . $href . '" title="'
                 . snap_escape_attr($photograph['title']) . '">' . $image . '</a>'
-            : '<div class="snap-pocket-tile">' . $image . '</div>';
+            : '<div class="snap-pocket-tile ss-masonry-item">' . $image . '</div>';
     }
     $html .= '</div>';
 

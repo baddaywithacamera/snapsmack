@@ -61,9 +61,9 @@
         for (i = 0; i < els.length; i++) {
             var el = els[i], img = el.querySelector('img');
             var w = parseInt(el.getAttribute('data-w'), 10)
-                || (img ? parseInt(img.getAttribute('data-w'), 10) : 0);
+                || (img ? (parseInt(img.getAttribute('data-w'), 10) || parseInt(img.getAttribute('width'), 10)) : 0);
             var h = parseInt(el.getAttribute('data-h'), 10)
-                || (img ? parseInt(img.getAttribute('data-h'), 10) : 0);
+                || (img ? (parseInt(img.getAttribute('data-h'), 10) || parseInt(img.getAttribute('height'), 10)) : 0);
             var provisional = !(w > 0 && h > 0);
             if (provisional) { w = 3; h = 2; }
             out.push({
