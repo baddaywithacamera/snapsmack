@@ -11,6 +11,12 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1010D — opened
+
+- Honor saved inline photo widths in public posts.
+- Keep existing post albums and categories when a SMACKPRESS save omits them.
+- Restore Contest & Feed to the Challenge Me menu.
+
 ## 0.7.1009D — opened
 
 - **Keep updates working on older installs.** Core and skin version checks can run with an older copy of the system constants. Signed updates can replace that copy even when the install has the obsolete protection rule.
