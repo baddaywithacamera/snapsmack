@@ -208,9 +208,6 @@ foreach ($_section_map as $sec => $_sec_pages) {
                     <li>
                         <a href="pixel.php" target="_blank" rel="noopener"><?php echo $_site_is_smacktalk ? 'Mastodon Gateway' : 'Pixelfed Gateway'; ?> &#8599;</a>
                     </li>
-                    <li class="<?php echo ($current_page == 'smack-pixelfed.php') ? 'active' : ''; ?>">
-                        <a href="smack-pixelfed.php">Pixelfed Client</a>
-                    </li>
                     <li class="<?php echo ($current_page == 'smack-dms.php') ? 'active' : ''; ?>">
                         <a href="smack-dms.php">Messages</a>
                     </li>
