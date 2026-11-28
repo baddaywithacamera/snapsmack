@@ -13,6 +13,11 @@
 
 require_once __DIR__ . '/sc-auth.php';
 require_once dirname(__DIR__) . '/core/skin-version-digest.php';
+// THE EPOCH IS PART OF A VERSION. core/version-series.php is pure functions
+// and constants with no side effects, and it is the ONE definition of how two
+// release versions compare. Reimplementing that comparison here is how the
+// packager and the CMS came to disagree in the first place.
+require_once dirname(__DIR__) . '/core/version-series.php';
 $sc_active_nav = 'sc-skins.php';
 $sc_page_title = 'Skin Packager';
 
@@ -409,6 +414,10 @@ function sc_read_manifests(string $skins_dir): array {
             'features'           => $manifest['features']           ?? [],
             'requires_php'       => $manifest['requires_php']       ?? '8.3',
             'requires_snapsmack' => $manifest['requires_snapsmack'] ?? '0.7',
+            // ALFRED 0.7.31 carries version_epoch 1 so a site holding the old
+            // 1.0.30 sees it as NEWER. Dropping it here made the epoch invisible
+            // to both the guard below and the registry entry written at publish.
+            'version_epoch'      => (int)($manifest['version_epoch'] ?? 0),
         ];
     }
     ksort($skins);
@@ -631,9 +640,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                 $zip_name     = $slug . '-' . $version . '.zip';
                 $zip_path     = rtrim(RELEASES_DIR, '/') . '/skins/' . $zip_name;
                 $download_url = rtrim(RELEASES_URL, '/') . '/skins/' . $zip_name;
-                $published_version = $existing_registry['skins'][$slug]['version'] ?? null;
-                if (is_file($zip_path) || (is_string($published_version) && version_compare($version, $published_version, '<='))) {
-                    $build_results[] = ['slug' => $slug, 'ok' => false, 'msg' => 'This version is already published or older. Use a new skin version.'];
+                $published_entry   = $existing_registry['skins'][$slug] ?? null;
+                $published_version = is_array($published_entry)
+                    ? ($published_entry['version'] ?? null) : null;
+
+                // ── THE EPOCH DECIDES THIS COMPARISON ────────────────────────
+                //
+                // A raw version_compare refuses ALFRED 0.7.31 against a registry
+                // holding 1.0.30, because 0.7 is less than 1.0 as plain semver.
+                // That is the whole reason the re-baseline carries an epoch: the
+                // candidate declares version_epoch 1, the old entry has none, and
+                // 1:0.7.31 outranks 1.0.30. core/skin-registry.php already orders
+                // them correctly for the fleet; this guard did not, so a skin core
+                // would happily install could not be published in the first place.
+                $candidate_cmp = snap_release_version_with_epoch($meta);
+                $published_cmp = is_array($published_entry)
+                    ? snap_release_version_with_epoch($published_entry) : null;
+                $not_newer = $published_cmp !== null
+                    && !snap_compare_release_versions($candidate_cmp, $published_cmp, '>');
+                if (is_file($zip_path) || $not_newer) {
+                    $build_results[] = ['slug' => $slug, 'ok' => false, 'msg' =>
+                        'This version is already published or older ('
+                        . $candidate_cmp . ' vs published ' . (string)$published_cmp
+                        . '). Use a new skin version.'];
                     continue;
                 }
 
@@ -758,6 +787,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $preflight_ok) {
                     'requires_php'       => $meta['requires_php'],
                     'requires_snapsmack' => $meta['requires_snapsmack'],
                     'features'           => $meta['features'],
+                    // WITHOUT THIS, PUBLISHING LOSES THE EPOCH. The installed site
+                    // reads this entry, so an epoch absent here is an epoch the
+                    // fleet never sees, and the next comparison is raw again.
+                    'version_epoch'      => (int)($meta['version_epoch'] ?? 0),
                 ];
 
                 $build_results[] = [
