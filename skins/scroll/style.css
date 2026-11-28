@@ -492,9 +492,19 @@ a { color: inherit; }
 .scroll-sticky-nav .ss-grid-nav-link svg { width: 20px; height: 20px; }
 /* The floating dock pops 1.1x on hover; inline in the nav that enlarged edge
    icon gets clipped by the profile's overflow:hidden ("cut off on the right").
-   The nav chips don't scale, so neither should the inline dock — drop the pop. */
+   The nav chips don't scale, so neither should the inline dock — drop the pop.
+   Also pin the inline dock's chip surface/border/ink to SCROLL's nav chip
+   values so an owner-saved floating-dock color_mode never turns the header
+   dock circles dark against SCROLL's light outlined nav chips. */
+.scroll-sticky-nav .social-dock-inline .dock-link {
+    background: transparent;
+    border-color: rgba(26, 26, 26, .3);
+    color: #1a1a1a;
+}
 .scroll-sticky-nav .social-dock-inline .dock-link:hover,
 .scroll-sticky-nav .social-dock-inline .dock-link:focus-visible {
+    background: rgba(255, 255, 255, .95);
+    border-color: rgba(26, 26, 26, .7);
     transform: none;
 }
 /* Community LIKE chip reads as one of the nav icons: same 40px size / 20px glyph (not
