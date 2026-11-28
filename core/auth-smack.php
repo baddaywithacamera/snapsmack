@@ -214,6 +214,29 @@ if (isset($_SESSION['user_login'])) {
             if (!isset($_SESSION['user_ui_mode'])) {
                 $_SESSION['user_ui_mode'] = (!empty($u_data['ui_mode'])) ? $u_data['ui_mode'] : 'bigwheel';
             }
+
+            // Load per-user default closing signatures (light/dark) into session.
+            // Inner try/catch keeps older un-migrated schemas working silently.
+            if (!isset($_SESSION['user_default_signature_light_image_id'])
+                || !isset($_SESSION['user_default_signature_dark_image_id'])) {
+                try {
+                    $sig_stmt = $pdo->prepare(
+                        "SELECT default_signature_light_image_id, default_signature_dark_image_id
+                         FROM snap_users WHERE id = ? LIMIT 1"
+                    );
+                    $sig_stmt->execute([$u_data['id']]);
+                    $sig_data = $sig_stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                    $_SESSION['user_default_signature_light_image_id'] = !empty($sig_data['default_signature_light_image_id'])
+                        ? (int)$sig_data['default_signature_light_image_id']
+                        : 0;
+                    $_SESSION['user_default_signature_dark_image_id'] = !empty($sig_data['default_signature_dark_image_id'])
+                        ? (int)$sig_data['default_signature_dark_image_id']
+                        : 0;
+                } catch (PDOException $sig_e) {
+                    $_SESSION['user_default_signature_light_image_id'] = 0;
+                    $_SESSION['user_default_signature_dark_image_id']  = 0;
+                }
+            }
         }
     } catch (PDOException $e) {
         // Silent fail: a database hiccup should not lock the entire admin interface

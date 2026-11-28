@@ -30,7 +30,7 @@ $_pc_sections = [
         'smack-photochallenge-queued.php',
     ],
     'boring' => [
-        'smack-settings.php', 'smack-users.php', 'smack-2fa.php',
+        'smack-settings.php', 'smack-users.php', 'smack-profile.php', 'smack-2fa.php',
         'smack-maintenance.php', 'smack-fingerprints.php', 'smack-backup.php',
         'smack-disaster.php', 'smack-break-glass.php', 'smack-stats.php',
         'smack-update.php', 'smack-schema.php', 'smack-api-keys.php',
@@ -121,6 +121,7 @@ $_pc_active_class = static fn(string $page): string => $current_page === $page ?
                 <ul class="nav-section-links">
                     <li class="<?php echo $_pc_active_class('smack-settings.php'); ?>"><a href="smack-settings.php">Configuration</a></li>
                     <li class="<?php echo $_pc_active_class('smack-users.php'); ?>"><a href="smack-users.php">User Manager</a></li>
+                    <li class="<?php echo $_pc_active_class('smack-profile.php'); ?>"><a href="smack-profile.php">My Profile</a></li>
                     <li class="<?php echo $_pc_active_class('smack-2fa.php'); ?>"><a href="smack-2fa.php">Two-Factor Auth</a></li>
                     <li class="<?php echo $_pc_active_class('smack-maintenance.php'); ?>"><a href="smack-maintenance.php">Maintenance</a></li>
                     <li class="<?php echo $_pc_active_class('smack-cron.php'); ?>"><a href="smack-cron.php">Cron &amp; Jobs</a></li>

@@ -71,6 +71,53 @@ const SNAP_SIGNATURE_DEFAULT_KEYS = [
     'dark'  => 'signature_default_dark_image_id',
 ];
 
+/** The per-user default for each surface, as snap_users column names. */
+const SNAP_USER_SIGNATURE_DEFAULT_COLUMNS = [
+    'light' => 'default_signature_light_image_id',
+    'dark'  => 'default_signature_dark_image_id',
+];
+
+/**
+ * Defensive ALTER for snap_users per-user default signature columns.
+ * Idempotent: swallows MySQL errno 1060 (duplicate column) / 1091 and
+ * SQLite "duplicate column name" errors.
+ */
+function snap_user_signature_ensure_columns(PDO $pdo): void {
+    $driver = (string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
+    $defs = [
+        'default_signature_light_image_id' => $driver === 'sqlite'
+            ? 'INTEGER DEFAULT NULL'
+            : 'INT UNSIGNED DEFAULT NULL AFTER `ui_mode`',
+        'default_signature_dark_image_id' => $driver === 'sqlite'
+            ? 'INTEGER DEFAULT NULL'
+            : 'INT UNSIGNED DEFAULT NULL AFTER `default_signature_light_image_id`',
+    ];
+    foreach ($defs as $col => $def) {
+        try {
+            $stmt = $pdo->query("ALTER TABLE `snap_users` ADD COLUMN `{$col}` {$def}");
+            if ($stmt !== false) { $stmt->closeCursor(); }
+        } catch (PDOException $e) {
+            $errno = (int)($e->errorInfo[1] ?? 0);
+            $msg   = $e->getMessage();
+            if (!in_array($errno, [1060, 1091], true) && stripos($msg, 'duplicate column') === false) {
+                throw $e;
+            }
+        }
+    }
+}
+
+/**
+ * A user's default signature for one surface, or 0 when unset.
+ */
+function snap_user_signature_default_for(array $user_row, string $surface): int {
+    $col = SNAP_USER_SIGNATURE_DEFAULT_COLUMNS[$surface] ?? '';
+    if ($col === '') { return 0; }
+    $raw = $user_row[$col] ?? '';
+    if (!is_int($raw) && !(is_string($raw) && ctype_digit(trim($raw)))) { return 0; }
+    $id = (int)$raw;
+    return $id > 0 ? $id : 0;
+}
+
 /**
  * The blog's default signature for one surface, or 0 when the owner has not
  * chosen one.
@@ -162,7 +209,23 @@ function snap_signature_default_sanitise($posted): string {
  *
  * No static style attributes: the markup leans on the page's own classes.
  */
-function snap_signature_default_control(PDO $pdo, array $settings): void {
+/**
+ * Shared light/dark signature image picker renderer.
+ *
+ * @param array<string, int>    $current_by_surface surface => selected image id (0 = none)
+ * @param array<string, string> $field_names        surface => HTML input name
+ * @param string                $label_prefix       Label prefix before " — LIGHT SURFACE"
+ * @param string                $tip                Tooltip copy for the field tip
+ * @param string                $missing_hint       Hint shown when a stored image id is missing
+ */
+function snap_signature_render_pickers(
+    PDO $pdo,
+    array $current_by_surface,
+    array $field_names,
+    string $label_prefix,
+    string $tip,
+    string $missing_hint
+): void {
     try {
         $images = $pdo->query(
             "SELECT id, img_title, img_file FROM snap_images
@@ -173,15 +236,13 @@ function snap_signature_default_control(PDO $pdo, array $settings): void {
         $images = [];
     }
     $labels = ['light' => 'LIGHT', 'dark' => 'DARK'];
-    foreach (SNAP_SIGNATURE_DEFAULT_KEYS as $surface => $key) {
-        $current = snap_signature_default_for($settings, $surface);
+    foreach ($field_names as $surface => $input_name) {
+        $current = (int)($current_by_surface[$surface] ?? 0);
         $known   = false;
-        echo '<label>THIS BLOG&rsquo;S SIGNATURE &mdash; ' . $labels[$surface]
-           . ' SURFACE <span class="field-tip" data-tip="Used by any post set to '
-           . 'inherit this blog&rsquo;s signature. Leave blank for no blog signature; '
-           . 'posts that choose their own are unaffected either way.">&#9432;</span></label>'
-           . PHP_EOL;
-        echo '<select name="settings[' . htmlspecialchars($key, ENT_QUOTES) . ']">' . PHP_EOL;
+        echo '<label>' . $label_prefix . ' &mdash; ' . $labels[$surface]
+           . ' SURFACE <span class="field-tip" data-tip="' . htmlspecialchars($tip, ENT_QUOTES)
+           . '">&#9432;</span></label>' . PHP_EOL;
+        echo '<select name="' . htmlspecialchars($input_name, ENT_QUOTES) . '">' . PHP_EOL;
         echo '<option value=""' . ($current === 0 ? ' selected' : '')
            . '>&mdash; NONE &mdash;</option>' . PHP_EOL;
         foreach ($images as $image) {
@@ -193,18 +254,53 @@ function snap_signature_default_control(PDO $pdo, array $settings): void {
                . htmlspecialchars('#' . $id . ' ' . $name) . '</option>' . PHP_EOL;
         }
         if ($current > 0 && !$known) {
-            // Keep the stored id selectable so saving the form does not quietly
-            // discard it, and say plainly that the image is not there.
             echo '<option value="' . $current . '" selected>#' . $current
                . ' &mdash; IMAGE NOT FOUND</option>' . PHP_EOL;
         }
         echo '</select>' . PHP_EOL;
         if ($current > 0 && !$known) {
             echo '<span class="dim text-0-75 mt-4 d-block">&#9888; IMAGE #' . $current
-               . ' IS NO LONGER IN THE GALLERY &mdash; POSTS INHERITING IT SHOW NO '
-               . 'SIGNATURE</span>' . PHP_EOL;
+               . ' IS NO LONGER IN THE GALLERY &mdash; ' . $missing_hint . '</span>' . PHP_EOL;
         }
     }
+}
+
+function snap_signature_default_control(PDO $pdo, array $settings): void {
+    $current = [];
+    $fields  = [];
+    foreach (SNAP_SIGNATURE_DEFAULT_KEYS as $surface => $key) {
+        $current[$surface] = snap_signature_default_for($settings, $surface);
+        $fields[$surface]  = 'settings[' . $key . ']';
+    }
+    snap_signature_render_pickers(
+        $pdo,
+        $current,
+        $fields,
+        'THIS BLOG&rsquo;S SIGNATURE',
+        'Used by any post set to inherit this blog’s signature. Leave blank for no blog signature; posts that choose their own are unaffected either way.',
+        'POSTS INHERITING IT SHOW NO SIGNATURE'
+    );
+}
+
+/**
+ * Per-user default signature pickers (light + dark surface) for the user's
+ * own profile/settings screen.
+ */
+function snap_user_signature_default_control(PDO $pdo, array $user_row): void {
+    $current = [];
+    $fields  = [];
+    foreach (SNAP_USER_SIGNATURE_DEFAULT_COLUMNS as $surface => $col) {
+        $current[$surface] = snap_user_signature_default_for($user_row, $surface);
+        $fields[$surface]  = $col;
+    }
+    snap_signature_render_pickers(
+        $pdo,
+        $current,
+        $fields,
+        'YOUR DEFAULT SIGNATURE',
+        'Used on your new SMACKTALK posts when no per-post signature is set. Leave blank for no default signature; an explicit per-post signature always wins.',
+        'YOUR POSTS INHERITING IT SHOW NO SIGNATURE'
+    );
 }
 
 /**

@@ -482,6 +482,8 @@ CREATE TABLE IF NOT EXISTS `snap_users` (
   `email`                 varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `preferred_skin`        varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT 'default-dark',
   `ui_mode`               varchar(20)  COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'bigwheel',
+  `default_signature_light_image_id` int unsigned DEFAULT NULL,
+  `default_signature_dark_image_id`  int unsigned DEFAULT NULL,
   `recovery_code_hash`    varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `force_password_change` tinyint(1)   NOT NULL DEFAULT 0,
   `totp_secret`           varchar(32)  DEFAULT NULL,
