@@ -586,8 +586,8 @@
         ]
     },
     "decorative-image-is-not-a-photograph.php": {
-        "assertions": 21,
-        "predicates": 22,
+        "assertions": 25,
+        "predicates": 26,
         "thresholds": []
     },
     "default-navigation-regression.php": {
@@ -2068,7 +2068,7 @@
     },
     "photochallenge-regression.php": {
         "assertions": 205,
-        "predicates": 180,
+        "predicates": 181,
         "thresholds": [
             3
         ]
