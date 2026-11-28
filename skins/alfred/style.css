@@ -324,8 +324,6 @@ blockquote {
 }
 
 blockquote p { font-style: italic; }
-blockquote > :last-child,
-.post-content blockquote > :last-child { margin-bottom: 0; }
 
 cite {
     display: block;
