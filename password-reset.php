@@ -19,6 +19,32 @@
 require_once 'core/db.php';
 require_once 'core/auth-recovery.php';
 require_once 'core/client-ip.php';
+
+// --- SESSION, BEFORE ANY TOKEN IS ASKED FOR (SS-1603) ---
+// THE FAULT, AND IT IS THE OPPOSITE OF A MISSING CHECK. This page already
+// verified a token: csrf_verify() below on the request, csrf_field() in the
+// form. What it never did was START A SESSION. csrf_token() returns '' without
+// one, so csrf_field() rendered an EMPTY hidden input, and csrf_verify() then
+// refused the submission with "no session" -- 403 before the reset mail could
+// even be requested. The guard was working perfectly and refusing every
+// legitimate person, which is still a defect: this is the locked-out path, so
+// the people it turned away were people who could not get in by any other
+// route.
+//
+// THE BOOTSTRAP IS THE SHARED ONE, not a bare session_start(). SS-1470 moved
+// the save path, cookie params and gc_maxlifetime into
+// core/session-store.php precisely so every entry point reads the SAME store:
+// core/auth-smack.php and core/maintenance-gate.php both call it, and the
+// gate's own bare session_start() once made a logged-in owner invisible to it.
+// On a host with session.use_strict_mode an unknown id makes PHP mint a new
+// session and send a cookie, and without these params that cookie would leave
+// this PUBLIC page carrying PHP's defaults.
+if (session_status() === PHP_SESSION_NONE) {
+    require_once 'core/session-store.php';
+    snap_use_private_session_store();
+    session_start();
+}
+
 require_once 'core/csrf.php'; // SECAUDIT 048
 
 $settings = $pdo->query("SELECT setting_key, setting_val FROM snap_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
