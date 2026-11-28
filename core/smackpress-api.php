@@ -447,7 +447,7 @@ if (in_array($sub, ['media/upload', 'media'], true) && $method === 'POST') {
     if (!function_exists('snap_ingest_image')) {
         require_once __DIR__ . '/image-ingest.php';
     }
-    $upload_opts = ['status' => 'published'];
+    $upload_opts = ['status' => 'published', 'reuse_exact_media' => true];
     if (isset($_POST['caption_from_filename'])) {
         $upload_opts['caption_from_filename'] =
             ($_POST['caption_from_filename'] === '1' || $_POST['caption_from_filename'] === 'true');
@@ -476,6 +476,7 @@ if (in_array($sub, ['media/upload', 'media'], true) && $method === 'POST') {
     smackpress_ok([
         'image_id' => $image_id,
         'asset_id' => $image_id,   // back-compat alias for older callers
+        'reused'   => $ingest['reused'] ?? false,
         'thumb'    => $ingest['thumb'] ?? '',
         'title'    => $ingest['title'] ?? '',
     ]);
