@@ -145,11 +145,16 @@ class RootReadBroker:
         # one covers both. Logged, not silently dropped.
         blocked = blocked_read_reason(path)
         if blocked:
-            recorder = getattr(self, "audit", None)
-            if recorder is not None:
-                recorder.record("host_read_blocked", {
-                    "path": str(path), "vmid": vmid, "why": blocked,
-                })
+            # RECORDED UNGUARDED, like every other method in this file. My
+            # first version wrapped this in getattr(self, "audit", None),
+            # which created exactly one silent path: no recorder, no log line,
+            # just a refusal nobody could account for. Muse flagged it (9414).
+            # audit is a REQUIRED constructor argument and the other seven
+            # record() calls do not check it either, so checking it bought a
+            # hole and nothing else.
+            self.audit.record("host_read_blocked", {
+                "path": str(path), "vmid": vmid, "why": blocked,
+            })
             raise Refused(blocked)
         data = (self._call("host-read", path) if vmid is None
                 else self._call("ct-read", int(vmid), path))

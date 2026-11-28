@@ -92,6 +92,31 @@ class RedactionTests(unittest.TestCase):
         self.assert_blanked("curl -b PVEAuthCookie=PVE:u:1234::sig https://x",
                             "1234", "PVEAuthCookie=")
 
+    def test_a_quoted_value_keeps_its_quotes(self):
+        """Muse's nit 3 (room 9414), and it is the same bug twice.
+
+        A greedy non-space match swallowed BOTH
+        logged command came out as password=[REDACTED] with its quoting
+        broken. I had fixed exactly this on the Authorization header an hour
+        earlier and did not go looking for its siblings.
+        """
+        out = redact_command('echo password="hunter2" >> /tmp/x')
+        self.assertNotIn("hunter2", out)
+        self.assertIn('password="%s"' % REDACTED, out)
+        self.assertEqual(out.count('"'), 2, out)
+
+        single = redact_command("app --config pass:'s3cret' --go")
+        self.assertNotIn("s3cret", single)
+        self.assertIn("pass:'%s'" % REDACTED, single)
+        self.assertEqual(single.count("'"), 2, single)
+
+        # And an UNQUOTED value still works, which is the case that used to be
+        # the only one tested.
+        bare = redact_command("echo password=letmein >> /tmp/x")
+        self.assertNotIn("letmein", bare)
+        self.assertIn("password=" + REDACTED, bare)
+        self.assertNotIn('"', bare)
+
     def test_an_innocent_command_is_untouched(self):
         for safe in ("pvesh get /version",
                      "systemctl restart apache2",
@@ -104,9 +129,15 @@ class RedactionTests(unittest.TestCase):
         original = "mysql -u root -psup3rs3cret -e 'SELECT 1'"
         redacted = redact_command(original)
         self.assertNotEqual(redacted, original)
-        # This is what write_client records: text redacted, digest original.
-        self.assertEqual(hashlib.sha256(original.encode()).hexdigest(),
-                         hashlib.sha256(original.encode()).hexdigest())
+        # THE TAUTOLOGY THAT WAS HERE IS GONE. It asserted
+        # sha256(original) == sha256(original), which is true of any string
+        # and proves nothing, and it sat next to the real check looking like
+        # evidence. Muse flagged it (room 9414). What matters -- that
+        # write_client records the digest of the ORIGINAL and not of the
+        # redaction -- is asserted against the real audit row in
+        # test_proxvox_p3.test_a_logged_command_is_redacted_but_its_digest_is_of_the_original.
+        # All that belongs here is that the two digests DIFFER, so hashing the
+        # redaction could never be mistaken for hashing the original.
         self.assertNotEqual(hashlib.sha256(redacted.encode()).hexdigest(),
                             hashlib.sha256(original.encode()).hexdigest())
 

@@ -45,7 +45,12 @@ _PATTERNS = [
     # mysql -psecret  (no space, which is the form that actually gets typed)
     (re.compile(r'(\s-p)(?!\s)(\S+)'), 2),
     # password=secret, passwd=secret, pwd=secret, also with : or spaces
-    (re.compile(r'\b(pass(?:word|wd)?|pwd)(\s*[=:]\s*)(\S+)', re.I), 3),
+    # QUOTE-AWARE, and Muse found why (room 9414). A greedy non-space match
+    # swallowed BOTH quotes of password="hunter2", so the logged command came
+    # out with its quoting broken -- the same class of bug as the
+    # Authorization one above, which I had just fixed without looking for its
+    # siblings. The quotes are their own groups now and are KEPT.
+    (re.compile(r"""\b(pass(?:word|wd)?|pwd)(\s*[=:]\s*)(["']?)([^\s"']+)(["']?)""", re.I), 4),
     # SQL: IDENTIFIED BY 'secret'
     (re.compile(r"(IDENTIFIED\s+BY\s+)('[^']*'|\"[^\"]*\"|\S+)", re.I), 2),
     # An Authorization header, scheme kept and credential blanked.
@@ -88,8 +93,13 @@ def redact_command(text: str) -> str:
     out = str(text or "")
     for pattern, value_group in _PATTERNS:
         def _blank(match, _g=value_group):
-            prefix = "".join(match.group(i) or "" for i in range(1, _g))
-            return prefix + REDACTED
+            # Everything BEFORE the value is kept (key, separator, opening
+            # quote) and everything AFTER it too (closing quote), so a
+            # redacted command stays well formed. Only the value goes.
+            groups = match.groups()
+            before = "".join(g or "" for g in groups[: _g - 1])
+            after = "".join(g or "" for g in groups[_g:])
+            return before + REDACTED + after
         out = pattern.sub(_blank, out)
     return out
 
