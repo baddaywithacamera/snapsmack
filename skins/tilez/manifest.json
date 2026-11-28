@@ -87,6 +87,44 @@
     "community_likes": "0",
     "community_reactions": "0",
     "options": {
+        "header_image": {
+            "section": "HEADER",
+            "type": "image",
+            "label": "Header Background Image",
+            "default": "",
+            "accept": "image/jpeg,image/png,image/webp",
+            "help": "Full-width image displayed behind the site logo. Recommended: 1440\u00d7900px minimum. Leave blank for the default.",
+            "hint": "Recommended 1440\u00d7900px or larger. Leave blank for the default."
+        },
+        "header_image_height": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Header Image Height",
+            "default": "100vh",
+            "options": {
+                "100vh": "Full screen",
+                "640px": "Tall (640px)",
+                "460px": "Medium (460px)",
+                "320px": "Short (320px)"
+            },
+            "selector": ":root",
+            "property": "--alfred-header-h",
+            "help": "How tall the header background image area is."
+        },
+        "header_image_fit": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Header Image Fit",
+            "default": "cover",
+            "options": {
+                "cover": "Cover (fill the area, may crop)",
+                "contain": "Contain (show the whole image, no crop)",
+                "auto": "Actual size"
+            },
+            "selector": ":root",
+            "property": "--alfred-header-fit",
+            "help": "How the image fills the header area."
+        },
         "header_logo": {
             "section": "HEADER",
             "type": "image",
@@ -95,6 +133,17 @@
             "accept": "image/jpeg,image/png,image/webp,image/svg+xml",
             "help": "Upload a logo image to replace the site title text. Transparent PNG recommended.",
             "hint": "Transparent PNG recommended."
+        },
+        "retina_logo": {
+            "section": "HEADER",
+            "type": "select",
+            "label": "Retina Logo",
+            "default": "0",
+            "options": [
+                "No",
+                "Yes (display at half size)"
+            ],
+            "help": "If your logo is uploaded at 2x resolution, enable this to display it at half size for sharp rendering on retina screens."
         },
         "show_tagline": {
             "section": "HEADER",
@@ -126,7 +175,7 @@
             "options": {
                 "editorial_white": {
                     "label": "Editorial White (Default)",
-                    "css": "{ --tilez-bg: #ffffff; --tilez-surface: #f2f2f2; --tilez-border: #dddddd; --tilez-ink: #171717; --tilez-muted: #777777; }"
+                    "css": "{ --tilez-bg: #ffffff; --tilez-surface: #ffffff; --tilez-border: #dddddd; --tilez-ink: #171717; --tilez-muted: #777777; }"
                 },
                 "warm_paper": {
                     "label": "Warm Paper",
@@ -163,7 +212,7 @@
             "section": "COLOURS",
             "type": "color",
             "label": "Surface / Footer Background Colour",
-            "default": "#f2f2f2",
+            "default": "#ffffff",
             "selector": ":root",
             "property": "--tilez-surface",
             "omit_if_default": true
@@ -685,7 +734,7 @@
             "max": "72",
             "unit": "px",
             "selector": ".post-title",
-            "property": "font-size"
+            "property": "--tilez-post-title-size"
         },
         "body_font_family": {
             "section": "TYPOGRAPHY",
@@ -1163,11 +1212,11 @@
             "section": "TYPOGRAPHY",
             "type": "range",
             "label": "Navigation Font Size (px)",
-            "default": "13",
+            "default": "14",
             "min": "10",
             "max": "20",
             "unit": "px",
-            "selector": ".main-menu",
+            "selector": ".main-menu a, .mobile-menu a",
             "property": "font-size"
         },
         "sidebar_font_family": {

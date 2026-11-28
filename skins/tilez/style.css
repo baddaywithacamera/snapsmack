@@ -2151,7 +2151,7 @@ body.alfred-lb-open { overflow: hidden; }
 
 :root {
     --tilez-bg: #ffffff;
-    --tilez-surface: #f2f2f2;
+    --tilez-surface: #ffffff;
     --tilez-border: #dddddd;
     --tilez-ink: #171717;
     --tilez-muted: #777777;
@@ -2201,7 +2201,9 @@ body.tilez-v2 .widget-content a:hover { color: var(--tilez-sidebar-link-hover); 
 body.tilez-v2 .post-date,
 body.tilez-v2 .post-facts dt,
 body.tilez-v2 .taxonomy-links small { color: var(--tilez-muted); }
-body.tilez-v2 #system-footer { background: var(--tilez-bg); border-color: var(--tilez-border); color: var(--tilez-muted); }
+body.tilez-v2 #system-footer,
+body.tilez-v2 .tilez-nav-search-panel { background: var(--tilez-surface); border-color: var(--tilez-border); color: var(--tilez-muted); }
+body.tilez-v2 .post-title { font-size: clamp(2.35rem, 10vw, var(--tilez-post-title-size, 3.5rem)); }
 body.tilez-v2 #system-footer a { color: var(--tilez-footer-link); }
 body.tilez-v2 #system-footer a:hover { color: var(--tilez-footer-link-hover); }
 

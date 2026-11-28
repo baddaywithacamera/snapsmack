@@ -139,8 +139,8 @@
         },
         "tilez": {
             "version": "0.2.81",
-            "files_sha256": "00b8e064694dc0af6e1bae4640654f09dec1e6a9a692cc139f793a4713801260",
-            "manifest_css_sha256": "abe822126e6098043759b29b037c9990b206a4c26ae5ec7d2956d2ded246ad30"
+            "files_sha256": "22d3910556857c86819564e873bb9308504eab82b1035b4834b68fdcb745f6d1",
+            "manifest_css_sha256": "f3a4227b1767ece36bcf5af9022931a3e23f80fa65720c4a628295cb6e0db1a3"
         },
         "true-grit": {
             "version": "1.3.33",
