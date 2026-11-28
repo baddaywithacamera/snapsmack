@@ -1,1 +1,40 @@
-{"dev_gate":{"commit":"b75f2bfce86ad0a3a5e29cf4060cae8a4282db56","security":"pass","tests":"pass","test_reference":"opaudits/evidence/1011D/gate-evidence-c11c0732.md","code_review":"pass","reviewer":"muse","review_reference":"room:archive-recovery:9118,9120,9154,9182,9196,9199,9200,9220","authority_review":"approved","skin_baseline":"9131f537806244f120f5447cb28e0f8bce97be57","skin_evidence":{"assets/css/shortcodes.css":"room:archive-recovery:9118","skins/alfred":"room:archive-recovery:9120+PM9167-regeneration","skins/scroll":"_review/scroll-dock-icons+room:archive-recovery:9182"},"demo_parity":"pass","demo_parity_checked_by":"Muse (rendered evidence), Codex (exact release asset match and capture hashes)","demo_parity_checked_at":"2026-11-28T10:51:45.619396+00:00","demo_parity_record_sha256":"c78c56b5e7cd146b8912969d20574903e1a5d690bb1813da4f202b98325edbe7","demo_parity_features":[{"ticket":"SS-1555","site":"usedcarparts.photoblogs.fyi","room_message_id":"6N0T_rzf3FWTpcbOdTWIgD9u","capture_count":6}]}}
+{
+  "dev_gate": {
+    "commit": "b75f2bfce86ad0a3a5e29cf4060cae8a4282db56",
+    "security": "pass",
+    "tests": "pass",
+    "test_reference": "Code 9232: 519 of 520 PHP checks passed on exact b75f2bfc. Required browser suite passed (Codex 9205). SS-1641 exact-build five-case replacement approved in 9208 and atomic tag path approved in 9251.",
+    "code_review": "pass",
+    "reviewer": "muse",
+    "review_reference": "room:archive-recovery:9118,9120,9154,9182,9196,9199,9200,9220",
+    "authority_review": "approved",
+    "skin_baseline": "9131f537806244f120f5447cb28e0f8bce97be57",
+    "skin_evidence": {
+      "assets/css/shortcodes.css": "room:archive-recovery:9118",
+      "skins/alfred": "room:archive-recovery:9120+PM9167-regeneration",
+      "skins/scroll": "_review/scroll-dock-icons+room:archive-recovery:9182"
+    },
+    "demo_parity": "pass",
+    "demo_parity_checked_by": "Muse (rendered evidence), Codex (exact release asset match and capture hashes)",
+    "demo_parity_checked_at": "2026-11-28T04:51:45.619396-06:00",
+    "demo_parity_record_sha256": "c78c56b5e7cd146b8912969d20574903e1a5d690bb1813da4f202b98325edbe7",
+    "demo_parity_features": [
+      {
+        "ticket": "SS-1555",
+        "site": "usedcarparts.photoblogs.fyi",
+        "room_message_id": "6N0T_rzf3FWTpcbOdTWIgD9u",
+        "capture_count": 6
+      }
+    ],
+    "authority_reference": "Sean approved b75f2bfc at 08:46 America/Edmonton, Brain Trust 9229.",
+    "php_exclusions": [
+      {
+        "status": "deliberate_skip",
+        "approval": "Brain Trust 9208 and 9251, 1011D only",
+        "test": "smackpress-keeps-albums-it-was-not-told-about-regression.php",
+        "receipt_sha256": "f2dbdc154bcd15f6ad1e5d1b9c03b60650d4074db5624bc5bc9e0e503f448333",
+        "alternate_evidence": "Five real HTTP 200 saves against MariaDB exact candidate, verified joins and changed post content"
+      }
+    ]
+  }
+}
