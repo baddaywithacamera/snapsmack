@@ -11,6 +11,15 @@
 # SnapSmack Changelog
 ## Unreleased
 
+## 0.7.1011D — opened
+
+- Pocket Album uses masonry and loads up to 100 photos at a time. `[pocket_album limit="N"]` now returns the newest N photos.
+- Flickr imports retain both capture and publication dates. On Bad Day's `/images` page, the order changes only after the first hourly Pocket Album refresh following the update.
+- SMACKPRESS reuses an existing gallery image when its stored bytes match an upload.
+- ALFRED renders the closing signature on single posts. SCROLL restores matching outlines on its inline dock icons.
+- Removed the duplicate Pixelfed Client menu entry and fixed form verification for password resets and select public actions.
+- Core updates exclude review screenshots and remove unchanged copies shipped by earlier releases.
+
 ## 0.7.1010D — opened
 
 - Honor saved inline photo widths in public posts.
