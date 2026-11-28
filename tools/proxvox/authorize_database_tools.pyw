@@ -19,6 +19,7 @@ from tkinter import ttk
 from proxvox.audit import AuditBuffer
 from proxvox.container_read import ContainerReadBroker, ContainerTarget, DatabaseTarget
 from proxvox.file_write_client import ScopedFileWriter
+from proxvox import fleet_file_repair
 from proxvox.fleet_release import VERSION as FLEET_VERSION, run_fleet_release
 from proxvox.host_guard import machine_guid
 from proxvox.launcher_signals import ACTIONS, LauncherSignals
@@ -269,7 +270,7 @@ def run_form(signals):
     window = tk.Tk()
     publication_sha = os.environ.get("PROXVOX_PUBLICATION_SHA256")
     window.title(WINDOW_TITLE)
-    window.geometry("645x405")
+    window.geometry("645x470")
     events = queue.SimpleQueue()
     panel = ttk.Frame(window, padding=24)
     panel.pack(fill="both", expand=True)
@@ -302,6 +303,8 @@ def run_form(signals):
     running = False
     publication_complete = False
     fleet_complete = False
+    repair_complete = False
+    writer_complete = False
     session = None
 
     def start():
@@ -331,7 +334,7 @@ def run_form(signals):
 
     def poll():
         nonlocal host_ready, publication_ready, fleet_ready, running
-        nonlocal publication_complete, fleet_complete, selected_action, session
+        nonlocal publication_complete, fleet_complete, repair_complete, writer_complete, selected_action, session
         while not events.empty():
             item = events.get()
             if isinstance(item, tuple) and item[0] == "ready":
@@ -347,6 +350,10 @@ def run_form(signals):
                 publication_complete = True
             elif item == "fleet complete":
                 fleet_complete = True
+            elif item == "repair complete":
+                repair_complete = True
+            elif item == "writer complete":
+                writer_complete = True
             elif isinstance(item, tuple) and item[0] == "end":
                 session = None
                 remaining.set("No active session")
@@ -375,24 +382,27 @@ def run_form(signals):
         preview_action.state(state)
         publish_action.state(state if publication_ready and not publication_complete else ["disabled"])
         fleet_action.state(state if fleet_ready and not fleet_complete else ["disabled"])
+        repair_action.state(state if fleet_ready and not repair_complete else ["disabled"])
+        writer_action.state(state if fleet_ready and not writer_complete else ["disabled"])
         end_action.state(state)
         for action in signals.selections():
             selected_action = action
         if selected_action == "publish" and host_ready and not publication_ready:
             status.set("There is no verified publication available in this PROX VOX window.")
             selected_action = None
-        if selected_action == "signed-release" and host_ready and not fleet_ready:
+        if selected_action in ("signed-release", "restore-updater") and host_ready and not fleet_ready:
             status.set("There is no verified fleet update available in this PROX VOX window.")
             selected_action = None
         if selected_action and session and not running:
             action_button = {"publish": publish_action, "preview": preview_action,
-                             "signed-release": fleet_action}[selected_action]
+                             "signed-release": fleet_action, "restore-updater": repair_action}[selected_action]
             if not action_button.instate(["disabled"]):
                 action_button.focus_set()
             selected_action = None
         window.after(150, poll)
 
-    def use_session(end=False, close=False, publish_site=False, update_fleet=False):
+    def use_session(end=False, close=False, publish_site=False, update_fleet=False,
+                    repair_spokes=False, install_writer=False):
         nonlocal running
         if running:
             return
@@ -403,6 +413,10 @@ def run_form(signals):
         if publish_site and (not publication_ready or publication_complete):
             return
         if update_fleet and (not fleet_ready or fleet_complete):
+            return
+        if repair_spokes and (not fleet_ready or repair_complete):
+            return
+        if install_writer and (not fleet_ready or writer_complete):
             return
         client, reader, writer = session
         running = True
@@ -420,9 +434,22 @@ def run_form(signals):
                 elif update_fleet:
                     events.put("Checking host update support…")
                     sites = fleet_sites(reader, writer, client)
+                    events.put("writer complete")
                     count = run_fleet_release(client, sites, events.put)
                     events.put(f"Verified {count} sites on {FLEET_VERSION}. The session is still open.")
                     events.put("fleet complete")
+                elif repair_spokes or install_writer:
+                    events.put("Checking the 24-hour host writer…")
+                    fleet_sites(reader, writer, client)
+                    events.put("writer complete")
+                    if repair_spokes:
+                        events.put("Checking the 23 installed updater files…")
+                        plan = fleet_file_repair.preflight(reader, fleet_file_repair.package())
+                        count = fleet_file_repair.restore(client, reader, writer, plan, events.put)
+                        events.put(f"Verified {count} files. Run Update from the hub.")
+                        events.put("repair complete")
+                    else:
+                        events.put("24-hour sessions are enabled for future authorizations.")
                 else:
                     preview_artist(client)
                     events.put("The Artist database preview passed. No page content was written.")
@@ -433,6 +460,8 @@ def run_form(signals):
                     events.put("Publication stopped. Check the reviewed manifest and live file hashes.")
                 elif update_fleet:
                     events.put(f"Fleet update stopped. {error}")
+                elif repair_spokes or install_writer:
+                    events.put(f"PROX VOX stopped. {error}")
                 else:
                     events.put("The Artist preview did not complete.")
             finally:
@@ -480,8 +509,14 @@ def run_form(signals):
     end_action.pack(side="left")
     fleet_action = ttk.Button(panel, text=f"Resume 23 site updates to {FLEET_VERSION}",
                               command=lambda: use_session(update_fleet=True), state="disabled")
+    repair_action = ttk.Button(panel, text="Restore updater on 23 sites",
+                               command=lambda: use_session(repair_spokes=True), state="disabled")
+    writer_action = ttk.Button(panel, text="Enable 24-hour sessions",
+                               command=lambda: use_session(install_writer=True), state="disabled")
     if (ROOT / "proxvox-fleet-writer.py").is_file():
         fleet_action.pack(anchor="w", pady=(8, 0))
+        repair_action.pack(anchor="w", pady=(5, 0))
+        writer_action.pack(anchor="w", pady=(5, 0))
     ttk.Label(panel, textvariable=remaining).pack(anchor="w", pady=(10, 0))
     ttk.Label(panel, textvariable=status, wraplength=585).pack(anchor="w", pady=12)
     window.protocol("WM_DELETE_WINDOW", lambda: status.set("Please wait for the authorized operation to finish.")

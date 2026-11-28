@@ -10,6 +10,7 @@ import subprocess
 import sys
 from types import SimpleNamespace
 from unittest.mock import Mock
+import uuid
 
 import pytest
 
@@ -80,6 +81,10 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
             buttons["Authorize"].press()
             self.poll()
             assert variables[0].get() == variables[1].get() == ""
+            buttons["Restore updater on 23 sites"].press()
+            self.poll()
+            assert buttons["Authorize"].disabled
+            assert buttons["Restore updater on 23 sites"].disabled
             buttons["Preview The Artist"].press()
             self.poll()
             signals.selections.return_value = iter(["publish"])
@@ -109,6 +114,11 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
     if not valid_manifest:
         plan.side_effect = RuntimeError("fixture manifest is stale")
     preview, publish = Mock(), Mock(return_value=1)
+    repair_flow = Mock()
+    repair_flow.install.return_value = ["site.example"]
+    repair_flow.package.return_value = b"helper"
+    repair_flow.preflight.return_value = [("fixture",)]
+    repair_flow.restore.return_value = 1
     monkeypatch.setenv("PROXVOX_PUBLICATION_SHA256", "fixture")
     for name, replacement in {
         "tk": SimpleNamespace(Tk=Window, StringVar=string_var),
@@ -123,11 +133,17 @@ def test_shared_form_preflights_and_reuses_session(monkeypatch, scenario):
         "preview_artist": preview,
         "publication_plan": plan,
         "publish_pages": publish,
+        "fleet_writer_package": Mock(return_value=b"writer"),
+        "fleet_sites": repair_flow.install,
+        "fleet_file_repair": repair_flow,
     }.items():
         monkeypatch.setitem(run_form.__globals__, name, replacement)
     run_form(signals)
 
     client.authorize.assert_called_once_with("proxvox@pve", "fixture", "000000", timeout=25)
+    assert [item[0] for item in repair_flow.mock_calls] == ["install", "package", "preflight", "restore"]
+    assert repair_flow.install.call_args.args == (reader, writer, client)
+    assert repair_flow.restore.call_args.args[:4] == (client, reader, writer, [("fixture",)])
     preview.assert_called_once_with(client)
     if valid_manifest:
         assert publish.call_args.args[:4] == (reader, writer, client, [("fixture",)])
@@ -162,23 +178,28 @@ def test_windows_launchers_signal_the_existing_process(monkeypatch):
     source = Path(__file__).resolve().parents[1]
     monkeypatch.syspath_prepend(str(source))
     pytest.importorskip("win32event")
+    import win32security
     from proxvox.launcher_signals import LauncherSignals
 
+    instance = "test-" + uuid.uuid4().hex
+    monkeypatch.setattr(win32security, "ConvertSidToStringSid", lambda _: instance)
     primary = LauncherSignals()
     try:
         assert not primary.already_open
         result = subprocess.run(
             [sys.executable, "-c",
              "from proxvox.launcher_signals import LauncherSignals\n"
+             "import win32security\n"
+             f"win32security.ConvertSidToStringSid = lambda _: {instance!r}\n"
              "signals = LauncherSignals()\n"
              "assert signals.already_open\n"
-             "signals.select('publish')\n"
+             "signals.select('restore-updater')\n"
              "signals.close()"],
             cwd=source, capture_output=True, text=True,
             creationflags=subprocess.CREATE_NO_WINDOW, timeout=10,
         )
         assert result.returncode == 0, result.stderr
-        assert list(primary.selections()) == ["publish"]
+        assert list(primary.selections()) == ["restore-updater"]
         assert list(primary.selections()) == []
     finally:
         primary.close()

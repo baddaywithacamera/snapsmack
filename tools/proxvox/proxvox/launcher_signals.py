@@ -4,7 +4,7 @@
 # Last non-empty line must be the canonical Python SNAPSMACK EOF marker.
 """
 
-ACTIONS = ("preview", "publish", "signed-release")
+ACTIONS = ("preview", "publish", "signed-release", "restore-updater")
 
 
 class LauncherSignals:
