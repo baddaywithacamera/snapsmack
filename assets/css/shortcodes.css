@@ -424,11 +424,10 @@
    range. The one narrow rule is for PHOTOGRAM and TELEGRAM, the two phone
    skins; it is not a phone layout for anything else. */
 .snap-pocket-album {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--pocket-album-min, 230px), 1fr));
-    gap: var(--pocket-album-gap, 10px);
+    --ss-cols: 3;
+    --ss-gap: var(--pocket-album-gap, 10);
+    position: relative;
     margin: 28px 0;
-    align-items: start;
 }
 .snap-pocket-tile {
     display: block;
@@ -449,7 +448,7 @@
 .snap-pocket-album-all { margin: 18px 0 0; }
 .snap-pocket-album-empty { opacity: .75; }
 @media (max-width: 560px) {
-    .snap-pocket-album { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .snap-pocket-album { --ss-cols: 2; }
 }
 
 /* ===== SNAPSMACK EOF ===== */

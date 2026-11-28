@@ -61,9 +61,9 @@
         for (i = 0; i < els.length; i++) {
             var el = els[i], img = el.querySelector('img');
             var w = parseInt(el.getAttribute('data-w'), 10)
-                || (img ? parseInt(img.getAttribute('data-w'), 10) : 0);
+                || (img ? (parseInt(img.getAttribute('data-w'), 10) || parseInt(img.getAttribute('width'), 10)) : 0);
             var h = parseInt(el.getAttribute('data-h'), 10)
-                || (img ? parseInt(img.getAttribute('data-h'), 10) : 0);
+                || (img ? (parseInt(img.getAttribute('data-h'), 10) || parseInt(img.getAttribute('height'), 10)) : 0);
             var provisional = !(w > 0 && h > 0);
             if (provisional) { w = 3; h = 2; }
             out.push({
@@ -333,14 +333,27 @@
             }
         })();
 
-        function exhausted() { return sentinel.getAttribute('data-has-more') !== '1'; }
+        function sentinelState(el) {
+            if (!el) return { hasMore: false, next: 0 };
+            if (el.hasAttribute('data-has-more')) {
+                return {
+                    hasMore: el.getAttribute('data-has-more') === '1',
+                    next: parseInt(el.getAttribute('data-next'), 10) || 1
+                };
+            }
+            var href = el.getAttribute('href') || '';
+            var m = href.match(/[?&]page=(\d+)/);
+            if (m) return { hasMore: true, next: parseInt(m[1], 10) || 1 };
+            return { hasMore: false, next: 0 };
+        }
+        function exhausted() { return !sentinelState(sentinel).hasMore; }
         function stop() { sentinel.setAttribute('data-has-more', '0'); if (io) io.disconnect(); }
 
         function loadNext() {
             if (!released) { pending = true; return; }
             if (loading || exhausted()) return;
             loading = true;
-            var next = parseInt(sentinel.getAttribute('data-next'), 10) || 1;
+            var next = sentinelState(sentinel).next || 1;
             var url = new URL(window.location.href);
             url.searchParams.delete('format');
             url.searchParams.delete('pg');
@@ -369,6 +382,9 @@
                         var sameGrid = doc.getElementById(grid.id);
                         if (sameGrid && sameGrid.children.length) incoming = sameGrid.children;
                     }
+                    if (!incoming && grid.classList.contains('snap-pocket-album')) {
+                        incoming = doc.querySelectorAll('.snap-pocket-album .ss-masonry-item');
+                    }
                     if (!incoming) incoming = doc.querySelectorAll('.ss-masonry-item');
                     if (!incoming.length) { stop(); return; }
                     var added = [], i;
@@ -377,8 +393,9 @@
                         grid.appendChild(el); added.push(el);
                     }
                     var nextSentinel = doc.querySelector('.scroll-wall-sentinel');
-                    if (nextSentinel) {
-                        sentinel.setAttribute('data-next', nextSentinel.getAttribute('data-next') || String(next + 1));
+                    var nextState = sentinelState(nextSentinel);
+                    if (nextState.hasMore) {
+                        sentinel.setAttribute('data-next', String(nextState.next || (next + 1)));
                         sentinel.setAttribute('data-has-more', '1');
                     } else {
                         sentinel.setAttribute('data-has-more', '0');
