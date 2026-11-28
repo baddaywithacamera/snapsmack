@@ -134,13 +134,36 @@ function pocket_album_ensure_table(PDO $pdo): void
             img_width   INT UNSIGNED NOT NULL DEFAULT 0,
             img_height  INT UNSIGNED NOT NULL DEFAULT 0,
             taken_on    VARCHAR(40) NOT NULL DEFAULT '',
+            posted_on   VARCHAR(40) NOT NULL DEFAULT '',
+
             sort_rank   INT UNSIGNED NOT NULL DEFAULT 0,
             fetched_at  DATETIME NOT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY uq_item (source_url, album_id, remote_id),
-            KEY idx_album (source_url, album_id, sort_rank)
+            KEY idx_album (source_url, album_id, sort_rank),
+            KEY idx_album_posted (source_url, album_id, posted_on)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     );
+
+    // SS-1643. CREATE TABLE IF NOT EXISTS DOES NOTHING TO A TABLE THAT ALREADY
+    // EXISTS, and every site displaying a remote album already has this one.
+    // Without this, posted_on would be missing exactly where it matters --
+    // Bad Day's cache was filled hours ago -- and the next refresh would fail
+    // on the INSERT, emptying nothing but refreshing nothing either, until
+    // someone read a cron log. Add the column where it is absent.
+    try {
+        $pdo->query("SELECT posted_on FROM snap_pocket_album_items LIMIT 0");
+    } catch (Throwable $e) {
+        try {
+            $pdo->exec("ALTER TABLE snap_pocket_album_items
+                        ADD COLUMN posted_on VARCHAR(40) NOT NULL DEFAULT '' AFTER taken_on");
+        } catch (Throwable $e2) {
+            // Could not add it. The read below asks whether the column is
+            // really there rather than assuming this worked, because the
+            // catch around that query returns an EMPTY album -- a blank page,
+            // which is the exact failure this feature spent a night on.
+        }
+    }
 }
 
 /**
@@ -329,6 +352,11 @@ function pocket_album_refresh_one(PDO $pdo, string $src, int $album, ?callable $
             'img_width' => max(0, (int)($row['width'] ?? 0)),
             'img_height' => max(0, (int)($row['height'] ?? 0)),
             'taken_on' => (string)($row['date'] ?? ''),
+            // SS-1643. The SOURCE's publication date. Empty where the source
+            // does not know it -- never back-filled from taken_on, because a
+            // capture date standing in for a publication date is the fault
+            // this field exists to undo.
+            'posted_on' => (string)($row['date_posted'] ?? ''),
             'sort_rank' => $rank++,
         ];
     }
@@ -344,14 +372,14 @@ function pocket_album_refresh_one(PDO $pdo, string $src, int $album, ?callable $
         $insert = $pdo->prepare(
             "INSERT INTO snap_pocket_album_items
                 (source_url, album_id, remote_id, album_name, page_url, image_url, thumb_url,
-                 title, alt_text, img_width, img_height, taken_on, sort_rank, fetched_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
+                 title, alt_text, img_width, img_height, taken_on, posted_on, sort_rank, fetched_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
         );
         foreach ($clean as $row) {
             $insert->execute([
                 $src, $album, $row['remote_id'], $albumName, $row['page_url'], $row['image_url'],
                 $row['thumb_url'], $row['title'], $row['alt_text'], $row['img_width'],
-                $row['img_height'], $row['taken_on'], $row['sort_rank'],
+                $row['img_height'], $row['taken_on'], $row['posted_on'], $row['sort_rank'],
             ]);
         }
         $pdo->commit();
@@ -437,12 +465,50 @@ function pocket_album_photographs(PDO $pdo, string $src, int $album, int $limit,
     // request -- the same promise core/photoblogs-feed.php keeps, and for the
     // same reason: no visitor should wait on another server to answer.
     pocket_album_ensure_table($pdo);
+
+    // ASK WHETHER THE COLUMN IS ACTUALLY THERE. The ALTER above may not have
+    // run -- no permission, a locked table, an install that has not refreshed
+    // since the release. Referencing a missing column here does not degrade
+    // the order, it throws, and the catch below returns an EMPTY album. That
+    // is a blank /images page, which is precisely the failure this feature
+    // already cost a night to. So the ordering clause is built from what the
+    // table really has. Same shape as postedDateSelect() in
+    // core/public-repository.php, for the same reason.
+    $postedOrder = '';
+    try {
+        $pdo->query("SELECT posted_on FROM snap_pocket_album_items LIMIT 0");
+        // Rows with no posted date keep the previous behaviour, the reversed
+        // album order, instead of an empty string sorting as the oldest date
+        // in the archive and scattering a partly-filled cache.
+        $postedOrder = "CASE WHEN posted_on <> '' THEN 0 ELSE 1 END ASC, posted_on DESC, ";
+    } catch (Throwable $e) {
+        $postedOrder = '';
+    }
+
     try {
         $statement = $pdo->prepare(
             "SELECT album_name, page_url, thumb_url, title, alt_text, img_width, img_height
              FROM snap_pocket_album_items
              WHERE source_url = ? AND album_id = ?
-             ORDER BY sort_rank DESC, id DESC LIMIT " . (int)$queryLimit . " OFFSET " . (int)$offset
+             -- SS-1643. NEWEST FIRST, BY THE DATE THE PHOTOGRAPH WAS PUBLISHED
+             -- AT ITS SOURCE, which is what Sean means by newest: \"it is
+             -- supposed to sort by date posted to flickr\".
+             --
+             -- posted_on is empty on rows cached before the source served the
+             -- field, and on any source that does not send it. Those rows keep
+             -- the previous behaviour -- the reversed album order -- instead of
+             -- being thrown to one end by an empty string. The CASE puts every
+             -- row that HAS a posted date ahead of every row that does not,
+             -- rather than letting '' sort as though it were the oldest date
+             -- in the archive, which would scatter a partly-filled cache.
+             --
+             -- NOT sorted on taken_on, deliberately. The capture date is wrong
+             -- for this job: one photograph in album 191 carries a 1980 EXIF
+             -- stamp from a camera with a dead clock and was really posted in
+             -- February 2024. Ordering by when the shutter fired puts it 44
+             -- years out of place, which is the bug being fixed here.
+             ORDER BY {$postedOrder}sort_rank DESC,
+                      id DESC LIMIT " . (int)$queryLimit . " OFFSET " . (int)$offset
         );
         $statement->execute([rtrim($src, '/'), $album]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
