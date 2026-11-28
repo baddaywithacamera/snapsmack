@@ -109,21 +109,32 @@ def take_resize_checks(mode, output):
     portrait.fill(QColor("#1968aa"))
     portrait_file = output / "published-portrait-fixture.png"
     assert portrait.save(str(portrait_file), "PNG")
+
+    def wait_for_portrait():
+        for _ in range(80):
+            shot = canvas.viewport().grab()
+            painted, column, _ = canvas._painted_images[0]
+            image = shot.toImage()
+            if image.valid(painted.center()) and image.pixelColor(painted.center()).name() == "#1968aa":
+                return shot, painted, column
+            QTest.qWait(25)
+        raise RuntimeError("The published portrait preview did not paint.")
+
     canvas.from_blocks(biggie.parse_site_html("<p>[img:7|full|center|50]</p>"))
     canvas.set_published_image_paths({"7": str(portrait_file)})
     canvas.select_block_at(0)
     app.processEvents()
-    half_box, column, _ = canvas._painted_images[0]
+    _, half_box, column = wait_for_portrait()
     grip, _, _, drag_width, _ = canvas._image_resize_handle
     QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=grip.center())
     QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=grip.center() + QPoint(round(drag_width / 4), 0))
     app.processEvents()
-    full_box, _, _ = canvas._painted_images[0]
+    full_shot, full_box, _ = wait_for_portrait()
     full_portrait = (abs(half_box.width() - column.width() / 2) <= 4
                      and abs(full_box.width() - column.width()) <= 4
                      and abs(full_box.height() - full_box.width() * 4 / 3) <= 4
                      and canvas.body_text() == "[img:7|full|center|100]"
-                     and canvas.viewport().grab().save(str(output / "published-portrait-full.png"), "PNG"))
+                     and full_shot.save(str(output / "published-portrait-full.png"), "PNG"))
     canvas.set_published_image_paths({})
     canvas.set_image_resolver(lambda *_: fixture)
     mode.body._set_biggie(False)
