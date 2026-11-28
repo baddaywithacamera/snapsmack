@@ -709,6 +709,29 @@ if ($sub === 'posts' && $method === 'POST') {
         $selected_cats = [(int)$body['category_id']];   // single-category alias
     }
     $selected_albums= array_map('intval', $body['album_ids'] ?? []);
+
+    // ── DID THE CALLER SAY ANYTHING ABOUT ALBUMS AND CATEGORIES? (SS-1641) ──
+    // THE MAPS NOW FOLLOW THE SAME RULE AS THE DESIGNATION BELOW, and they did
+    // not. The update path deleted every row in snap_post_album_map and
+    // snap_post_cat_map for the post and re-inserted from these arrays. An
+    // update that did not resend album_ids therefore arrived as an EMPTY array
+    // and erased every album and category the post was in -- silently, with no
+    // way to tell that from "put this post in no albums".
+    //
+    // Nothing had to be wrong with the caller for this to fire. Re-saving a
+    // post to fix its text, or any client that sends the fields it changed and
+    // nothing else, was enough. That is what emptied the taxonomy on
+    // baddaywithacamera.ca: every post reads CATEGORY: NONE and ALBUM: NONE,
+    // the photographs are in no album, and the portfolio page renders nothing.
+    //
+    // The comment on the designation fields twenty lines below has said the
+    // correct rule since SS-1185 -- "ONLY WHAT THE CALLER SENT IS TOUCHED" --
+    // and those fields key on array_key_exists. The maps sat next to them and
+    // did the opposite. Same four states the mosaic contract settled on in
+    // SS-1612: OMITTED preserves what is stored, an EMPTY ARRAY clears on
+    // purpose, a list sets exactly that list.
+    $has_cats   = array_key_exists('cat_ids', $body) || array_key_exists('category_id', $body);
+    $has_albums = array_key_exists('album_ids', $body);
     $custom_date    = smackpress_import_date($pdo, $body['created_at'] ?? ($body['date'] ?? null));
 
     // ── PORTFOLIO DESIGNATION (SS-1185) ──────────────────────────────────
@@ -820,10 +843,18 @@ if ($sub === 'posts' && $method === 'POST') {
         $params[] = $post_id;
         $pdo->prepare($sql)->execute($params);
 
-        $pdo->prepare("DELETE FROM snap_post_cat_map WHERE post_id=?")->execute([$post_id]);
-        $pdo->prepare("DELETE FROM snap_post_album_map WHERE post_id=?")->execute([$post_id]);
-        foreach ($selected_cats   as $cid) $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id,cat_id) VALUES(?,?)")->execute([$post_id,$cid]);
-        foreach ($selected_albums as $aid) $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id,album_id) VALUES(?,?)")->execute([$post_id,$aid]);
+        // REPLACED ONLY WHEN THE CALLER SENT THEM (SS-1641). The delete used to
+        // run unconditionally, so an update that mentioned neither field wiped
+        // both maps. An explicitly empty list still clears, because saying "no
+        // albums" is a thing a caller is allowed to say.
+        if ($has_cats) {
+            $pdo->prepare("DELETE FROM snap_post_cat_map WHERE post_id=?")->execute([$post_id]);
+            foreach ($selected_cats as $cid) $pdo->prepare("INSERT IGNORE INTO snap_post_cat_map (post_id,cat_id) VALUES(?,?)")->execute([$post_id,$cid]);
+        }
+        if ($has_albums) {
+            $pdo->prepare("DELETE FROM snap_post_album_map WHERE post_id=?")->execute([$post_id]);
+            foreach ($selected_albums as $aid) $pdo->prepare("INSERT IGNORE INTO snap_post_album_map (post_id,album_id) VALUES(?,?)")->execute([$post_id,$aid]);
+        }
         snap_sync_tags($pdo, $post_id, $title . ' ' . $manual_tags);
         smackpress_save_bucket($pdo, $post_id, $body, $content_html, $featured_image);
 
