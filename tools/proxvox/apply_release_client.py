@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 import re
 import shlex
+import time
 import uuid
 
 
@@ -40,6 +41,7 @@ def apply_release(client, run_shell, domain, installed, manifest, source, expect
     parent = f"{BACKUP_ROOT}/{domain}-{version}-{nonce}"
     backup = parent + "/snapshot"
     client.audit.record("signed_site_update_attempt", {"site": domain, "release": version, "from": installed})
+    running = False
 
     def audited(command, marker):
         if not client.is_authorized():
@@ -50,14 +52,17 @@ def apply_release(client, run_shell, domain, installed, manifest, source, expect
             raise RuntimeError(failures[-1][:400] if failures else "The host returned no verified command receipt.")
         return output
 
+    def stage_file(filename, data):
+        encoded = base64.b64encode(data).decode("ascii")
+        destination = f"{temp}/{filename}"
+        for offset in range(0, len(encoded), 1300):
+            chunk = encoded[offset:offset + 1300]
+            audited(f"printf '%s' '{chunk}' | base64 -d >> {destination} && echo CHUNK_STAGED", "CHUNK_STAGED")
+
     try:
         audited(f"umask 077; mkdir -- {temp} && echo STAGING_READY", "STAGING_READY")
         for filename, data in payloads.items():
-            encoded = base64.b64encode(data).decode("ascii")
-            destination = f"{temp}/{filename}"
-            for offset in range(0, len(encoded), 1300):
-                chunk = encoded[offset:offset + 1300]
-                audited(f"printf '%s' '{chunk}' | base64 -d >> {destination} && echo CHUNK_STAGED", "CHUNK_STAGED")
+            stage_file(filename, data)
         messages = []
         for filename, data in payloads.items():
             digest = hashlib.sha256(data).hexdigest()
@@ -78,9 +83,33 @@ def apply_release(client, run_shell, domain, installed, manifest, source, expect
             f"{shlex.quote(domain)} {installed} {temp}/package.zip {temp}/release.json {backup}",
             "echo PROXVOX_SIGNED_RELEASE_PASS",
         ])
-        output = audited("set -e\n" + "\n".join(messages), "PROXVOX_SIGNED_RELEASE_PASS")
+        stage_file("update.sh", ("set -e\n" + "\n".join(messages)).encode())
+        worker = shlex.quote(
+            f"bash {temp}/update.sh > {temp}/result.part 2>&1; "
+            f"mv -- {temp}/result.part {temp}/result"
+        )
+        # Release work may take several minutes. Keep its receipt on the host
+        # so it survives a delay or interruption in the console stream.
+        running = True
+        audited(f"nohup bash -c {worker} </dev/null >/dev/null 2>&1 &\necho WORKER_STARTED", "WORKER_STARTED")
+        deadline = time.monotonic() + 25 * 60
+        while time.monotonic() < deadline:
+            output = audited(
+                f"if test -f {temp}/result; then cat -- {temp}/result; echo RESULT_READY; fi\n"
+                "echo RESULT_CHECKED", "RESULT_CHECKED",
+            )
+            if "RESULT_READY" in (line.strip() for line in output.splitlines()):
+                running = False
+                break
+            time.sleep(5)
+        else:
+            raise RuntimeError(f"{domain} has no completion receipt yet. Staging: {temp}")
         receipts = [line.strip() for line in output.splitlines() if line.strip().startswith('{"site":')]
-        if len(receipts) != 1:
+        if ("PROXVOX_SIGNED_RELEASE_PASS" not in (line.strip() for line in output.splitlines())
+                or len(receipts) != 1):
+            failures = [line.strip() for line in output.splitlines() if "update failed" in line]
+            if failures:
+                raise RuntimeError(failures[-1][:400])
             raise RuntimeError(f"The site returned no unambiguous update receipt. Backup: {backup}")
         receipt = json.loads(receipts[0])
         if receipt.get("site") != domain or receipt.get("version") != version or receipt.get("http") != 200:
@@ -88,11 +117,14 @@ def apply_release(client, run_shell, domain, installed, manifest, source, expect
         client.audit.record("signed_site_update_verified", receipt)
         return receipt
     finally:
-        if client.is_authorized():
-            names = " ".join(f"{temp}/{name}" for name in (*payloads, "package.zip"))
+        if running:
+            client.audit.record("signed_site_update_result_pending", {"site": domain, "stage": temp})
+        elif client.is_authorized():
+            container_names = " ".join(f"{temp}/{name}" for name in (*payloads, "package.zip"))
+            host_names = " ".join(f"{temp}/{name}" for name in (*payloads, "update.sh", "result", "result.part"))
             try:
-                run_shell(f"rm -f -- {names}; rmdir -- {temp}; "
-                          f"pct exec 102 -- sh -c 'rm -f -- {names}; rmdir -- {temp}'")
+                run_shell(f"rm -f -- {host_names}; rmdir -- {temp}; "
+                          f"pct exec 102 -- sh -c 'rm -f -- {container_names}; rmdir -- {temp}'")
             except Exception:
                 client.audit.record("signed_site_update_cleanup_pending", {"site": domain, "stage": temp})
 
