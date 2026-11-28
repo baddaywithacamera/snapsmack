@@ -12,6 +12,7 @@ frozen or not, with no risk of an import cycle.
 """
 
 BUILD_VERSION = "0.7.77"
+RELEASE_STAGE = "Beta"
 
 # WHAT IS ACTUALLY ON THE OWNER'S MACHINE. A floor, not a target.
 #

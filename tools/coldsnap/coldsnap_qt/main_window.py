@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QPushButton, QMessageBox, QMenu,
 )
 
-from _version import BUILD_VERSION
+from _version import BUILD_VERSION, RELEASE_STAGE
 import config as cfg_module
 import sumna_offline as O
 import snap_desktop_handoff
@@ -33,7 +33,7 @@ from .widgets import hint
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"COLD SNAP — build {BUILD_VERSION} · {SHELL_LABEL}")
+        self.setWindowTitle(f"COLD SNAP — {RELEASE_STAGE} {BUILD_VERSION} · {SHELL_LABEL}")
         self.resize(1240, 860)
         self.setMinimumSize(980, 680)
         self._window_settings = QSettings("SnapSmack", "COLD SNAP")
