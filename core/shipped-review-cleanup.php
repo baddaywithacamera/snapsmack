@@ -4,7 +4,7 @@ declare(strict_types=1);
 // SNAPSMACK_EOF_HEADER
 // Last non-empty line must be: // ===== SNAPSMACK EOF =====
 
-/** Exact paths and content hashes shipped in the published 1009D and 1010D ZIPs. */
+/** Exact paths and content hashes from the published 1009D/1010D ZIPs and their source tags. */
 const SNAPSMACK_SHIPPED_REVIEW_FILES = [
     '_review/alfred-launch-readiness/current-alfred/archive-1024.png' => ['9b75bcb5fa1315e0a7a7e4d9dc4918ee7e68f40e6ed5a58990edb1ed5747100a'],
     '_review/alfred-launch-readiness/current-alfred/archive-1440.png' => ['e9c687a6adebd4ef46a3bd74379a4211f049292235f45d3d07023648800148e7'],
@@ -82,6 +82,9 @@ const SNAPSMACK_SHIPPED_REVIEW_FILES = [
     '_review/ss1563-navigation-current/tilez-1920-current.png' => ['8b115d6c52f85d545ad59782a5d88a316514441aa901847ccf5535d32f0427af'],
     '_review/ss1563-navigation-current/tilez-1920-no-match.png' => ['7f7491cb13a3020cb45ddcab348ec3c9d95b883024bacdb82a7ac78dcd2c3858'],
     '_review/ss1563-navigation-current/tilez-1920-non-current.png' => ['8f46fc74bc70dd2fbf3963966380475f8ab60c685ce0b0488d50521a55cfd494'],
+    '_review/alfred-launch-readiness/old-hitchcock/results.json' => ['3021b41805584021f7df13facbf28191bdd8a4f5de83a16521a9ee117af1cf1d'],
+    '_review/onyx-1024-overflow/after-measurements.json' => ['9b979054f22edfb49b355717046289350f1df0e1442f310d17ac455a4759bcc6'],
+    '_review/ss1563-navigation-current/results.json' => ['64d07391d3e6c29dd3f1543c6b8e6e68820359f68a6c0af0b0ee3d8e590dc9b1'],
 ];
 
 /** Remove only unchanged release-owned copies. Never recurse through local content. */
