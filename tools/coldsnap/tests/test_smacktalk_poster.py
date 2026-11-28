@@ -85,7 +85,7 @@ def test_signature_block_fields_reach_post_request_and_preserve_unedited_posts()
 
     for block, expected in (
         ({"type": "signature", "mode": "custom", "light_image_id": 413}, (413, 413, None)),
-        ({"type": "signature", "mode": "inherit"}, (None, None, None)),
+        ({"type": "signature", "mode": "inherit"}, (413, 413, 413)),
         ({"type": "signature", "mode": "off"}, (0, 0, 0)),
     ):
         draft.body_blocks = biggie.blocks_to_json([paragraph, block])
@@ -93,6 +93,12 @@ def test_signature_block_fields_reach_post_request_and_preserve_unedited_posts()
         assert result.ok, result.message
         assert tuple(fake.last_json[field] for field in fields) == expected
         assert fake.last_json["content"] == "Body text"
+
+    poster.signature_image_id = 0
+    draft.body_blocks = biggie.blocks_to_json([paragraph, {"type": "signature", "mode": "inherit"}])
+    result = poster.sync_smacktalk(draft)
+    assert result.ok, result.message
+    assert tuple(fake.last_json[field] for field in fields) == (None, None, None)
 
     draft.body_blocks = biggie.blocks_to_json([paragraph])
     result = poster.sync_smacktalk(draft)

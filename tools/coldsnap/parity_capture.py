@@ -44,13 +44,24 @@ def take_resize_checks(mode, output):
     from PySide6.QtCore import QPoint, Qt
     from PySide6.QtGui import QColor, QPixmap
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QDialog
+    from PySide6.QtWidgets import QApplication, QDialog, QStyle, QStyleOptionButton
 
     from coldsnap_qt import biggie
     from coldsnap_qt.mode_take import _ImageWidthPreview
+    from sumna_offline import Draft, KIND_SMACKTALK, MODE_SMACKTALK
+    from sumna_post import SmacktalkPoster
 
     app = QApplication.instance()
     mode.body._set_biggie(True)
+    app.processEvents()
+    toggle = mode.body.biggie_btn
+    option = QStyleOptionButton()
+    toggle.initStyleOption(option)
+    text_rect = toggle.style().subElementRect(QStyle.SE_PushButtonContents, option, toggle)
+    visual_label_fits = (
+        option.fontMetrics.horizontalAdvance(toggle.text()) <= text_rect.width()
+        and toggle.grab().save(str(output / "visual-toggle.png"), "PNG")
+    )
     canvas = mode.body.canvas
     fixture = QPixmap(240, 120)
     fixture.fill(QColor("#1968aa"))
@@ -71,6 +82,70 @@ def take_resize_checks(mode, output):
     visual = handle_visible and width == 100 and canvas.body_text() == "[img:7|80%|decorative]"
     canvas.grab().save(str(output / "visual-image-resize.png"), "PNG")
 
+    selected = {}
+    imported_width = False
+    for orientation, size in (("portrait", (120, 240)), ("landscape", (240, 120))):
+        image = QPixmap(*size)
+        image.fill(QColor("#1968aa"))
+        canvas.set_image_resolver(lambda *_: image)
+        canvas.from_blocks(biggie.parse_site_html("<p>[img:7|full|center|60]</p>"))
+        canvas.select_block_at(0)
+        app.processEvents()
+        capture = canvas.viewport().grab()
+        painted, column, _ = canvas._painted_images[0]
+        grip, _, _, drag_width, _ = canvas._image_resize_handle
+        close = canvas._block_close_rect
+        selected[orientation] = (
+            QColor(capture.toImage().pixel(painted.center())).name() == "#1968aa"
+            and painted.width() < column.width()
+            and painted.contains(close.center())
+            and grip.contains(painted.right(), painted.center().y())
+            and canvas._object_under_mouse(painted.center())[0] == "image"
+            and canvas._object_under_mouse(QPoint(column.left() + 1, painted.center().y())) is None
+            and capture.save(str(output / f"selected-{orientation}.png"), "PNG")
+        )
+        if orientation == "portrait":
+            QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=grip.center())
+            QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=grip.center() - QPoint(round(drag_width * .1), 0))
+            blocks = canvas.to_blocks()
+            draft = Draft(draft_id="imported-width", kind=KIND_SMACKTALK, mode=MODE_SMACKTALK,
+                          body_blocks=biggie.blocks_to_json(blocks),
+                          caption=biggie.serialize_blocks(blocks))
+            imported_width = "[img:7|full|center|40]" in SmacktalkPoster._body_text_for_sync(draft)
+
+    canvas.set_image_resolver(None)
+    portrait = QPixmap(180, 240)
+    portrait.fill(QColor("#1968aa"))
+    portrait_file = output / "published-portrait-fixture.png"
+    assert portrait.save(str(portrait_file), "PNG")
+
+    def wait_for_portrait():
+        for _ in range(80):
+            shot = canvas.viewport().grab()
+            painted, column, _ = canvas._painted_images[0]
+            image = shot.toImage()
+            if image.valid(painted.center()) and image.pixelColor(painted.center()).name() == "#1968aa":
+                return shot, painted, column
+            QTest.qWait(25)
+        raise RuntimeError("The published portrait preview did not paint.")
+
+    canvas.from_blocks(biggie.parse_site_html("<p>[img:7|full|center|50]</p>"))
+    canvas.set_published_image_paths({"7": str(portrait_file)})
+    canvas.select_block_at(0)
+    app.processEvents()
+    _, half_box, column = wait_for_portrait()
+    grip, _, _, drag_width, _ = canvas._image_resize_handle
+    QTest.mousePress(canvas.viewport(), Qt.LeftButton, pos=grip.center())
+    QTest.mouseRelease(canvas.viewport(), Qt.LeftButton, pos=grip.center() + QPoint(round(drag_width / 4), 0))
+    app.processEvents()
+    full_shot, full_box, _ = wait_for_portrait()
+    full_portrait = (abs(half_box.width() - column.width() / 2) <= 4
+                     and abs(full_box.width() - column.width()) <= 4
+                     and abs(full_box.height() - full_box.width() * 4 / 3) <= 4
+                     and canvas.body_text() == "[img:7|full|center|100]"
+                     and full_shot.save(str(output / "published-portrait-full.png"), "PNG"))
+    canvas.set_published_image_paths({})
+    canvas.set_image_resolver(lambda *_: fixture)
     mode.body._set_biggie(False)
     editor = mode.body.editor
     text = "Lead [img:7|40%|decorative] then [img:8|30]"
@@ -98,7 +173,11 @@ def take_resize_checks(mode, output):
     expected = text.replace("40%", "60%")
     mode.body._set_biggie(True)
     mode.body._set_biggie(False)
-    return {"visual_image_resize": visual, "text_image_resize": editor.toPlainText() == expected}
+    return {"visual_image_resize": visual, "text_image_resize": editor.toPlainText() == expected,
+            "selected_portrait": selected["portrait"], "selected_landscape": selected["landscape"],
+            "visual_toggle_label_fits": visual_label_fits,
+            "resized_imported_image_reaches_wire": imported_width,
+            "published_portrait_resizes_to_column_width": full_portrait}
 
 
 def take_composer_checks(mode, files, *, check_renderer=False):
@@ -106,10 +185,10 @@ def take_composer_checks(mode, files, *, check_renderer=False):
     from PySide6.QtCore import QPoint, QPointF, Qt
     from PySide6.QtGui import QDragEnterEvent, QDropEvent, QMouseEvent
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu
+    from PySide6.QtWidgets import QApplication, QCheckBox, QDialog, QLineEdit, QListWidget, QMenu, QPushButton
 
     import sumna_offline as O
-    from coldsnap_qt import photo_tray
+    from coldsnap_qt import biggie, photo_tray
     from sumna_post import SmacktalkPoster
 
     app = QApplication.instance()
@@ -292,24 +371,44 @@ def take_composer_checks(mode, files, *, check_renderer=False):
             stack.enter_context(_replace_for_fixture(
                 connect_panel, "verify_site_mode", lambda *args: True,
             ))
-            mode._configure_signature()
+            signature_settings = mode.findChild(QPushButton, "BlogSignatureSettings")
+            previous_details = mode.details_open()
+            mode.set_details_open(False)
+            hidden = not signature_settings.isVisibleTo(mode)
+            mode.set_details_open(True)
+            results["signature_settings_outside_essay"] = (
+                mode.page_card.findChild(QPushButton, "BlogSignatureSettings") is None
+                and hidden and signature_settings.isVisibleTo(mode)
+            )
+            signature_settings.click()
+            mode.set_details_open(previous_details)
             poster, _ = mode._poster_and_url()
-            results["signature_control_visible"] = mode.signature_check.isVisible()
+            results["signature_block_in_visual_tray"] = any(
+                action.tag == "SIG" for action in mode._visual_block_actions()
+            )
             results["signature_default_is_site_specific"] = (
-                mode._signature_default("https://example.test/") == 413
+                mode._signature_default("") == 0
+                and mode._signature_default("https://example.test/") == 413
                 and mode._signature_default("https://elsewhere.test") == 0
             )
-            signed = poster.build_payload(rebuilt, [1], 1)
+            body = [block for block in mode.body.authoring_blocks() if block["type"] != "signature"]
+            signature = {"type": "signature", "mode": "custom", "light_image_id": 413}
+            mode.body.canvas.from_blocks([*body, signature])
+            signed = poster.build_payload(mode._build_draft(session), [1], 1)
             results["signature_reuses_existing_gallery_id"] = (
-                signed.get("signature_image_id") == 413 and signed["bucket_image_ids"] == [1]
+                signed.get("signature_image_id") == 413
+                and signed.get("signature_light_image_id") == 413
+                and signed["bucket_image_ids"] == [1]
             )
-            mode.signature_check.setChecked(False)
+            canvas = mode.body.canvas
+            canvas._remove_object(canvas.document().lastBlock().position())
             opted_out = O.Draft.from_dict(mode._build_draft(session).to_dict())
+            fields = biggie.signature_fields_for_blocks(biggie.blocks_from_json(opted_out.body_blocks))
             results["signature_opt_out_survives_save"] = (
-                not opted_out.signature_enabled
-                and poster.build_payload(opted_out, [1], 1).get("signature_image_id") == 0
+                len(fields) == 3 and all(value == 0 for value in fields.values())
+                and all(poster.build_payload(opted_out, [1], 1).get(field) == 0 for field in fields)
             )
-            mode.signature_check.setChecked(True)
+            mode._edit(rebuilt)
 
         from PySide6.QtWidgets import QMessageBox
 

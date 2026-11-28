@@ -33,6 +33,7 @@ import os
 import re
 import sys
 from typing import List, Optional, Tuple
+from urllib.parse import quote
 
 import requests
 
@@ -44,6 +45,7 @@ from sumna_offline import (
     MODE_SOLO, MODE_GRAM, MODE_SMACKTALK, MODE_UNKNOWN,
 )
 import sumna_resize
+import published_post_cache
 
 
 def _gap_value(raw):
@@ -330,6 +332,31 @@ class SumnaConnection:
         r.raise_for_status()
         data = r.json()
         return data if isinstance(data, dict) else {}
+
+    def gallery_file(self, image_id: int) -> str:
+        """Find one image in the existing Gallery listing, ordered by descending ID."""
+        first = last = 1
+        while first <= last:
+            page = (first + last) // 2
+            reply = self.session.get(f"{self.base_url}/sybu-images.php",
+                                     params={"page": page, "per": 200},
+                                     timeout=15, allow_redirects=False)
+            _raise_authorization(reply, "api")
+            reply.raise_for_status()
+            data = reply.json()
+            if page == 1:
+                last = max(1, (int(data.get("total", 0)) + 199) // 200)
+            rows = data.get("images") or []
+            if not rows:
+                return ""
+            if int(rows[-1]["id"]) > image_id:
+                first = page + 1
+            elif int(rows[0]["id"]) < image_id:
+                last = page - 1
+            else:
+                return next((str(row.get("file") or "") for row in rows
+                             if int(row["id"]) == image_id), "")
+        return ""
 
     # -- site mode probe ----------------------------------------------------
     def probe_site_mode(self, timeout: int = 12) -> Tuple[str, bool, str]:
@@ -894,6 +921,11 @@ class SmacktalkPoster:
             signature_fields = biggie.signature_fields_for_blocks(
                 biggie.blocks_from_json(draft.body_blocks))
         if signature_fields:
+            # The app's per-site signature is an explicit local preference.
+            # An inherited block already previews that image, so send the same
+            # choice. With no configured image, let the site resolve inheritance.
+            if self.signature_image_id and all(value is None for value in signature_fields.values()):
+                signature_fields = dict.fromkeys(signature_fields, self.signature_image_id)
             payload.update(signature_fields)
         elif not draft.signature_enabled:
             payload["signature_image_id"] = 0
@@ -1045,9 +1077,172 @@ class SmacktalkPoster:
             weights[bucket_pos] = weight
         return weights
 
+    def get_mosaic(self, mosaic_id):
+        mosaic_id = int(mosaic_id)
+        reply = self.session.get(self._route(f"smackpress/mosaics/{mosaic_id}"), timeout=15)
+        if reply.status_code in (404, 405):
+            return None
+        reply.raise_for_status()
+        data = reply.json()
+        mosaic = data.get("mosaic") if isinstance(data, dict) else None
+        if not isinstance(mosaic, dict) or mosaic.get("id") != mosaic_id:
+            return None
+        if "images" in data:
+            images = []
+            for row in data["images"]:
+                path = (row.get("file") or "").replace("\\", "/").lstrip("/")
+                if row.get("missing") or not path:
+                    continue
+                images.append({
+                    "id": row["id"], "img_file": path, "img_title": row.get("title") or "",
+                    "img_alt": row.get("alt") or "", "width": row.get("width") or 0,
+                    "height": row.get("height") or 0,
+                    "url": f"{self.base_url}/{quote(path)}",
+                })
+            data = {**data, "images": images}
+        return data
+
+    @staticmethod
+    def _other_mosaic_references(snapshot, post_id):
+        refs = snapshot.get("references") or {}
+        posts, pages = refs.get("post_ids"), refs.get("pages")
+        if not isinstance(posts, list) or not isinstance(pages, int):
+            return None
+        return sum(ident != post_id for ident in posts) + pages
+
+    @staticmethod
+    def _mosaic_matches(mosaic, fields):
+        return all(mosaic.get(key) == value or (
+            isinstance(value, (dict, list)) and not value and mosaic.get(key) in ({}, [])
+        ) for key, value in fields.items())
+
+    def _update_published_mosaics(self, draft, image_ids):
+        from coldsnap_qt import biggie
+
+        by_asset = {str(im.asset_uuid): image_id for im, image_id in zip(draft.images, image_ids)}
+        by_asset.update({str(position): image_id for position, image_id in enumerate(image_ids, 1)})
+        changes = {}
+        for block in biggie.blocks_from_json(draft.body_blocks):
+            origin = block.get("remote_mosaic")
+            if not origin:
+                continue
+            mosaic_id = int(block["mosaic_id"])
+            try:
+                ordered = [by_asset[str(asset)] for asset in block.get("order") or []]
+                weights = {str(by_asset[str(asset)]): weight
+                           for asset, weight in (block.get("weights") or {}).items()}
+            except KeyError:
+                raise ValueError(f"Mosaic {mosaic_id} has a missing photo. Reopen the post before sending.")
+            mirrors = self._mosaic_mirror_groups(",".join(block.get("mirrors") or []), ordered)
+            desired = {
+                "asset_ids": ordered,
+                "layout": block.get("layout") or "asymmetric",
+                "gap": block.get("gap", 4),
+                "mosaic_weights": weights,
+                "mosaic_mirrors": mirrors,
+            }
+            original = {
+                "asset_ids": origin["asset_ids"],
+                "layout": origin.get("layout") or "asymmetric",
+                "gap": origin.get("gap", 4),
+                "mosaic_weights": origin.get("mosaic_weights") or {},
+                "mosaic_mirrors": origin.get("mosaic_mirrors") or [],
+            }
+            edited = {key: value for key, value in desired.items() if value != original[key]}
+            if not edited:
+                continue
+            if not ordered:
+                raise ValueError(f"Mosaic {mosaic_id} needs at least one photo.")
+            if mosaic_id in changes and changes[mosaic_id][1] != edited:
+                raise ValueError(f"Mosaic {mosaic_id} has different edits in two places in this post.")
+            changes[mosaic_id] = (origin, edited, desired)
+
+        copies = {}
+        for mosaic_id, (origin, edited, desired) in changes.items():
+            revision = origin["revision"]
+            snapshot = self.get_mosaic(mosaic_id) or {}
+            current = snapshot.get("mosaic") or {}
+            other_references = self._other_mosaic_references(snapshot, draft.remote_post_id)
+            if not current or other_references is None:
+                raise RuntimeError(f"The site could not confirm which posts use mosaic {mosaic_id}. Reopen the post.")
+            receipt = draft.mosaic_copies.get(str(mosaic_id)) or {}
+            expected = {"site": self.base_url, "revision": revision, "definition": desired}
+            if all(receipt.get(key) == value for key, value in expected.items()) and receipt.get("id"):
+                copies[mosaic_id] = (receipt["id"], receipt["other_posts"])
+                continue
+            if other_references:
+                if current.get("revision") != revision:
+                    raise RuntimeError(f"Mosaic {mosaic_id} changed on the site. Reopen the post before sending.")
+                copies[mosaic_id] = self._copy_published_mosaic(
+                    draft, mosaic_id, origin, expected, other_references)
+                continue
+            if current.get("revision") != revision:
+                if self._mosaic_matches(current, edited):
+                    continue
+                raise RuntimeError(f"Mosaic {mosaic_id} changed on the site. Reopen the post before sending.")
+
+            payload = {"revision": revision, "post_id": draft.remote_post_id,
+                       "title": origin.get("title", "Untitled Mosaic"), **desired}
+            for field in ("mosaic_weights", "mosaic_mirrors"):
+                if field not in origin and field not in edited:
+                    payload.pop(field, None)
+            if "focus_positions" in origin:
+                payload["focus_positions"] = {
+                    image_id: point for image_id, point in (origin["focus_positions"] or {}).items()
+                    if int(image_id) in desired["asset_ids"]
+                }
+            if origin.get("emphasis"):
+                payload["emphasis"] = origin["emphasis"]
+            response = self.session.put(self._route(f"smackpress/mosaics/{mosaic_id}"),
+                                        timeout=30, json=payload)
+            if response.status_code == 409:
+                # A retry after a successful write can find the requested arrangement
+                # already in place, even if the following post request failed.
+                snapshot = self.get_mosaic(mosaic_id) or {}
+                current = snapshot.get("mosaic") or {}
+                other_references = self._other_mosaic_references(snapshot, draft.remote_post_id)
+                if other_references and current.get("revision") == revision:
+                    copies[mosaic_id] = self._copy_published_mosaic(
+                        draft, mosaic_id, origin, expected, other_references)
+                    continue
+                if self._mosaic_matches(current, edited):
+                    continue
+                raise RuntimeError(_resp_msg(
+                    response, f"Mosaic {mosaic_id} changed on the site. Reopen the post before sending."))
+            if response.status_code in (404, 405):
+                raise RuntimeError(f"This site cannot update mosaic {mosaic_id}. Update its CMS before sending.")
+            response.raise_for_status()
+            confirmed = response.json().get("mosaic") or {}
+            verified = {key: value for key, value in payload.items() if key not in {"revision", "post_id"}}
+            if confirmed.get("id") != mosaic_id or not self._mosaic_matches(confirmed, verified):
+                raise RuntimeError(f"The site did not confirm the changes to mosaic {mosaic_id}.")
+        return copies
+
+    def _copy_published_mosaic(self, draft, mosaic_id, origin, expected, other_posts):
+        desired = expected["definition"]
+        focus_positions = {str(image_id): position
+                           for image_id, position in (origin.get("focus_positions") or {}).items()
+                           if int(image_id) in desired["asset_ids"]}
+        emphasis = origin.get("emphasis")
+        new_id, _ = self.create_mosaic(
+            desired["asset_ids"], title=origin.get("title") or "Mosaic",
+            gap=desired["gap"], layout=desired["layout"],
+            gallery_shuffle=bool(origin.get("gallery_shuffle")),
+            mosaic_weights=desired["mosaic_weights"], mosaic_mirrors=desired["mosaic_mirrors"],
+            focus_positions=focus_positions, emphasis=emphasis,
+        )
+        if focus_positions or emphasis:
+            saved = (self.get_mosaic(new_id) or {}).get("mosaic") or {}
+            if ((focus_positions and saved.get("focus_positions") != focus_positions)
+                    or (emphasis and saved.get("emphasis") != emphasis)):
+                raise RuntimeError(f"The site could not preserve photo framing in mosaic {mosaic_id}.")
+        draft.mosaic_copies[str(mosaic_id)] = {**expected, "id": new_id, "other_posts": other_posts}
+        return new_id, other_posts
+
     def create_mosaic(self, image_ids, title="Mosaic", gap=4,
                       layout="asymmetric", gallery_shuffle=False,
-                      mosaic_weights=None, mosaic_mirrors=None) -> Tuple[int, str]:
+                      mosaic_weights=None, mosaic_mirrors=None,
+                      focus_positions=None, emphasis=None) -> Tuple[int, str]:
         """Create a snap_mosaics panel from ordered Gallery image ids via
         POST smackpress/mosaics. Returns (mosaic_id, '[mosaic:ID]').
 
@@ -1066,6 +1261,10 @@ class SmacktalkPoster:
             payload["mosaic_weights"] = mosaic_weights
         if mosaic_mirrors:
             payload["mosaic_mirrors"] = mosaic_mirrors
+        if focus_positions:
+            payload["focus_positions"] = focus_positions
+        if emphasis:
+            payload["emphasis"] = emphasis
         r = self.session.post(
             self._route("smackpress/mosaics"),
             json=payload,
@@ -1319,6 +1518,35 @@ class SmacktalkPoster:
                       or (server_data or {}).get("url", ""),
             per_image=per_image)
 
+    def _cache_published_post(self, post_id, slug, images, image_ids):
+        if not published_post_cache.RETENTION_SECONDS or not slug:
+            return
+        try:
+            # Read the revision before the detail. If another edit lands in
+            # between, a later listing will invalidate this snapshot.
+            response = self.session.get(self._route("smackpress/posts"),
+                                        params={"slug": slug}, timeout=8)
+            response.raise_for_status()
+            listing = response.json() or {}
+            if not listing.get("exact"):
+                return
+            row = next((row for row in listing.get("posts", [])
+                        if int(row.get("id") or 0) == post_id), {})
+            revision = row.get("updated_at")
+            if not revision:
+                return
+            post = self.get_post(post_id)
+            if int(post.get("id") or 0) != post_id:
+                return
+            local_photos = {
+                str(image_id): {"original": image.local_path, "aspect": image.thumb_aspect,
+                                "square": image.thumb_square}
+                for image, image_id in zip(images, image_ids) if image_id and image.local_path
+            }
+            published_post_cache.save(self.base_url, post, revision, local_photos)
+        except (requests.RequestException, ValueError, TypeError, AttributeError):
+            _log.debug("Could not cache a verified published post", exc_info=True)
+
     @staticmethod
     def _long_slugify(text: str) -> str:
         s = re.sub(r"[^a-z0-9\s-]", "", (text or "").strip().lower())
@@ -1522,14 +1750,24 @@ class SmacktalkPoster:
                 image_ids.append(iid)
                 if im.is_cover and cover_id is None:
                     cover_id = iid
-            if cover_id is None and image_ids:
-                cover_id = image_ids[0]
+            post_bucket_ids = [
+                image_id for im, image_id in zip(draft.images, image_ids)
+                if not getattr(im, "mosaic_only", False) or im.is_cover
+            ]
+            if cover_id is None and post_bucket_ids:
+                cover_id = post_bucket_ids[0]
+            mosaic_copies = {}
+            if not is_page and '"remote_mosaic"' in (draft.body_blocks or ""):
+                mosaic_copies = self._update_published_mosaics(draft, image_ids)
 
             # MOSAIC: a [mosaic] placeholder in the body becomes an inline justified
             # gallery of this essay's photos (created from the just-uploaded Gallery
             # ids). The photographer writes text + [mosaic]; the render is a real
             # tiled gallery in place. No server change — smackpress/mosaics exists.
             content = body_text
+            for original_id, (new_id, _) in mosaic_copies.items():
+                content = re.sub(rf"(\[mosaic:\s*){original_id}(?=\s|\])",
+                                 lambda match: match[1] + str(new_id), content, flags=re.I)
             if wire_mode != "verbatim":
                 content, new_mosaics = self._resolve_mosaics(content, image_ids, draft)
                 content = self._resolve_bucket_images(content, image_ids)
@@ -1541,7 +1779,7 @@ class SmacktalkPoster:
 
             route = "smackpress/pages" if is_page else "smackpress/posts"
             payload = (self.build_page_payload(draft, content=content) if is_page
-                       else self.build_payload(draft, image_ids, cover_id, content=content))
+                       else self.build_payload(draft, post_bucket_ids, cover_id, content=content))
             r = self.session.post(self._route(route), json=payload,
                                   timeout=120)
             if r.status_code in (401, 403, 429):
@@ -1561,8 +1799,18 @@ class SmacktalkPoster:
         # no photo files copied — originals stay on disk).
         if not is_page:
             self._record_to_library(draft, post_id, content, data, image_ids)
-        return SyncResult(True, remote_post_id=post_id,
-                          message="Updated" if getattr(draft, "remote_post_id", 0) else "Posted")
+            self._cache_published_post(post_id, data.get("slug"), draft.images, image_ids)
+        message = "Updated" if getattr(draft, "remote_post_id", 0) else "Posted"
+        if len(mosaic_copies) == 1:
+            other_references = next(iter(mosaic_copies.values()))[1]
+            if other_references == 1:
+                message = "Saved as a new mosaic. The original is still used by another post or page."
+            else:
+                message = f"Saved as a new mosaic. The original is still used by {other_references} other posts or pages."
+        elif mosaic_copies:
+            message = f"Saved {len(mosaic_copies)} new mosaics. Other posts still use the originals."
+        return SyncResult(True, remote_post_id=post_id, message=message,
+                          notice=message if mosaic_copies else "")
 
     def verify(self, draft) -> bool:
         """Best-effort: pull the post back via GET smackpress/posts/{id}. Trust the

@@ -134,6 +134,7 @@ class DraftImage:
     remote_thumb_square: str = ""   # server thumb path after upload
     remote_thumb_aspect: str = ""
     remote_image_id: int = 0  # existing Gallery id when revising a published post
+    mosaic_only: bool = False  # imported from a site mosaic outside the post bucket
     alt:          str = ""    # per-image accessibility ALT — travels WITH the
                               # image (snap_images.img_alt), never the post
     # Complete per-image enrichment bundle.  Some post types and skins expose
@@ -264,6 +265,7 @@ class Draft:
     trigram_cut_b: float = 2.0 / 3.0      # second seam, fraction of the long axis (0-1)
     # Sync bookkeeping.
     remote_post_id: int = 0               # filled after a successful create
+    mosaic_copies: dict = field(default_factory=dict)  # receipts for retried post sends
     remote_trigram_id: int = 0
     error:        str = ""
     created_at:   str = field(default_factory=_now_iso)
@@ -1352,6 +1354,7 @@ class SyncResult:
     remote_post_id: int = 0
     message: str = ""
     cancelled: bool = False
+    notice: str = ""
 
 
 class SyncEngine:

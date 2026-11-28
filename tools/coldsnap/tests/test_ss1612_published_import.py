@@ -24,6 +24,7 @@ import io
 import os
 import sys
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -50,6 +51,23 @@ class ByteExactRoundTrip(unittest.TestCase):
         blocks = biggie.parse_site_html(body)
         self.assertEqual(biggie.serialize_site_blocks(blocks), body,
                          "round trip changed the bytes " + label)
+
+    def test_standalone_published_photo_keeps_position_and_width(self):
+        body = "<p>Before</p>\n[img:24|full|center|65]\n<p>After</p>\n[img:g57]"
+        blocks = biggie.parse_site_html(body)
+        self.assertEqual([block["type"] for block in blocks], ["para", "image", "para", "image"])
+        self.assertEqual((blocks[1]["img_id"], blocks[1]["width"]), ("24", "65"))
+        self.assert_round_trips(body)
+
+    def test_published_photo_uses_gallery_identity_in_photos_tray(self):
+        from coldsnap_qt.mode_take import TakeMode
+
+        resolved = SimpleNamespace(asset_uuid="placed-photo", remote_image_id=24)
+        bucket = [SimpleNamespace(asset_uuid=str(i), remote_image_id=100 + i) for i in range(30)]
+        bucket[4] = resolved
+        blocks = biggie.parse_site_html("<p>Before</p>\n[img:24|full|center|65]\n<p>After</p>")
+        model = SimpleNamespace(_bucket=bucket, body=SimpleNamespace(authoring_blocks=lambda: blocks))
+        self.assertEqual(TakeMode._used_photo_indices(model), {4})
 
     def test_the_real_post_4_body_round_trips_byte_for_byte(self):
         body = _load_post4()
