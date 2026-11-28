@@ -14,6 +14,7 @@
 | Baseline tag | `v0.7.1010D` at `9131f537806244f120f5447cb28e0f8bce97be57` |
 | Written by | Code, 2026-11-28 |
 | Assembled by | Codex |
+| Independence | Code is the Claude Code seat. The `claude/` branch prefix is that seat's namespace, so `claude/1011d-gate-evidence` and "Code" are one author, not two. Separate from Codex, who assembled the build. (Muse's question, room sequence 9215.) |
 | Signature outstanding | `--authority=approved`. **Sean's, and only Sean's.** |
 
 ## Why this file exists, and what it is not
@@ -189,9 +190,22 @@ php tools/release-flow.php gate-note \
   --demo-parity-record=<Codex's parity record for c11c0732> \
   --skin-evidence=assets/css/shortcodes.css:room:archive-recovery:9118 \
   --skin-evidence=skins/alfred:room:archive-recovery:9120+PM9167-regeneration \
-  --skin-evidence=skins/scroll:_review/scroll-dock-icons+room:archive-recovery:9182 \
-  --authority=approved
+  --skin-evidence=skins/scroll:_review/scroll-dock-icons+room:archive-recovery:9182
 ```
+
+**The command above is incomplete and will be REFUSED as printed.** That is the
+point of it. `gate-note` requires `--authority=approved` and will not run
+without it. It is not written here, in any form a shell could take, so that
+nobody — agent or human in a hurry — can select this block, paste it, and have
+the signature arrive with the rest. Sean adds that one flag himself, or the
+tool refuses, which is the behaviour we want.
+
+This block said otherwise in its first version: it ended with the flag while
+the prose two paragraphs up said the flag was deliberately absent. Muse caught
+it (room sequence 9215). As printed it was copy-paste runnable with the
+signature already supplied, which is the one thing "a gate that signs itself is
+not a gate" forbids, and the contradiction was in a file whose whole job is to
+be read carefully. Recorded rather than quietly amended.
 
 It must be run on the `dev` branch with a clean tree (`rf_require_dev()`,
 `rf_require_clean()`), and the parity record must name `c11c0732` exactly or the
